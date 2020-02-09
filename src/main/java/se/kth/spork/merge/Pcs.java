@@ -27,7 +27,8 @@ import java.util.Objects;
 import java.util.Set;
 
 /**
- * This file is adapted from GumTree, see the original license statement above.
+ * This file is adapted from GumTree, see the original license statement above. The only non-trivial thing that
+ * is borrowed is the fromTree method, everything else is either trivial or original.
  *
  * Representation of a Parent/Child/Successor triple. Note that the revision does not (and should not) impact hashing
  * or equality, it is just there as metainformation.
@@ -93,6 +94,10 @@ public class Pcs {
         return Objects.hash(root, predecessor, successor);
     }
 
+    /**
+     * This method is borrowed from GumTree's merge branch,
+     * see https://github.com/GumTreeDiff/gumtree/blob/fae5832cc60ac12716e472f005880a04354ecbe5/core/src/main/java/com/github/gumtreediff/tree/merge/Pcs.java#L88-L104
+     */
     public static Set<Pcs> fromTree(ITree tree) {
         Set<Pcs> result = new HashSet<>();
         for (ITree t: tree.preOrder()) {
