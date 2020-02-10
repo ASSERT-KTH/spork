@@ -41,14 +41,17 @@ public class Cli {
 
         if (expected != null) {
             ITree expectedTree = toGumTree(expected);
+            boolean isIsomorphic = mergedTree.isIsomorphicTo(expectedTree);
             System.out.println("Merge isomorphic to expected tree: " + mergedTree.isIsomorphicTo(expectedTree));
 
-            System.out.println("EXPECTED TREE");
-            expectedTree.preOrder().forEach(t -> System.out.println(t.toShortString()));
 
+            if (!isIsomorphic) {
+                System.out.println("EXPECTED TREE");
+                expectedTree.preOrder().forEach(t -> System.out.println(t.toShortString()));
 
-            System.out.println("ACTUAL TREE");
-            mergedTree.preOrder().forEach(t -> System.out.println(t.toShortString()));
+                System.out.println("ACTUAL TREE");
+                mergedTree.preOrder().forEach(t -> System.out.println(t.toShortString()));
+            }
         }
     }
 
