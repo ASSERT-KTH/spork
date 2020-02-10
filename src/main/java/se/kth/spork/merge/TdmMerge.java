@@ -2,9 +2,13 @@ package se.kth.spork.merge;
 
 import com.github.gumtreediff.matchers.MappingStore;
 import com.github.gumtreediff.matchers.Matcher;
+import com.github.gumtreediff.matchers.Matchers;
 import com.github.gumtreediff.tree.ITree;
+import gumtree.spoon.builder.SpoonGumTreeBuilder;
+import spoon.reflect.declaration.CtClass;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * An implementation of the 3DM merge algorithm by Tancred Lindholm. For details on 3DM merge, see the paper
@@ -13,6 +17,33 @@ import java.util.*;
  * @author Simon Larsén
  */
 public class TdmMerge {
+
+    public static ITree mergeToTree(CtClass<?> base, CtClass<?> left, CtClass<?> right) {
+        TStar merge = merge(base, left, right);
+        return GumTreeBuilder.pcsToTree(merge.getStar(), merge.getContents());
+    }
+
+    public static TStar merge(CtClass<?> base, CtClass<?> left, CtClass<?> right) {
+        ITree baseTree = toGumTree(base);
+        ITree leftTree = toGumTree(left);
+        ITree rightTree = toGumTree(right);
+
+        Matcher baseLeftMatch = matchTrees(baseTree, leftTree);
+        Matcher baseRightMatch = matchTrees(baseTree, rightTree);
+
+        return merge(baseTree, leftTree, rightTree, baseLeftMatch, baseRightMatch);
+    }
+
+    private static Matcher matchTrees(ITree src, ITree dst) {
+        Matcher matcher = Matchers.getInstance().getMatcher(src, dst);
+        matcher.match();
+        return matcher;
+    }
+
+    private static ITree toGumTree(CtClass<?> cls) {
+        return new SpoonGumTreeBuilder().getTree(cls);
+    }
+
     public static TStar merge(ITree base, ITree left, ITree right, Matcher matchLeft, Matcher matchRight) {
         Set<Pcs> t0 = Pcs.fromTree(base, Revision.BASE);
         Set<Pcs> t1 = Pcs.fromTree(left, Revision.LEFT);

@@ -33,20 +33,22 @@ public class Cli {
         String right = readFile(args[2]);
         String expected = args.length == 4 ? readFile(args[3]) : null;
 
-        ITree baseTree = toGumTree(base);
-        ITree leftTree = toGumTree(left);
-        ITree rightTree = toGumTree(right);
+        CtClass<?> baseTree = Launcher.parseClass(base);
+        CtClass<?> leftTree = Launcher.parseClass(left);
+        CtClass<?> rightTree = Launcher.parseClass(right);
 
-        Matcher baseLeft = matchTrees(baseTree, leftTree);
-        Matcher baseRight = matchTrees(baseTree, rightTree);
-
-        TStar merge = TdmMerge.merge(baseTree, leftTree, rightTree, baseLeft, baseRight);
-
-        ITree mergedTree = GumTreeBuilder.pcsToTree(merge.getStar(), merge.getContents());
+        ITree mergedTree = TdmMerge.mergeToTree(baseTree, leftTree, rightTree);
 
         if (expected != null) {
             ITree expectedTree = toGumTree(expected);
             System.out.println("Merge isomorphic to expected tree: " + mergedTree.isIsomorphicTo(expectedTree));
+
+            System.out.println("EXPECTED TREE");
+            expectedTree.preOrder().forEach(t -> System.out.println(t.toShortString()));
+
+
+            System.out.println("ACTUAL TREE");
+            mergedTree.preOrder().forEach(t -> System.out.println(t.toShortString()));
         }
     }
 
