@@ -43,6 +43,13 @@ public class TStar {
     }
 
     /**
+     * @return The current state of the merge's node contents.
+     */
+    public Map<ITree, Set<Content>> getContents() {
+        return new HashMap<>(content);
+    }
+
+    /**
      * @param pcs A PCS triple.
      * @return Another PCS in which the argument's successor and predecessor appear as successor and predecessor, but
      *      has a different root.

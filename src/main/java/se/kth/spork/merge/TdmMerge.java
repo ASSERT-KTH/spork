@@ -126,7 +126,6 @@ public class TdmMerge {
         if (contents.size() != 1) {
             // there was new content both in left and right revisions that was not equal
 
-            // TODO find some way to retain information about which is left and right
             Iterator<Content> it = contents.iterator();
             Content first = it.next();
             Content second = it.next();
@@ -134,7 +133,6 @@ public class TdmMerge {
             if (basePcsOpt.isPresent()) {
                 return Optional.of(new Conflict<>(basePcsOpt.get(), first, second));
             } else { // TODO figure out why basePcs is not available in some cases
-                System.out.println("NOT PRESENT");
                 return Optional.of(new Conflict<>(first, second));
             }
         }

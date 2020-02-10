@@ -4,7 +4,7 @@ import com.github.gumtreediff.matchers.Matcher;
 import com.github.gumtreediff.matchers.Matchers;
 import com.github.gumtreediff.tree.ITree;
 import gumtree.spoon.builder.SpoonGumTreeBuilder;
-import se.kth.spork.merge.Pcs;
+import se.kth.spork.merge.GumTreeBuilder;
 import se.kth.spork.merge.TStar;
 import se.kth.spork.merge.TdmMerge;
 import spoon.Launcher;
@@ -14,7 +14,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -24,7 +23,7 @@ import java.util.stream.Collectors;
  */
 public class Cli {
     public static void main(String[] args) throws IOException {
-        if (args.length != 3) {
+        if (args.length < 3 || args.length > 4) {
             usage();
             System.exit(1);
         }
@@ -32,6 +31,7 @@ public class Cli {
         String left = readFile(args[0]);
         String base = readFile(args[1]);
         String right = readFile(args[2]);
+        String expected = args.length == 4 ? readFile(args[3]) : null;
 
         ITree baseTree = toGumTree(base);
         ITree leftTree = toGumTree(left);
@@ -41,6 +41,13 @@ public class Cli {
         Matcher baseRight = matchTrees(baseTree, rightTree);
 
         TStar merge = TdmMerge.merge(baseTree, leftTree, rightTree, baseLeft, baseRight);
+
+        ITree mergedTree = GumTreeBuilder.pcsToTree(merge.getStar(), merge.getContents());
+
+        if (expected != null) {
+            ITree expectedTree = toGumTree(expected);
+            System.out.println("Merge isomorphic to expected tree: " + mergedTree.isIsomorphicTo(expectedTree));
+        }
     }
 
     private static String readFile(String s) throws IOException {
@@ -62,22 +69,7 @@ public class Cli {
         return matcher;
     }
 
-    static void traversePcs(Map<ITree, Map<ITree, Pcs>> rootToChildren, ITree currentRoot) {
-        System.out.println(currentRoot == null ? "null" : currentRoot.toShortString());
-        Map<ITree, Pcs> children = rootToChildren.get(currentRoot);
-
-        ITree pred = null;
-        while (true) {
-            Pcs nextPcs = children.get(pred);
-            pred = nextPcs.getSuccessor();
-            if (pred == null) {
-                break;
-            }
-            traversePcs(rootToChildren, pred);
-        };
-    }
-
     private static void usage() {
-        System.out.println("usage: spork <left> <base> <right>");
+        System.out.println("usage: spork <left> <base> <right> [expected]");
     }
 }
