@@ -36,7 +36,7 @@ class TdmMergeTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"move_if", "modify_loop_header"})
+    @ValueSource(strings = {"move_if"})
     void mergeToTree_shouldReturnExpectedTree_whenBothVersionsAreModified(String testName) throws IOException {
         File testDir = bothModifiedDirpath.resolve(testName).toFile();
         runTestMerge(testDir);
