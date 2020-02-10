@@ -19,6 +19,12 @@
             <artifactId>gumtree-spoon-ast-diff</artifactId>
             <version>1.23</version>
         </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>RELEASE</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
