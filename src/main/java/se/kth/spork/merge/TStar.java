@@ -51,37 +51,32 @@ public class TStar {
 
     /**
      * @param pcs A PCS triple.
-     * @return Another PCS in which the argument's successor and predecessor appear as successor and predecessor, but
-     *      has a different root.
+     * @return Another PCS that matches the argument PCS on everything but root.
      */
     public Optional<Pcs> getOtherRoot(Pcs pcs) {
-        Set<Pcs> res = new HashSet<>();
-        res.addAll(predecessors.getOrDefault(pcs.getPredecessor(), res));
-        res.addAll(successors.getOrDefault(pcs.getSuccessor(), res));
-        return res.stream()
+        return predecessors.getOrDefault(pcs.getPredecessor(), EMPTY_PCS_SET).stream()
                 .filter(p -> p.getRoot() != pcs.getRoot()
-                        && p.getPredecessor() == pcs.getPredecessor()
                         && p.getSuccessor() == pcs.getSuccessor())
                 .findFirst();
     }
 
     /**
      * @param pcs A PCS triple.
-     * @return Another PCS in which the argument's successor node also appears as a successor.
+     * @return Another PCS that matches the argument PCS on everything but successor.
      */
     public Optional<Pcs> getOtherSuccessor(Pcs pcs) {
-        return successors.getOrDefault(pcs.getSuccessor(), EMPTY_PCS_SET).stream()
-                .filter(p -> p != pcs)
+        return predecessors.getOrDefault(pcs.getPredecessor(), EMPTY_PCS_SET).stream()
+                .filter(p -> p.getSuccessor() != pcs.getSuccessor() && p.getRoot() == pcs.getRoot())
                 .findFirst();
     }
 
     /**
      * @param pcs A PCS triple.
-     * @return Another PCS in which the argument's predecessor node also appears as a predecessor.
+     * @return Another PCS that matches the argument PCS on everything but predecessor.
      */
     public Optional<Pcs> getOtherPredecessor(Pcs pcs) {
-        return predecessors.getOrDefault(pcs.getPredecessor(), EMPTY_PCS_SET).stream()
-                .filter(p -> p != pcs)
+        return successors.getOrDefault(pcs.getSuccessor(), EMPTY_PCS_SET).stream()
+                .filter(p -> p.getPredecessor() != p.getPredecessor() && p.getRoot() == pcs.getRoot())
                 .findFirst();
     }
 
