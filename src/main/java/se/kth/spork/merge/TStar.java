@@ -115,10 +115,8 @@ public class TStar {
         ITree pred = pcs.getPredecessor();
         ITree succ = pcs.getPredecessor();
 
-        if (pred != null)
-            predecessors.get(pred).remove(pcs);
-        if (succ != null)
-            successors.get(succ).remove(pcs);
+        predecessors.get(pred).remove(pcs);
+        successors.get(succ).remove(pcs);
 
         star.remove(pcs);
     }
@@ -144,8 +142,10 @@ public class TStar {
             ITree classRepPred = classRepPcs.getPredecessor();
             ITree classRepSucc = classRepPcs.getSuccessor();
 
-            addToLookupTable(classRepPred, classRepPcs, predecessors);
-            addToLookupTable(classRepSucc, classRepPcs, successors);
+            if (classRepPred != null || classRepSucc != null) { // don't map leaf nodes
+                addToLookupTable(classRepPred, classRepPcs, predecessors);
+                addToLookupTable(classRepSucc, classRepPcs, successors);
+            }
             if (pred != null) {
                 Content c = new Content(pcs, pred.getLabel());
                 addToLookupTable(classRepPred, c, content);
@@ -164,8 +164,6 @@ public class TStar {
     }
 
     private static <K, V> void addToLookupTable(K key, V val, Map<K, Set<V>> lookup) {
-        if (key == null) return;
-
         Set<V> values = lookup.getOrDefault(key, new HashSet<V>());
         if (values.isEmpty())
             lookup.put(key, values);

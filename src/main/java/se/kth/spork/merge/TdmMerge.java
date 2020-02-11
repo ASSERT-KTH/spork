@@ -8,7 +8,6 @@ import gumtree.spoon.builder.SpoonGumTreeBuilder;
 import spoon.reflect.declaration.CtClass;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 /**
  * An implementation of the 3DM merge algorithm by Tancred Lindholm. For details on 3DM merge, see the paper
@@ -100,7 +99,7 @@ public class TdmMerge {
                 continue;
 
             Set<Content> contents = delta.getContent(pcs);
-            if (contents.size() > 1) {
+            if (contents != null && contents.size() > 1) {
                 handleContentConflict(contents, base).ifPresent(contentConflicts::add);
             }
 
@@ -138,6 +137,7 @@ public class TdmMerge {
 
         // contents equal to that in base never takes precedence over left and right revisions
         Optional<Content> basePcsOpt = contents.stream().filter(base::contains).findAny();
+
         basePcsOpt.ifPresent(content -> contents.removeIf(c -> c.getValue().equals(content.getValue())));
 
         if (contents.size() == 0) { // everything was equal to base, re-add
