@@ -94,9 +94,7 @@ public class GumTreeBuilder {
                 assert contents.size() == 1;
                 Content cont = contents.iterator().next();
 
-                // TODO remove this cast, the content is always a String
-                treeCopy = new Tree(tree.getType(), (String) cont.getValue());
-                treeCopy.setParent(currentRoot);
+                treeCopy = copyTree(tree, cont, currentRoot);
 
                 if (currentRoot != null)
                     currentRoot.addChild(treeCopy);
@@ -105,6 +103,14 @@ public class GumTreeBuilder {
             } else { // second time we see this node; it's now the root
                 currentRoot = treeCopy;
             }
+        }
+
+        private static ITree copyTree(ITree tree, Content content, ITree root) {
+            ITree treeCopy = new Tree(tree.getType(), (String) content.getValue());
+            treeCopy.setParent(root);
+            // TODO remove this cast, the content is always a String
+            tree.getMetadata().forEachRemaining(entry -> treeCopy.setMetadata(entry.getKey(), entry.getValue()));
+            return treeCopy;
         }
     }
 
