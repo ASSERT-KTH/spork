@@ -43,7 +43,7 @@ class TdmMergeTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"move_if", "delete_method"})
+    @ValueSource(strings = {"move_if", "delete_method", "add_same_method", "add_identical_elements_in_method"})
     void mergeToTree_shouldReturnExpectedTree_whenBothVersionsAreModified(String testName) throws IOException {
         File testDir = bothModifiedDirpath.resolve(testName).toFile();
         TestSources sources = getTestSources(testDir);

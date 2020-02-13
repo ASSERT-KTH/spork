@@ -16,6 +16,7 @@ import java.util.*;
  * @author Simon Larsén
  */
 public class TdmMerge {
+    public static final String REV = "rev";
 
     public static ITree mergeToTree(CtClass<?> base, CtClass<?> left, CtClass<?> right) {
         TStar merge = merge(base, left, right);
@@ -29,8 +30,9 @@ public class TdmMerge {
 
         Matcher baseLeftMatch = matchTrees(baseTree, leftTree);
         Matcher baseRightMatch = matchTrees(baseTree, rightTree);
+        Matcher leftRightMatch = matchTrees(leftTree, rightTree);
 
-        return merge(baseTree, leftTree, rightTree, baseLeftMatch, baseRightMatch);
+        return merge(baseTree, leftTree, rightTree, baseLeftMatch, baseRightMatch, leftRightMatch);
     }
 
     private static Matcher matchTrees(ITree src, ITree dst) {
@@ -43,14 +45,15 @@ public class TdmMerge {
         return new SpoonGumTreeBuilder().getTree(cls);
     }
 
-    public static TStar merge(ITree base, ITree left, ITree right, Matcher matchLeft, Matcher matchRight) {
+    public static TStar merge(ITree base, ITree left, ITree right, Matcher matchLeft, Matcher matchRight, Matcher leftRight) {
         Set<Pcs> t0 = Pcs.fromTree(base, Revision.BASE);
         Set<Pcs> t1 = Pcs.fromTree(left, Revision.LEFT);
         Set<Pcs> t2 = Pcs.fromTree(right, Revision.RIGHT);
 
         Map<ITree, ITree> classRepMap = initializeClassRepresentativesMap(base);
-        mapToClassRepresentatives(left, matchLeft.getMappings(), classRepMap);
-        mapToClassRepresentatives(right, matchRight.getMappings(), classRepMap);
+        mapToClassRepresentatives(left, matchLeft.getMappings(), classRepMap, Revision.LEFT);
+        mapToClassRepresentatives(right, matchRight.getMappings(), classRepMap, Revision.RIGHT);
+        augmentClassRepresentatives(leftRight.getMappings(), classRepMap);
 
         TStar delta = new TStar(classRepMap, t0, t1, t2);
         TStar t0Star = new TStar(classRepMap, t0);
@@ -61,12 +64,35 @@ public class TdmMerge {
     }
 
     /**
+     * Augment the class representatives match with left-right matching information. Any node originating from the
+     * RIGHT revision that is mapped to itself and is matched to a node in the LEFT revision is remapped to the LEFT
+     * node.
+     *
+     * This solves conflicts originating from identical additions in both revisions.
+     */
+    private static void augmentClassRepresentatives(MappingStore matchLeftRight, Map<ITree, ITree> classRepMap) {
+        for (Map.Entry<ITree, ITree> entry : classRepMap.entrySet()) {
+            ITree node = entry.getKey();
+            ITree classRep = entry.getValue();
+
+            if (node == classRep && node.getMetadata(REV) == Revision.RIGHT) {
+                // unmapped right node, map to left if mapping exists
+                ITree leftClassRep = matchLeftRight.getSrc(node);
+                if (leftClassRep != null)
+                    classRepMap.put(node, leftClassRep);
+            }
+        }
+    }
+
+    /**
      * Add the base tree's self-mappings to the class representatives map.
      */
     private static Map<ITree, ITree> initializeClassRepresentativesMap(ITree base) {
         Map<ITree, ITree> classRepMap = new HashMap<>();
-        for (ITree tree : base.preOrder())
+        for (ITree tree : base.preOrder()) {
+            tree.setMetadata(REV, Revision.BASE);
             classRepMap.put(tree, tree);
+        }
         return classRepMap;
     }
 
@@ -74,8 +100,9 @@ public class TdmMerge {
     /**
      * Map nodes in a revision to its class representative.
      */
-    private static void mapToClassRepresentatives(ITree tree, MappingStore mappings, Map<ITree, ITree> classRepMap) {
+    private static void mapToClassRepresentatives(ITree tree, MappingStore mappings, Map<ITree, ITree> classRepMap, Revision rev) {
         for (ITree t : tree.preOrder()) {
+            t.setMetadata(REV, rev);
             if (mappings.hasDst(t)) {
                 classRepMap.put(t, mappings.getSrc(t));
             } else {
