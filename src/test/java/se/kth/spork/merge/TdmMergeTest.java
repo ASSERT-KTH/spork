@@ -21,7 +21,7 @@ class TdmMergeTest {
     private static final Path bothModifiedDirpath = cleanMergeDirpath.resolve("both_modified");
 
     @ParameterizedTest
-    @ValueSource(strings = {"add_parameter"})
+    @ValueSource(strings = {"add_parameter", "delete_method"})
     void mergeToTree_shouldReturnExpectedTree_whenLeftVersionIsModified(String testName) throws IOException{
         File testDir = leftModifiedDirpath.resolve(testName).toFile();
         TestSources sources = getTestSources(testDir);
@@ -29,7 +29,7 @@ class TdmMergeTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"add_parameter"})
+    @ValueSource(strings = {"add_parameter", "delete_method"})
     void mergeToTree_shouldReturnExpectedTree_whenRightVersionIsModified(String testName) throws IOException{
         File testDir = leftModifiedDirpath.resolve(testName).toFile();
         TestSources sources = getTestSources(testDir);
@@ -43,7 +43,7 @@ class TdmMergeTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"move_if"})
+    @ValueSource(strings = {"move_if", "delete_method"})
     void mergeToTree_shouldReturnExpectedTree_whenBothVersionsAreModified(String testName) throws IOException {
         File testDir = bothModifiedDirpath.resolve(testName).toFile();
         TestSources sources = getTestSources(testDir);
