@@ -122,8 +122,13 @@ public class TdmMerge {
             }
         }
 
-        contentConflicts.forEach(System.out::println);
-        structuralConflicts.forEach(System.out::println);
+
+        if (!contentConflicts.isEmpty()) {
+            throw new IllegalStateException("CONTENT CONFLICTS DETECTED: " + contentConflicts);
+        }
+        if (!structuralConflicts.isEmpty()) {
+            throw new IllegalStateException("STRUCTURAL CONFLICTS DETECTED: " + structuralConflicts);
+        }
     }
 
     /**
