@@ -33,13 +33,13 @@ import java.util.Set;
  * Representation of a Parent/Child/Successor triple. Note that the revision does not (and should not) impact hashing
  * or equality, it is just there as metainformation.
  */
-public class Pcs {
-    private ITree root;
-    private ITree predecessor;
-    private ITree successor;
+public class Pcs<T> {
+    private T root;
+    private T predecessor;
+    private T successor;
     private Revision revision;
 
-    public Pcs(ITree root, ITree predecessor, ITree successor) {
+    public Pcs(T root, T predecessor, T successor) {
         this.root = root;
         this.predecessor = predecessor;
         this.successor = successor;
@@ -60,20 +60,20 @@ public class Pcs {
     @Override
     public String toString() {
         return "PCS(" + (revision != null ? revision + "," : "")
-                + toShortString(root) + ","
-                + toShortString(predecessor) + ","
-                + toShortString(successor) + ")";
+                + root + ","
+                + predecessor + ","
+                + successor + ")";
     }
 
-    public ITree getRoot() {
+    public T getRoot() {
         return root;
     }
 
-    public ITree getPredecessor() {
+    public T getPredecessor() {
         return predecessor;
     }
 
-    public ITree getSuccessor() {
+    public T getSuccessor() {
         return successor;
     }
 
@@ -85,40 +85,9 @@ public class Pcs {
         this.revision = revision;
     }
 
-    private static String toShortString(ITree tree) {
-        return tree == null ? "null" : tree.toShortString();
-    }
-
     @Override
     public int hashCode() {
         return Objects.hash(root, predecessor, successor);
     }
 
-    /**
-     * This method is borrowed from GumTree's merge branch,
-     * see https://github.com/GumTreeDiff/gumtree/blob/fae5832cc60ac12716e472f005880a04354ecbe5/core/src/main/java/com/github/gumtreediff/tree/merge/Pcs.java#L88-L104
-     */
-    public static Set<Pcs> fromTree(ITree tree) {
-        Set<Pcs> result = new HashSet<>();
-        for (ITree t: tree.preOrder()) {
-            int size = t.getChildren().size();
-            for (int i = 0; i < size; i++) {
-                ITree c = t.getChild(i);
-                if (i == 0)
-                    result.add(new Pcs(t, null, c));
-                result.add(new Pcs(t, c, i == (size - 1) ? null : t.getChild(i + 1)));
-            }
-            if (size == 0)
-                result.add(new Pcs(t, null, null));
-        }
-        result.add(new Pcs(null, tree, null));
-        result.add(new Pcs(null, null, tree));
-        return result;
-    }
-
-    public static Set<Pcs> fromTree(ITree tree, Revision revision) {
-        Set<Pcs> pcses = fromTree(tree);
-        pcses.forEach(pcs -> pcs.revision = revision);
-        return pcses;
-    }
 }

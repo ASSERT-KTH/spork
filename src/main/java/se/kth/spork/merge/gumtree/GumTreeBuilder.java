@@ -1,7 +1,9 @@
-package se.kth.spork.merge;
+package se.kth.spork.merge.gumtree;
 
 import com.github.gumtreediff.tree.ITree;
 import com.github.gumtreediff.tree.Tree;
+import se.kth.spork.merge.Content;
+import se.kth.spork.merge.Pcs;
 
 import java.util.*;
 import java.util.function.Consumer;
@@ -23,7 +25,7 @@ public class GumTreeBuilder {
      * @param nodeContents The contents associated with the predecessors of each PCS triple.
      * @return A tree representing the PCS structure.
      */
-    public static ITree pcsToTree(Set<Pcs> pcses, Map<ITree, Set<Content>> nodeContents) {
+    public static ITree pcsToGumTree(Set<Pcs<ITree>> pcses, Map<ITree, Set<Content<ITree>>> nodeContents) {
         Builder builder = new Builder(nodeContents);
         traversePcs(pcses, builder);
 
@@ -45,10 +47,10 @@ public class GumTreeBuilder {
      * @param pcses A well-formed PCS structure.
      * @param func A function to apply to the nodes in the PCS structure.
      */
-    public static void traversePcs(Set<Pcs> pcses, Consumer<ITree> func) {
-        Map<ITree, Map<ITree, Pcs>> rootToChildren = new HashMap<>();
-        for (Pcs pcs : pcses) {
-            Map<ITree, Pcs> children = rootToChildren.getOrDefault(pcs.getRoot(), new HashMap<>());
+    public static <T> void traversePcs(Set<Pcs<T>> pcses, Consumer<T> func) {
+        Map<T, Map<T, Pcs<T>>> rootToChildren = new HashMap<>();
+        for (Pcs<T> pcs : pcses) {
+            Map<T, Pcs<T>> children = rootToChildren.getOrDefault(pcs.getRoot(), new HashMap<>());
             if (children.isEmpty()) rootToChildren.put(pcs.getRoot(), children);
             children.put(pcs.getPredecessor(), pcs);
         }
@@ -56,15 +58,15 @@ public class GumTreeBuilder {
         traversePcs(rootToChildren, null, func);
     }
 
-    private static void traversePcs(Map<ITree, Map<ITree, Pcs>> rootToChildren, ITree currentRoot, Consumer<ITree> func) {
+    private static <T> void traversePcs(Map<T, Map<T, Pcs<T>>> rootToChildren, T currentRoot, Consumer<T> func) {
         if (currentRoot != null)
             func.accept(currentRoot);
 
-        Map<ITree, Pcs> children = rootToChildren.get(currentRoot);
-        ITree pred = null;
-        List<ITree> sortedChildren = new ArrayList<>();
+        Map<T, Pcs<T>> children = rootToChildren.get(currentRoot);
+        T pred = null;
+        List<T> sortedChildren = new ArrayList<>();
         while (true) {
-            Pcs nextPcs = children.get(pred);
+            Pcs<T> nextPcs = children.get(pred);
             pred = nextPcs.getSuccessor();
             if (pred == null) {
                 break;
@@ -78,9 +80,9 @@ public class GumTreeBuilder {
     private static class Builder implements Consumer<ITree> {
         private ITree currentRoot;
         private Map<ITree, ITree> nodes;
-        private Map<ITree, Set<Content>> nodeContents;
+        private Map<ITree, Set<Content<ITree>>> nodeContents;
 
-        private Builder(Map<ITree, Set<Content>> nodeContents) {
+        private Builder(Map<ITree, Set<Content<ITree>>> nodeContents) {
             nodes = new HashMap<>();
             this.nodeContents = nodeContents;
         }
@@ -90,9 +92,9 @@ public class GumTreeBuilder {
             ITree treeCopy = nodes.get(tree);
 
             if (treeCopy == null) { // first time we see this node; it's a child node of the current root
-                Set<Content> contents = nodeContents.get(tree);
+                Set<Content<ITree>> contents = nodeContents.get(tree);
                 assert contents.size() == 1;
-                Content cont = contents.iterator().next();
+                Content<ITree> cont = contents.iterator().next();
 
                 treeCopy = copyTree(tree, cont, currentRoot);
 
@@ -105,7 +107,7 @@ public class GumTreeBuilder {
             }
         }
 
-        private static ITree copyTree(ITree tree, Content content, ITree root) {
+        private static ITree copyTree(ITree tree, Content<ITree> content, ITree root) {
             ITree treeCopy = new Tree(tree.getType(), (String) content.getValue());
             treeCopy.setParent(root);
             // TODO remove this cast, the content is always a String

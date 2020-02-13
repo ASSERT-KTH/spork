@@ -1,12 +1,5 @@
 package se.kth.spork.merge;
 
-import com.github.gumtreediff.matchers.MappingStore;
-import com.github.gumtreediff.matchers.Matcher;
-import com.github.gumtreediff.matchers.Matchers;
-import com.github.gumtreediff.tree.ITree;
-import gumtree.spoon.builder.SpoonGumTreeBuilder;
-import spoon.reflect.declaration.CtClass;
-
 import java.util.*;
 
 /**
@@ -18,126 +11,33 @@ import java.util.*;
 public class TdmMerge {
     public static final String REV = "rev";
 
-    public static ITree mergeToTree(CtClass<?> base, CtClass<?> left, CtClass<?> right) {
-        TStar merge = merge(base, left, right);
-        return GumTreeBuilder.pcsToTree(merge.getStar(), merge.getContents());
-    }
-
-    public static TStar merge(CtClass<?> base, CtClass<?> left, CtClass<?> right) {
-        ITree baseTree = toGumTree(base);
-        ITree leftTree = toGumTree(left);
-        ITree rightTree = toGumTree(right);
-
-        Matcher baseLeftMatch = matchTrees(baseTree, leftTree);
-        Matcher baseRightMatch = matchTrees(baseTree, rightTree);
-        Matcher leftRightMatch = matchTrees(leftTree, rightTree);
-
-        return merge(baseTree, leftTree, rightTree, baseLeftMatch, baseRightMatch, leftRightMatch);
-    }
-
-    private static Matcher matchTrees(ITree src, ITree dst) {
-        Matcher matcher = Matchers.getInstance().getMatcher(src, dst);
-        matcher.match();
-        return matcher;
-    }
-
-    private static ITree toGumTree(CtClass<?> cls) {
-        return new SpoonGumTreeBuilder().getTree(cls);
-    }
-
-    public static TStar merge(ITree base, ITree left, ITree right, Matcher matchLeft, Matcher matchRight, Matcher leftRight) {
-        Set<Pcs> t0 = Pcs.fromTree(base, Revision.BASE);
-        Set<Pcs> t1 = Pcs.fromTree(left, Revision.LEFT);
-        Set<Pcs> t2 = Pcs.fromTree(right, Revision.RIGHT);
-
-        Map<ITree, ITree> classRepMap = initializeClassRepresentativesMap(base);
-        mapToClassRepresentatives(left, matchLeft.getMappings(), classRepMap, Revision.LEFT);
-        mapToClassRepresentatives(right, matchRight.getMappings(), classRepMap, Revision.RIGHT);
-        augmentClassRepresentatives(leftRight.getMappings(), classRepMap);
-
-        TStar delta = new TStar(classRepMap, t0, t1, t2);
-        TStar t0Star = new TStar(classRepMap, t0);
-
-        resolveRawMerge(t0Star, delta);
-
-        return delta;
-    }
-
-    /**
-     * Augment the class representatives match with left-right matching information. Any node originating from the
-     * RIGHT revision that is mapped to itself and is matched to a node in the LEFT revision is remapped to the LEFT
-     * node.
-     *
-     * This solves conflicts originating from identical additions in both revisions.
-     */
-    private static void augmentClassRepresentatives(MappingStore matchLeftRight, Map<ITree, ITree> classRepMap) {
-        for (Map.Entry<ITree, ITree> entry : classRepMap.entrySet()) {
-            ITree node = entry.getKey();
-            ITree classRep = entry.getValue();
-
-            if (node == classRep && node.getMetadata(REV) == Revision.RIGHT) {
-                // unmapped right node, map to left if mapping exists
-                ITree leftClassRep = matchLeftRight.getSrc(node);
-                if (leftClassRep != null)
-                    classRepMap.put(node, leftClassRep);
-            }
-        }
-    }
-
-    /**
-     * Add the base tree's self-mappings to the class representatives map.
-     */
-    private static Map<ITree, ITree> initializeClassRepresentativesMap(ITree base) {
-        Map<ITree, ITree> classRepMap = new HashMap<>();
-        for (ITree tree : base.preOrder()) {
-            tree.setMetadata(REV, Revision.BASE);
-            classRepMap.put(tree, tree);
-        }
-        return classRepMap;
-    }
-
-
-    /**
-     * Map nodes in a revision to its class representative.
-     */
-    private static void mapToClassRepresentatives(ITree tree, MappingStore mappings, Map<ITree, ITree> classRepMap, Revision rev) {
-        for (ITree t : tree.preOrder()) {
-            t.setMetadata(REV, rev);
-            if (mappings.hasDst(t)) {
-                classRepMap.put(t, mappings.getSrc(t));
-            } else {
-                classRepMap.put(t, t);
-            }
-        }
-    }
-
     /**
      * Attempt to resolve a raw merge by incrementally removing inconsistencies.
      *
      * @param base
      * @param delta
      */
-    private static void resolveRawMerge(TStar base, TStar delta) {
-        List<Conflict<Content>> contentConflicts = new ArrayList<>();
-        List<Conflict<Pcs>> structuralConflicts = new ArrayList<>();
+    public static <T> void resolveRawMerge(TStar<T> base, TStar<T> delta) {
+        List<Conflict<Content<T>>> contentConflicts = new ArrayList<>();
+        List<Conflict<Pcs<T>>> structuralConflicts = new ArrayList<>();
 
-        for (Pcs pcs : delta.getStar()) {
+        for (Pcs<T> pcs : delta.getStar()) {
             if (!delta.contains(pcs)) // was removed as otherPcs
                 continue;
 
-            Set<Content> contents = delta.getContent(pcs);
+            Set<Content<T>> contents = delta.getContent(pcs);
             if (contents != null && contents.size() > 1) {
                 handleContentConflict(contents, base).ifPresent(contentConflicts::add);
             }
 
-            Optional<Pcs> other = delta.getOtherRoot(pcs);
+            Optional<Pcs<T>> other = delta.getOtherRoot(pcs);
             if (!other.isPresent())
                 other = delta.getOtherPredecessor(pcs);
             if (!other.isPresent())
                 other = delta.getOtherSuccessor(pcs);
 
             if (other.isPresent()) {
-                Pcs otherPcs = other.get();
+                Pcs<T> otherPcs = other.get();
 
                 if (base.contains(otherPcs)) {
                     delta.remove(otherPcs);
@@ -163,21 +63,21 @@ public class TdmMerge {
      *
      * TODO have this method modify the contents in a less dirty way
      */
-    private static Optional<Conflict<Content>> handleContentConflict(Set<Content> contents, TStar base) {
+    private static <T> Optional<Conflict<Content<T>>> handleContentConflict(Set<Content<T>> contents, TStar<T> base) {
         if (contents.size() > 3)
             throw new IllegalArgumentException("expected at most 3 pieces of conflicting content, got: " + contents);
 
         // contents equal to that in base never takes precedence over left and right revisions
-        Optional<Content> basePcsOpt = contents.stream().filter(base::contains).findAny();
+        Optional<Content<T>> basePcsOpt = contents.stream().filter(base::contains).findAny();
 
         basePcsOpt.ifPresent(content -> contents.removeIf(c -> c.getValue().equals(content.getValue())));
 
         if (contents.size() == 0) { // everything was equal to base, re-add
             contents.add(basePcsOpt.get());
         } else if (contents.size() == 2) { // both left and right have been modified from base
-            Iterator<Content> it = contents.iterator();
-            Content first = it.next();
-            Content second = it.next();
+            Iterator<Content<T>> it = contents.iterator();
+            Content<T> first = it.next();
+            Content<T> second = it.next();
             if (second.getValue().equals(first.getValue()))
                 it.remove();
         } else if (contents.size() > 2) {
@@ -189,9 +89,9 @@ public class TdmMerge {
         if (contents.size() != 1) {
             // there was new content both in left and right revisions that was not equal
 
-            Iterator<Content> it = contents.iterator();
-            Content first = it.next();
-            Content second = it.next();
+            Iterator<Content<T>> it = contents.iterator();
+            Content<T> first = it.next();
+            Content<T> second = it.next();
 
             if (basePcsOpt.isPresent()) {
                 return Optional.of(new Conflict<>(basePcsOpt.get(), first, second));

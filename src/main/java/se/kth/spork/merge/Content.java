@@ -7,8 +7,8 @@ import java.util.Objects;
  *
  * @author Simon Larsén
  */
-class Content {
-    private Pcs context;
+public class Content<T> {
+    private Pcs<T> context;
     private Object value;
 
     /**
@@ -17,12 +17,12 @@ class Content {
      * @param context The context of this content. The value is associated with the predecessor of the context.
      * @param value The value of the this content.
      */
-    public Content(Pcs context, Object value) {
+    public Content(Pcs<T> context, Object value) {
         this.context = context;
         this.value = value;
     }
 
-    public Pcs getContext() {
+    public Pcs<T> getContext() {
         return context;
     }
 
@@ -34,6 +34,7 @@ class Content {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
+        @SuppressWarnings("rawtypes")
         Content content = (Content) o;
         return Objects.equals(context, content.context) &&
                 Objects.equals(value, content.value);

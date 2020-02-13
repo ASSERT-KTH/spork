@@ -1,4 +1,4 @@
-package se.kth.spork.merge;
+package se.kth.spork.merge.gumtree;
 
 import com.github.gumtreediff.tree.ITree;
 import gumtree.spoon.builder.SpoonGumTreeBuilder;
@@ -15,7 +15,7 @@ import java.nio.file.Paths;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-class TdmMergeTest {
+class GumTreeMergeTest {
     private static final Path cleanMergeDirpath = Paths.get("src/test/resources/clean");
     private static final Path leftModifiedDirpath = cleanMergeDirpath.resolve("left_modified");
     private static final Path bothModifiedDirpath = cleanMergeDirpath.resolve("both_modified");
@@ -57,7 +57,7 @@ class TdmMergeTest {
         CtClass<?> left = Launcher.parseClass(sources.left);
         CtClass<?> right = Launcher.parseClass(sources.right);
 
-        ITree merged = TdmMerge.mergeToTree(base, left, right);
+        ITree merged = GumTreeMerge.mergeToTree(base, left, right);
 
         assertTrue(merged.isIsomorphicTo(expected));
     }

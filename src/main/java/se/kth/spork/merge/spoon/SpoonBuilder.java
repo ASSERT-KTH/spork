@@ -1,4 +1,4 @@
-package se.kth.spork.merge;
+package se.kth.spork.merge.spoon;
 
 import com.github.gumtreediff.tree.ITree;
 import gumtree.spoon.builder.SpoonGumTreeBuilder;

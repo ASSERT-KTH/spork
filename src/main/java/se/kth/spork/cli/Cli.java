@@ -4,9 +4,7 @@ import com.github.gumtreediff.matchers.Matcher;
 import com.github.gumtreediff.matchers.Matchers;
 import com.github.gumtreediff.tree.ITree;
 import gumtree.spoon.builder.SpoonGumTreeBuilder;
-import se.kth.spork.merge.GumTreeBuilder;
-import se.kth.spork.merge.TStar;
-import se.kth.spork.merge.TdmMerge;
+import se.kth.spork.merge.gumtree.GumTreeMerge;
 import spoon.Launcher;
 import spoon.reflect.declaration.CtClass;
 
@@ -37,7 +35,7 @@ public class Cli {
         CtClass<?> leftTree = Launcher.parseClass(left);
         CtClass<?> rightTree = Launcher.parseClass(right);
 
-        ITree mergedTree = TdmMerge.mergeToTree(baseTree, leftTree, rightTree);
+        ITree mergedTree = GumTreeMerge.mergeToTree(baseTree, leftTree, rightTree);
 
         if (expected != null) {
             ITree expectedTree = toGumTree(expected);
