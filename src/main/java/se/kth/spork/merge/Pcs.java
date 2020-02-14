@@ -25,6 +25,7 @@ import com.github.gumtreediff.tree.ITree;
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.Function;
 
 /**
  * This file is adapted from GumTree, see the original license statement above. The only non-trivial thing that
@@ -38,12 +39,18 @@ public class Pcs<T> {
     private T predecessor;
     private T successor;
     private Revision revision;
+    private Function<T, String> toStr;
 
     public Pcs(T root, T predecessor, T successor) {
+        this(root, predecessor, successor, T::toString);
+    }
+
+    public Pcs(T root, T predecessor, T successor, Function<T, String> toStr) {
         this.root = root;
         this.predecessor = predecessor;
         this.successor = successor;
         revision = null;
+        this.toStr = toStr;
     }
 
     @Override
@@ -60,9 +67,15 @@ public class Pcs<T> {
     @Override
     public String toString() {
         return "PCS(" + (revision != null ? revision + "," : "")
-                + root + ","
-                + predecessor + ","
-                + successor + ")";
+                + applyToStr(root) + ","
+                + applyToStr(predecessor) + ","
+                + applyToStr(successor) + ")";
+    }
+
+    private String applyToStr(T elem) {
+        if (elem == null)
+            return "null";
+        return toStr.apply(elem);
     }
 
     public T getRoot() {
