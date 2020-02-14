@@ -4,6 +4,7 @@ import com.github.gumtreediff.tree.ITree;
 import gumtree.spoon.builder.SpoonGumTreeBuilder;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import se.kth.spork.merge.Util;
 import spoon.Launcher;
 import spoon.reflect.declaration.CtClass;
 
@@ -21,7 +22,7 @@ class SpoonBuilderTest {
     @ValueSource(strings = {"Adder", "Sum"})
     void buildTree_shouldBuildCorrectSpoonTree(String testName) throws IOException {
         String fileName = testName + ".java";
-        String fileContents = read(testDirpath.resolve(fileName));
+        String fileContents = Util.read(testDirpath.resolve(fileName));
         CtClass<?> initial = Launcher.parseClass(fileContents);
 
         ITree gumTree = new SpoonGumTreeBuilder().getTree(initial);
@@ -29,9 +30,5 @@ class SpoonBuilderTest {
         CtClass<?> rebuilt = new SpoonBuilder().buildSpoonTree(gumTree);
 
         assertEquals(initial.toString(), rebuilt.toString());
-    }
-
-    private static String read(Path path) throws IOException {
-        return String.join("\n", Files.readAllLines(path));
     }
 }

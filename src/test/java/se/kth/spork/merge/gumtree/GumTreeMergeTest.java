@@ -1,19 +1,20 @@
 package se.kth.spork.merge.gumtree;
 
 import com.github.gumtreediff.tree.ITree;
-import gumtree.spoon.builder.SpoonGumTreeBuilder;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import se.kth.spork.merge.Util;
 import spoon.Launcher;
 import spoon.reflect.declaration.CtClass;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static se.kth.spork.merge.Util.TestSources.fromTestDirectory;
+import static se.kth.spork.merge.Util.toGumTree;
 
 class GumTreeMergeTest {
     private static final Path cleanMergeDirpath = Paths.get("src/test/resources/clean");
@@ -24,7 +25,7 @@ class GumTreeMergeTest {
     @ValueSource(strings = {"add_parameter", "delete_method"})
     void mergeToTree_shouldReturnExpectedTree_whenLeftVersionIsModified(String testName) throws IOException{
         File testDir = leftModifiedDirpath.resolve(testName).toFile();
-        TestSources sources = getTestSources(testDir);
+        Util.TestSources sources = fromTestDirectory(testDir);
         runTestMerge(sources);
     }
 
@@ -32,7 +33,7 @@ class GumTreeMergeTest {
     @ValueSource(strings = {"add_parameter", "delete_method"})
     void mergeToTree_shouldReturnExpectedTree_whenRightVersionIsModified(String testName) throws IOException{
         File testDir = leftModifiedDirpath.resolve(testName).toFile();
-        TestSources sources = getTestSources(testDir);
+        Util.TestSources sources = fromTestDirectory(testDir);
 
         // swap left and right around to make this a "right modified" test case
         String left = sources.left;
@@ -46,11 +47,11 @@ class GumTreeMergeTest {
     @ValueSource(strings = {"move_if", "delete_method", "add_same_method", "add_identical_elements_in_method"})
     void mergeToTree_shouldReturnExpectedTree_whenBothVersionsAreModified(String testName) throws IOException {
         File testDir = bothModifiedDirpath.resolve(testName).toFile();
-        TestSources sources = getTestSources(testDir);
+        Util.TestSources sources = fromTestDirectory(testDir);
         runTestMerge(sources);
     }
 
-    private static void runTestMerge(TestSources sources) throws IOException {
+    private static void runTestMerge(Util.TestSources sources) throws IOException {
         ITree expected = toGumTree(sources.expected);
 
         CtClass<?> base = Launcher.parseClass(sources.base);
@@ -61,39 +62,4 @@ class GumTreeMergeTest {
 
         assertTrue(merged.isIsomorphicTo(expected));
     }
-
-    private static TestSources getTestSources(File testDir) throws IOException {
-        Path path = testDir.toPath();
-        return new TestSources(
-                read(path.resolve("Base.java")),
-                read(path.resolve("Left.java")),
-                read(path.resolve("Right.java")),
-                read(path.resolve("Expected.java"))
-        );
-    }
-
-    private static String read(Path path) throws IOException {
-        return String.join("\n", Files.readAllLines(path));
-    }
-
-    private static ITree toGumTree(String clazz) {
-        CtClass<?> spoonTree = Launcher.parseClass(clazz);
-        SpoonGumTreeBuilder builder = new SpoonGumTreeBuilder();
-        return builder.getTree(spoonTree);
-    }
-
-    private static class TestSources {
-        String base;
-        String left;
-        String right;
-        String expected;
-
-        TestSources(String base, String left, String right, String expected) {
-            this.base = base;
-            this.left = left;
-            this.right = right;
-            this.expected = expected;
-        }
-    }
-
 }
