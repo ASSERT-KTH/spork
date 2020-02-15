@@ -26,6 +26,7 @@ public class SpoonPcs {
 
         Deque<CtElement> stack = new ArrayDeque<>();
         stack.push(spoonClass);
+
         while (!stack.isEmpty()) {
             CtElement root = stack.pop();
             CtElement predecessor = null;
@@ -45,6 +46,12 @@ public class SpoonPcs {
         return result;
     }
 
+    public static Set<Pcs<CtElement>> fromSpoonWithScanner(CtClass<?> spoonClass) {
+        TreeScanner scanner = new TreeScanner();
+        scanner.scan(spoonClass);
+        return scanner.getPcses();
+    }
+
     public static CtClass<?> fromPcs(Set<Pcs<CtElement>> pcses) {
         IdentifierSupport idSup = IdentifierSupport.getInstance();
         Builder builder = new Builder();
@@ -60,7 +67,7 @@ public class SpoonPcs {
                 return shortRep[shortRep.length - 1];
             }
             return longRep;
-        });
+        }, System::identityHashCode);
     }
 
     /**
@@ -75,9 +82,12 @@ public class SpoonPcs {
     private static <K,V> void traversePcs(Set<Pcs<V>> pcses, Consumer<V> visit, Function<V, K> getKey) {
         Map<K, Map<K, Pcs<V>>> rootToChildren = new HashMap<>();
         for (Pcs<V> pcs : pcses) {
-            Map<K, Pcs<V>> children = rootToChildren.getOrDefault(getKey.apply(pcs.getRoot()), new HashMap<>());
-            if (children.isEmpty()) rootToChildren.put(getKey.apply(pcs.getRoot()), children);
-            children.put(getKey.apply(pcs.getPredecessor()), pcs);
+            K rootKey = getKey.apply(pcs.getRoot());
+            Map<K, Pcs<V>> children = rootToChildren.getOrDefault(rootKey, new HashMap<>());
+            if (children.isEmpty()) rootToChildren.put(rootKey, children);
+
+            K predKey = getKey.apply(pcs.getPredecessor());
+            children.put(predKey, pcs);
         }
 
         traversePcs(rootToChildren, null, visit, getKey);

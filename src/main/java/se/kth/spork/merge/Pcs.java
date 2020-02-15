@@ -40,17 +40,19 @@ public class Pcs<T> {
     private T successor;
     private Revision revision;
     private Function<T, String> toStr;
+    private Function<T, Integer> hash;
 
     public Pcs(T root, T predecessor, T successor) {
-        this(root, predecessor, successor, T::toString);
+        this(root, predecessor, successor, T::toString, T::hashCode);
     }
 
-    public Pcs(T root, T predecessor, T successor, Function<T, String> toStr) {
+    public Pcs(T root, T predecessor, T successor, Function<T, String> toStr, Function<T, Integer> hash) {
         this.root = root;
         this.predecessor = predecessor;
         this.successor = successor;
         revision = null;
         this.toStr = toStr;
+        this.hash = hash;
     }
 
     @Override
@@ -98,9 +100,16 @@ public class Pcs<T> {
         this.revision = revision;
     }
 
+    private int applyHash(T elem) {
+        return elem == null ? 0 : hash.apply(elem);
+    }
+
     @Override
     public int hashCode() {
-        return Objects.hash(root, predecessor, successor);
+        int rootHash = applyHash(root);
+        int predecessorHash = applyHash(predecessor);
+        int successorHash = applyHash(successor);
+        return Objects.hash(rootHash, predecessorHash, successorHash);
     }
 
 }
