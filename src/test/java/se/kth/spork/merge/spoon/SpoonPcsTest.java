@@ -1,6 +1,5 @@
 package se.kth.spork.merge.spoon;
 
-import gumtree.spoon.AstComparator;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import se.kth.spork.merge.Pcs;
@@ -8,35 +7,34 @@ import se.kth.spork.merge.Util;
 import spoon.Launcher;
 import spoon.reflect.declaration.CtClass;
 import spoon.reflect.declaration.CtElement;
-import spoon.support.sniper.SniperJavaPrettyPrinter;
 
-import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Iterator;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 
 class SpoonPcsTest {
     private static final Path testDirpath = Paths.get("src/test/resources/standalone");
 
+    /**
+     *  Test that converting a Spoon Tree A into a PCS tree P, and then converting P into a
+     *  Spoon tree B has the two following properties:
+     *
+     *  <code>A.equals(B)</code> and for each pair of nodes <code>(a,b)</code> in A and B,
+     *  we have that <code>a != b</code> (i.e. different objects).
+     */
     @ParameterizedTest
     @ValueSource(strings = {"Adder", "Sum", "ArrayList", "Tree"})
-    void fromSpoon_shouldBuildConsistentPcs(String testName) throws Exception {
+    void testSpoonPcsRoundTrip(String testName) throws Exception {
         String filename = testName + ".java";
         String fileContents = Util.read(testDirpath.resolve(filename));
         CtClass<?> cls = Launcher.parseClass(fileContents);
 
-        TreeScanner scanner = new TreeScanner();
-        scanner.scan(cls);
-        Set<Pcs<CtElement>> pcses = scanner.getPcses();
+        Set<Pcs<CtElement>> pcses = SpoonPcs.fromSpoonWithScanner(cls);
 
         CtClass<?> rebuilt = SpoonPcs.fromPcs(pcses);
-
-        System.out.println(cls);
-        System.out.println(rebuilt);
 
         assertEquals(rebuilt, cls);
         Iterator<CtElement> origCt = cls.descendantIterator();
