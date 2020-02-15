@@ -32,10 +32,11 @@ class SpoonPcsTest {
         String fileContents = Util.read(testDirpath.resolve(filename));
         CtClass<?> cls = Launcher.parseClass(fileContents);
 
-        Set<Pcs<CtElement>> pcses = SpoonPcs.fromSpoonWithScanner(cls);
+        Set<Pcs<CtWrapper>> pcses = SpoonPcs.fromSpoonWithScanner(cls);
 
         CtClass<?> rebuilt = SpoonPcs.fromPcs(pcses);
 
+        System.out.println(rebuilt);
         assertEquals(rebuilt, cls);
         Iterator<CtElement> origCt = cls.descendantIterator();
         Iterator<CtElement> rebuiltCt = rebuilt.descendantIterator();

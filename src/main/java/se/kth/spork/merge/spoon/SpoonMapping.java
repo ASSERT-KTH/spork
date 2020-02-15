@@ -24,7 +24,6 @@ import java.util.stream.Collectors;
  */
 public class SpoonMapping {
     private static final String KEY_METADATA = "spoon_mapping_key";
-    private static int numMappings = 0;
 
     private Map<Long, CtElement> srcs;
     private Map<Long, CtElement> dsts;

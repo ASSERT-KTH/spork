@@ -18,44 +18,16 @@ import java.util.function.Function;
  * @author Simon Larsén
  */
 public class SpoonPcs {
-    public static Set<Pcs<CtElement>> fromSpoon(CtClass<?> spoonClass) {
-        Set<Pcs<CtElement>> result = new HashSet<>();
 
-        result.add(newPcs(null, spoonClass, null));
-        result.add(newPcs(null, null, spoonClass));
-
-        Deque<CtElement> stack = new ArrayDeque<>();
-        stack.push(spoonClass);
-
-        while (!stack.isEmpty()) {
-            CtElement root = stack.pop();
-            CtElement predecessor = null;
-
-            for (CtElement successor : root.getDirectChildren()) {
-                if (successor.isImplicit())
-                    continue;
-
-                stack.add(successor);
-                result.add(newPcs(root, predecessor, successor));
-                predecessor = successor;
-            }
-
-            result.add(newPcs(root, predecessor, null));
-        }
-
-        return result;
-    }
-
-    public static Set<Pcs<CtElement>> fromSpoonWithScanner(CtClass<?> spoonClass) {
+    public static Set<Pcs<CtWrapper>> fromSpoonWithScanner(CtClass<?> spoonClass) {
         TreeScanner scanner = new TreeScanner();
         scanner.scan(spoonClass);
         return scanner.getPcses();
     }
 
-    public static CtClass<?> fromPcs(Set<Pcs<CtElement>> pcses) {
-        IdentifierSupport idSup = IdentifierSupport.getInstance();
+    public static CtClass<?> fromPcs(Set<Pcs<CtWrapper>> pcses) {
         Builder builder = new Builder();
-        traversePcs(pcses, builder, idSup::getKey);
+        traversePcs(pcses, builder);
         return builder.actualRoot;
     }
 
@@ -79,34 +51,29 @@ public class SpoonPcs {
      * @param pcses A well-formed PCS structure.
      * @param visit A function to apply to the nodes in the PCS structure.
      */
-    private static <K,V> void traversePcs(Set<Pcs<V>> pcses, Consumer<V> visit, Function<V, K> getKey) {
-        Map<K, Map<K, Pcs<V>>> rootToChildren = new HashMap<>();
+    private static <V> void traversePcs(Set<Pcs<V>> pcses, Consumer<V> visit) {
+        Map<V, Map<V, Pcs<V>>> rootToChildren = new HashMap<>();
         for (Pcs<V> pcs : pcses) {
-            K rootKey = getKey.apply(pcs.getRoot());
-            Map<K, Pcs<V>> children = rootToChildren.getOrDefault(rootKey, new HashMap<>());
-            if (children.isEmpty()) rootToChildren.put(rootKey, children);
+            Map<V, Pcs<V>> children = rootToChildren.getOrDefault(pcs.getRoot(), new HashMap<>());
+            if (children.isEmpty()) rootToChildren.put(pcs.getRoot(), children);
 
-            K predKey = getKey.apply(pcs.getPredecessor());
-            children.put(predKey, pcs);
+            children.put(pcs.getPredecessor(), pcs);
         }
 
-        traversePcs(rootToChildren, null, visit, getKey);
+        traversePcs(rootToChildren, null, visit);
     }
 
-    private static <K,V> void traversePcs(Map<K, Map<K, Pcs<V>>> rootToChildren, V currentRoot, Consumer<V> visit, Function<V, K> getKey) {
+    private static <K,V> void traversePcs(Map<V, Map<V, Pcs<V>>> rootToChildren, V currentRoot, Consumer<V> visit) {
         if (currentRoot != null)
             visit.accept(currentRoot);
-        Map<K, Pcs<V>> children = rootToChildren.get(getKey.apply(currentRoot));
+        Map<V, Pcs<V>> children = rootToChildren.get(currentRoot);
         if (children == null) // leaf node
             return;
 
         V pred = null;
         List<V> sortedChildren = new ArrayList<>();
         while (true) {
-            K predKey = getKey.apply(pred);
-            Pcs<V> nextPcs = children.get(predKey);
-            if (nextPcs == null)
-                System.out.println("oh no");
+            Pcs<V> nextPcs = children.get(pred);
             pred = nextPcs.getSuccessor();
             if (pred == null) {
                 break;
@@ -114,27 +81,27 @@ public class SpoonPcs {
             sortedChildren.add(pred);
             visit.accept(pred);
         };
-        sortedChildren.forEach(child -> traversePcs(rootToChildren, child, visit, getKey));
+        sortedChildren.forEach(child -> traversePcs(rootToChildren, child, visit));
     }
 
-    private static class Builder implements Consumer<CtElement> {
+    private static class Builder implements Consumer<CtWrapper> {
         private CtElement currentRoot;
         private CtClass<?> actualRoot;
-        private Map<Long, CtElement> nodes;
-        private IdentifierSupport idSup;
+        private Map<CtWrapper, CtWrapper> nodes;
 
         private Builder() {
             nodes = new HashMap<>();
-            idSup = IdentifierSupport.getInstance();
         }
 
         @Override
-        public void accept(CtElement tree) {
-            CtElement treeCopy = nodes.get(idSup.getKey(tree));
+        public void accept(CtWrapper treeWrapper) {
+            CtElement tree = treeWrapper.getElement();
+            CtWrapper treeCopyWrapper = nodes.get(treeWrapper);
+            CtElement treeCopy = treeCopyWrapper == null ? null : treeCopyWrapper.getElement();
 
             if (treeCopy == null) { // first time we see this node; it's a child node of the current root
 
-                treeCopy = copyTree(tree,  currentRoot);
+                treeCopy = copyTree(tree, currentRoot);
 
                 if (currentRoot != null) {
                     CtRole childRole = tree.getRoleInParent();
@@ -161,7 +128,7 @@ public class SpoonPcs {
                 }
 
 
-                nodes.put(idSup.getKey(tree), treeCopy);
+                nodes.put(treeWrapper, WrapperFactory.wrap(treeCopy));
             } else { // second time we see this node; it's now the root
                 currentRoot = treeCopy;
 
@@ -175,6 +142,7 @@ public class SpoonPcs {
             for (CtElement child : treeCopy.getDirectChildren()) {
                 child.delete();
             }
+            treeCopy.setAllMetadata(new HashMap<>()); // empty the metadata
             treeCopy.setParent(root);
             return treeCopy;
         }
