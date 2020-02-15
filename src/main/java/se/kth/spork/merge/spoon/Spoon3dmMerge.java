@@ -46,7 +46,7 @@ public class Spoon3dmMerge {
 
         TdmMerge.resolveRawMerge(t0Star, delta);
 
-        return SpoonPcs.fromPcs(delta.getStar(), delta.getContents());
+        return SpoonPcs.fromPcs(delta.getStar(), delta.getContents(), baseLeft, baseRight);
     }
 
     private static class GetContent implements Function<CtWrapper, Object> {

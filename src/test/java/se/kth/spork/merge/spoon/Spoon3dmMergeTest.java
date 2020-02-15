@@ -7,6 +7,7 @@ import se.kth.spork.merge.Util;
 import spoon.Launcher;
 import spoon.reflect.declaration.CtClass;
 import spoon.reflect.declaration.CtElement;
+import spoon.support.sniper.SniperJavaPrettyPrinter;
 
 import java.io.File;
 import java.io.IOException;
