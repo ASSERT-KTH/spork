@@ -5,10 +5,12 @@ import com.github.gumtreediff.tree.Tree;
 import se.kth.spork.merge.Content;
 import se.kth.spork.merge.Pcs;
 import se.kth.spork.merge.Revision;
+import spoon.reflect.code.CtLiteral;
 import spoon.reflect.declaration.CtClass;
 import spoon.reflect.declaration.CtElement;
 import spoon.reflect.path.CtRole;
 
+import java.sql.Wrapper;
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -26,8 +28,8 @@ public class SpoonPcs {
         return scanner.getPcses();
     }
 
-    public static CtClass<?> fromPcs(Set<Pcs<CtWrapper>> pcses) {
-        Builder builder = new Builder();
+    public static CtClass<?> fromPcs(Set<Pcs<CtWrapper>> pcses, Map<CtWrapper, Set<Content<CtWrapper>>> contents) {
+        Builder builder = new Builder(contents);
         traversePcs(pcses, builder);
         return builder.actualRoot;
     }
@@ -89,9 +91,11 @@ public class SpoonPcs {
         private CtElement currentRoot;
         private CtClass<?> actualRoot;
         private Map<CtWrapper, CtWrapper> nodes;
+        private Map<CtWrapper, Set<Content<CtWrapper>>> contents;
 
-        private Builder() {
+        private Builder(Map<CtWrapper, Set<Content<CtWrapper>>> contents) {
             nodes = new HashMap<>();
+            this.contents = contents;
         }
 
         @Override
@@ -138,12 +142,21 @@ public class SpoonPcs {
             }
         }
 
-        private static CtElement copyTree(CtElement tree, CtElement root) {
+        private CtElement copyTree(CtElement tree, CtElement root) {
             CtElement treeCopy = tree.clone();
             for (CtElement child : treeCopy.getDirectChildren()) {
                 child.delete();
             }
             treeCopy.setAllMetadata(new HashMap<>()); // empty the metadata
+
+            if (treeCopy instanceof CtLiteral) {
+                CtWrapper wrapped = WrapperFactory.wrap(tree);
+                Set<Content<CtWrapper>> value = contents.get(wrapped);
+                if (value != null) {
+                    ((CtLiteral) treeCopy).setValue(value.iterator().next().getValue());
+                }
+            }
+
             treeCopy.setParent(root);
             return treeCopy;
         }

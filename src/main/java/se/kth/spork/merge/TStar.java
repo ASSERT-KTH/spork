@@ -57,8 +57,8 @@ public class TStar<T> {
      */
     public Optional<Pcs<T>> getOtherRoot(Pcs<T> pcs) {
         return predecessors.getOrDefault(pcs.getPredecessor(), EMPTY_PCS_SET).stream()
-                .filter(p -> p.getRoot() != pcs.getRoot()
-                        && p.getSuccessor() == pcs.getSuccessor())
+                .filter(p -> !Objects.equals(p.getRoot(), pcs.getRoot())
+                        && Objects.equals(p.getSuccessor(), pcs.getSuccessor()))
                 .findFirst();
     }
 
@@ -68,7 +68,9 @@ public class TStar<T> {
      */
     public Optional<Pcs<T>> getOtherSuccessor(Pcs<T> pcs) {
         return predecessors.getOrDefault(pcs.getPredecessor(), EMPTY_PCS_SET).stream()
-                .filter(p -> p.getSuccessor() != pcs.getSuccessor() && p.getRoot() == pcs.getRoot())
+                .filter(p ->
+                        !Objects.equals(p.getSuccessor(), pcs.getSuccessor())
+                                && Objects.equals(p.getRoot(), pcs.getRoot()))
                 .findFirst();
     }
 
@@ -78,7 +80,7 @@ public class TStar<T> {
      */
     public Optional<Pcs<T>> getOtherPredecessor(Pcs<T> pcs) {
         return successors.getOrDefault(pcs.getSuccessor(), EMPTY_PCS_SET).stream()
-                .filter(p -> p.getPredecessor() != p.getPredecessor() && p.getRoot() == pcs.getRoot())
+                .filter(p -> !Objects.equals(p.getPredecessor(), p.getPredecessor()) && Objects.equals(p.getRoot(), pcs.getRoot()))
                 .findFirst();
     }
 

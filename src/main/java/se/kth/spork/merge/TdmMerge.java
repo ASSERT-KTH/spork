@@ -27,9 +27,11 @@ public class TdmMerge {
             if (!delta.contains(pcs)) // was removed as otherPcs
                 continue;
 
-            Set<Content<T>> contents = delta.getContent(pcs);
-            if (contents != null && contents.size() > 1) {
-                handleContentConflict(contents, base).ifPresent(contentConflicts::add);
+            if (pcs.getPredecessor() != null) {
+                Set<Content<T>> contents = delta.getContent(pcs);
+                if (contents != null && contents.size() > 1) {
+                    handleContentConflict(contents, base).ifPresent(contentConflicts::add);
+                }
             }
 
             Optional<Pcs<T>> other = delta.getOtherRoot(pcs);
@@ -53,7 +55,7 @@ public class TdmMerge {
 
 
         if (!contentConflicts.isEmpty()) {
-            //throw new IllegalStateException("CONTENT CONFLICTS DETECTED: " + contentConflicts);
+            throw new IllegalStateException("CONTENT CONFLICTS DETECTED: " + contentConflicts);
         }
         if (!structuralConflicts.isEmpty()) {
             throw new IllegalStateException("STRUCTURAL CONFLICTS DETECTED: " + structuralConflicts);
@@ -72,7 +74,7 @@ public class TdmMerge {
         // contents equal to that in base never takes precedence over left and right revisions
         Optional<Content<T>> basePcsOpt = contents.stream().filter(base::contains).findAny();
 
-        basePcsOpt.ifPresent(content -> contents.removeIf(c -> c.getValue().equals(content.getValue())));
+        basePcsOpt.ifPresent(content -> contents.removeIf(c -> Objects.equals(c.getValue(), content.getValue())));
 
         if (contents.size() == 0) { // everything was equal to base, re-add
             contents.add(basePcsOpt.get());
@@ -85,7 +87,7 @@ public class TdmMerge {
         } else if (contents.size() > 2) {
             // This should never happen, as there are at most 3 pieces of content to begin with and base has been
             // removed.
-            //throw new IllegalStateException("Unexpected amount of conflicting content: " + contents);
+            throw new IllegalStateException("Unexpected amount of conflicting content: " + contents);
         }
 
         if (contents.size() != 1) {

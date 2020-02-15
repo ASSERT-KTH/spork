@@ -24,7 +24,7 @@ public class TreeScanner extends CtScanner {
         if (root == null)
             root = wrapped;
 
-        CtWrapper parent = WrapperFactory.wrap(e.getParent());
+        CtWrapper parent = wrapped.getParent();
         CtWrapper predecessor = rootTolastSibling.get(parent);
         pcses.add(newPcs(parent, predecessor, wrapped, revision));
         rootTolastSibling.put(parent, wrapped);
@@ -41,6 +41,10 @@ public class TreeScanner extends CtScanner {
      * Add the last element to each PCS list (i.e. Pcs(root, child, null))
      */
     private void finalizePcsLists() {
+        // add fake root
+        pcses.add(newPcs(null, root, null, revision));
+        pcses.add(newPcs(null, null, root, revision));
+
         // add the end-of-list to each PCS list
         for (CtWrapper predecessor : rootTolastSibling.values()) {
             pcses.add(newPcs(predecessor.getParent(), predecessor, null, revision));

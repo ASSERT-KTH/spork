@@ -11,6 +11,7 @@ import spoon.reflect.declaration.CtElement;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Set;
 
@@ -35,7 +36,7 @@ class SpoonPcsTest {
 
         Set<Pcs<CtWrapper>> pcses = SpoonPcs.fromSpoon(cls, Revision.BASE);
 
-        CtClass<?> rebuilt = SpoonPcs.fromPcs(pcses);
+        CtClass<?> rebuilt = SpoonPcs.fromPcs(pcses, new HashMap<>());
 
         assertEquals(rebuilt, cls);
         Iterator<CtElement> origCt = cls.descendantIterator();

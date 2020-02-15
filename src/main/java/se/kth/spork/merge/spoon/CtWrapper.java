@@ -1,6 +1,9 @@
 package se.kth.spork.merge.spoon;
 
+import spoon.reflect.declaration.CtClass;
 import spoon.reflect.declaration.CtElement;
+import spoon.reflect.declaration.CtModule;
+import spoon.reflect.declaration.CtPackage;
 
 import java.util.Objects;
 
@@ -25,6 +28,8 @@ public class CtWrapper {
     }
 
     public CtWrapper getParent() {
+        if (element instanceof CtClass)
+            return null;
         return WrapperFactory.wrap(element.getParent());
     }
 
