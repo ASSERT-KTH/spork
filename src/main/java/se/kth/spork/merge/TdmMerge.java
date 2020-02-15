@@ -1,5 +1,7 @@
 package se.kth.spork.merge;
 
+import spoon.reflect.declaration.CtModule;
+
 import java.util.*;
 
 /**
@@ -51,7 +53,7 @@ public class TdmMerge {
 
 
         if (!contentConflicts.isEmpty()) {
-            throw new IllegalStateException("CONTENT CONFLICTS DETECTED: " + contentConflicts);
+            //throw new IllegalStateException("CONTENT CONFLICTS DETECTED: " + contentConflicts);
         }
         if (!structuralConflicts.isEmpty()) {
             throw new IllegalStateException("STRUCTURAL CONFLICTS DETECTED: " + structuralConflicts);
@@ -83,7 +85,7 @@ public class TdmMerge {
         } else if (contents.size() > 2) {
             // This should never happen, as there are at most 3 pieces of content to begin with and base has been
             // removed.
-            throw new IllegalStateException("Unexpected amount of conflicting content: " + contents);
+            //throw new IllegalStateException("Unexpected amount of conflicting content: " + contents);
         }
 
         if (contents.size() != 1) {

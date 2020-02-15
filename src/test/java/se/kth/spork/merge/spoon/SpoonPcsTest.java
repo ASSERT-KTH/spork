@@ -3,6 +3,7 @@ package se.kth.spork.merge.spoon;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import se.kth.spork.merge.Pcs;
+import se.kth.spork.merge.Revision;
 import se.kth.spork.merge.Util;
 import spoon.Launcher;
 import spoon.reflect.declaration.CtClass;
@@ -32,11 +33,10 @@ class SpoonPcsTest {
         String fileContents = Util.read(testDirpath.resolve(filename));
         CtClass<?> cls = Launcher.parseClass(fileContents);
 
-        Set<Pcs<CtWrapper>> pcses = SpoonPcs.fromSpoonWithScanner(cls);
+        Set<Pcs<CtWrapper>> pcses = SpoonPcs.fromSpoon(cls, Revision.BASE);
 
         CtClass<?> rebuilt = SpoonPcs.fromPcs(pcses);
 
-        System.out.println(rebuilt);
         assertEquals(rebuilt, cls);
         Iterator<CtElement> origCt = cls.descendantIterator();
         Iterator<CtElement> rebuiltCt = rebuilt.descendantIterator();

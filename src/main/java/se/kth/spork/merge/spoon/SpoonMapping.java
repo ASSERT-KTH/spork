@@ -25,15 +25,13 @@ import java.util.stream.Collectors;
 public class SpoonMapping {
     private static final String KEY_METADATA = "spoon_mapping_key";
 
-    private Map<Long, CtElement> srcs;
-    private Map<Long, CtElement> dsts;
-    private IdentifierSupport idSup;
+    private Map<CtWrapper, CtWrapper> srcs;
+    private Map<CtWrapper, CtWrapper> dsts;
 
 
     private SpoonMapping() {
         srcs = new HashMap<>();
         dsts = new HashMap<>();
-        idSup = IdentifierSupport.getInstance();
     }
 
     /**
@@ -71,16 +69,16 @@ public class SpoonMapping {
 
     private List<Pair<CtElement, CtElement>> asList() {
         return srcs.values().stream()
-                .map(dst -> new Pair<>(getSrc(dst), dst))
+                .map(dst -> new Pair<>(getSrc(dst).getElement(), dst.getElement()))
                 .collect(Collectors.toList());
     }
 
     private void inferAdditionalMappings(List<Pair<CtElement, CtElement>> matches) {
         while (!matches.isEmpty()) {
             List<Pair<CtElement, CtElement>> newMatches = new ArrayList<>();
-            for (CtElement dst : new ArrayList<>(srcs.values())) {
-                CtElement src = getSrc(dst);
-                newMatches.addAll(inferAdditionalMappings(src, dst));
+            for (CtWrapper dst : new ArrayList<>(srcs.values())) {
+                CtWrapper src = getSrc(dst);
+                newMatches.addAll(inferAdditionalMappings(src.getElement(), dst.getElement()));
             }
             matches = newMatches;
         }
@@ -103,7 +101,8 @@ public class SpoonMapping {
             } else if (hasDst(dstChild) || !isToIgnore(dstChild)) {
                 dstIdx++;
             } else {
-                assert srcChild.equals(dstChild);
+                //assert srcChild.equals(dstChild);
+                assert srcChild.getClass() == dstChild.getClass();
 
                 put(srcChild, dstChild);
                 newMatches.add(new Pair<>(srcChild, dstChild));
@@ -139,40 +138,53 @@ public class SpoonMapping {
         return element.isImplicit() || element instanceof CtReference;
     }
 
+    public boolean hasSrc(CtWrapper src) {
+        return srcs.containsKey(src);
+    }
+
+    public boolean hasDst(CtWrapper dst) {
+        return dsts.containsKey(dst);
+    }
 
     public boolean hasSrc(CtElement src) {
-        Object key = src.getMetadata(KEY_METADATA);
-        return key != null && srcs.containsKey(key);
+        return hasSrc(WrapperFactory.wrap(src));
     }
 
     public boolean hasDst(CtElement dst) {
-        Object key = dst.getMetadata(KEY_METADATA);
-        return key != null && dsts.containsKey(key);
+        return hasDst(WrapperFactory.wrap(dst));
+    }
+
+    public CtWrapper getDst(CtWrapper src) {
+        return srcs.get(src);
     }
 
     public CtElement getDst(CtElement src) {
-        Object key = src.getMetadata(KEY_METADATA);
-        return srcs.get(key);
+        return getDst(WrapperFactory.wrap(src)).getElement();
+    }
+
+    public CtWrapper getSrc(CtWrapper dst) {
+        return dsts.get(dst);
     }
 
     public CtElement getSrc(CtElement dst) {
-        Object key = dst.getMetadata(KEY_METADATA);
-        return dsts.get(key);
+        return getSrc(WrapperFactory.wrap(dst)).getElement();
     }
 
     public void put(CtElement src, CtElement dst) {
-        srcs.put(idSup.getKey(src), dst);
-        dsts.put(idSup.getKey(dst), src);
+        put(WrapperFactory.wrap(src), WrapperFactory.wrap(dst));
+    }
+
+    public void put(CtWrapper src, CtWrapper dst) {
+        srcs.put(src, dst);
+        dsts.put(dst, src);
     }
 
     private static CtElement getSpoonNode(ITree gumtreeNode) {
         return (CtElement) gumtreeNode.getMetadata(SpoonGumTreeBuilder.SPOON_OBJECT);
     }
 
-    private String formatEntry(Map.Entry<Long, CtElement> entry) {
-        Long otherKey = idSup.getKey(entry.getValue());
-        CtElement otherElem = srcs.getOrDefault(otherKey, dsts.get(otherKey));
-        return "(" + otherElem.getShortRepresentation() + ", " + entry.getValue().getShortRepresentation() + ")";
+    private String formatEntry(Map.Entry<CtWrapper, CtWrapper> entry) {
+        return "(" + entry.getKey() + ", " + entry.getValue() + ")";
     }
 
     @Override

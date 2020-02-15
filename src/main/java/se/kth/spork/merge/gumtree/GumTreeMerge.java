@@ -6,6 +6,7 @@ import com.github.gumtreediff.matchers.Matchers;
 import com.github.gumtreediff.tree.ITree;
 import gumtree.spoon.builder.SpoonGumTreeBuilder;
 import se.kth.spork.merge.*;
+import se.kth.spork.merge.spoon.SpoonMapping;
 import spoon.reflect.declaration.CtClass;
 
 import java.util.HashMap;

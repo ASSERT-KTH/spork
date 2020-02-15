@@ -4,6 +4,7 @@ import com.github.gumtreediff.tree.ITree;
 import com.github.gumtreediff.tree.Tree;
 import se.kth.spork.merge.Content;
 import se.kth.spork.merge.Pcs;
+import se.kth.spork.merge.Revision;
 import spoon.reflect.declaration.CtClass;
 import spoon.reflect.declaration.CtElement;
 import spoon.reflect.path.CtRole;
@@ -19,8 +20,8 @@ import java.util.function.Function;
  */
 public class SpoonPcs {
 
-    public static Set<Pcs<CtWrapper>> fromSpoonWithScanner(CtClass<?> spoonClass) {
-        TreeScanner scanner = new TreeScanner();
+    public static Set<Pcs<CtWrapper>> fromSpoon(CtElement spoonClass, Revision revision) {
+        TreeScanner scanner = new TreeScanner(revision);
         scanner.scan(spoonClass);
         return scanner.getPcses();
     }
