@@ -61,8 +61,6 @@ class Spoon3dmMergeTest {
 
         CtClass<?> merged = Spoon3dmMerge.merge(base ,left, right);
 
-        System.out.println(merged);
-
         assertEquals(expected, merged);
     }
 }
