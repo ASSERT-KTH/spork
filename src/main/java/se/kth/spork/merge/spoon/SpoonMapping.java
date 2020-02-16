@@ -18,17 +18,20 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- * A class for storing matches between tree nodes in two Spoon trees. Inspired by the MappingStore class from gumtree.
+ * A class for storing matches between tree nodes in two Spoon trees. Inspired by the MappingStore class from GumTree.
+ *
+ * See <a href="https://github.com/GumTreeDiff/gumtree/blob/f20565b6261fe3465cd1b3e0914028d5e87699b2/core/src/main/java/com/github/gumtreediff/matchers/MappingStore.java#L1-L151">
+ *     MappingStore.java
+ *     </a> in GumTree for comparison.
  *
  * @author Simon Larsén
  */
 public class SpoonMapping {
-    private static final String KEY_METADATA = "spoon_mapping_key";
-
     private Map<CtWrapper, CtWrapper> srcs;
     private Map<CtWrapper, CtWrapper> dsts;
 
 
+    // SpoonMapping should only be instantiated with fromGumTreeMapping, which is why the default constructor is private
     private SpoonMapping() {
         srcs = new HashMap<>();
         dsts = new HashMap<>();
@@ -73,6 +76,15 @@ public class SpoonMapping {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * Infer additional node matches. It is done by iterating over all pairs of matched nodes, and for each pair,
+     * descending down into the tree incrementally and matching nodes that gumtree-spoon-ast-diff is known to
+     * ignore. See <a href="https://github.com/SpoonLabs/gumtree-spoon-ast-diff/blob/dae908192bee7773b38d149baff831ee616ec524/src/main/java/gumtree/spoon/builder/TreeScanner.java#L71-L84">TreeScanner</a>
+     * to see how nodes are ignored in gumtree-spoon-ast-diff. The process is repeated for each pair of newly matched
+     * nodes, until no new matches can be found.
+     *
+     * @param matches Pairs of matched nodes, as computed by GumTree/gumtree-spoon-ast-diff.
+     */
     private void inferAdditionalMappings(List<Pair<CtElement, CtElement>> matches) {
         while (!matches.isEmpty()) {
             List<Pair<CtElement, CtElement>> newMatches = new ArrayList<>();
@@ -102,6 +114,7 @@ public class SpoonMapping {
                 dstIdx++;
             } else {
                 //assert srcChild.equals(dstChild);
+                // TODO this is the sketchy part, is it really enough to check for class identity? Actual equality does not appear to work
                 assert srcChild.getClass() == dstChild.getClass();
 
                 put(srcChild, dstChild);
