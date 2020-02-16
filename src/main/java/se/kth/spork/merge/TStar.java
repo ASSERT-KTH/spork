@@ -1,7 +1,5 @@
 package se.kth.spork.merge;
 
-import com.github.gumtreediff.tree.ITree;
-
 import java.util.*;
 import java.util.function.Function;
 

@@ -12,11 +12,11 @@ import java.util.Objects;
  *
  * This class should only be instantiated with the CtWrapperFactory singleton.
  */
-public class Wrapper {
+public class SpoonNode {
     private final CtElement element;
     private final long key;
 
-    Wrapper(CtElement element, long key) {
+    SpoonNode(CtElement element, long key) {
         this.element = element;
         this.key = key;
     }
@@ -25,10 +25,10 @@ public class Wrapper {
         return element;
     }
 
-    public Wrapper getParent() {
+    public SpoonNode getParent() {
         if (element instanceof CtClass)
             return null;
-        return WrapperFactory.wrap(element.getParent());
+        return NodeFactory.wrap(element.getParent());
     }
 
     @Override
@@ -48,7 +48,7 @@ public class Wrapper {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        Wrapper wrapper = (Wrapper) o;
+        SpoonNode wrapper = (SpoonNode) o;
         return key == wrapper.key;
     }
 

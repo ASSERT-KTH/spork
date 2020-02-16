@@ -11,37 +11,44 @@ import spoon.reflect.path.CtRole;
 
 import java.util.*;
 import java.util.function.BiConsumer;
-import java.util.function.Consumer;
-import java.util.stream.Collectors;
 
 /**
- * Class for going from a Spoon tree to a PCS structure.
+ * Class for converting between a Spoon tree and a PCS structure.
  *
  * @author Simon Larsén
  */
 public class SpoonPcs {
 
-    public static Set<Pcs<CtWrapper>> fromSpoon(CtElement spoonClass, Revision revision) {
-        TreeScanner scanner = new TreeScanner(revision);
+    /**
+     * Convert a Spoon class into a PCS structure.
+     *
+     * @param spoonClass A Spoon class.
+     * @param revision The revision this Spoon class belongs to. The revision is attached to each PCS triple.
+     * @return The Spoon class represented by PCS triples.
+     */
+    public static Set<Pcs<SpoonNode>> fromSpoon(CtClass<?> spoonClass, Revision revision) {
+        PcsBuilder scanner = new PcsBuilder(revision);
         scanner.scan(spoonClass);
         return scanner.getPcses();
     }
 
-    public static CtClass<?> fromPcs(Set<Pcs<CtWrapper>> pcses, Map<CtWrapper, Set<Content<CtWrapper>>> contents, SpoonMapping baseLeft, SpoonMapping baseRight) {
+    /**
+     * Convert a merged PCS structure into a Spoon tree.
+     *
+     * @param pcses A set of PCS triples.
+     * @param contents A mapping from SpoonNode objects to their respective contents.
+     * @param baseLeft A tree matching between the base revision and the left revision.
+     * @param baseRight A tree matching between the base revision and the right revision.
+     * @return A Spoon CtClass representing the merged PCS structure.
+     */
+    public static CtClass<?> fromMergedPcs(
+            Set<Pcs<SpoonNode>> pcses,
+            Map<SpoonNode, Set<Content<SpoonNode>>> contents,
+            SpoonMapping baseLeft,
+            SpoonMapping baseRight) {
         Builder builder = new Builder(contents, baseLeft, baseRight);
         traversePcs(pcses, builder);
         return builder.actualRoot;
-    }
-
-    private static Pcs<CtElement> newPcs(CtElement root, CtElement predecessor, CtElement successor) {
-        return new Pcs<>(root, predecessor, successor, elem -> {
-            String longRep = elem.toString();
-            if (longRep.contains("\n")) {
-                String[] shortRep = elem.getShortRepresentation().split("\\.");
-                return shortRep[shortRep.length - 1];
-            }
-            return longRep;
-        }, System::identityHashCode);
     }
 
     /**
@@ -63,7 +70,7 @@ public class SpoonPcs {
         traversePcs(rootToChildren, null, visit);
     }
 
-    private static <K,V> void traversePcs(Map<V, Map<V, Pcs<V>>> rootToChildren, V currentRoot, BiConsumer<V, V> visit) {
+    private static <V> void traversePcs(Map<V, Map<V, Pcs<V>>> rootToChildren, V currentRoot, BiConsumer<V, V> visit) {
         Map<V, Pcs<V>> children = rootToChildren.get(currentRoot);
         if (children == null) // leaf node
             return;
@@ -77,19 +84,19 @@ public class SpoonPcs {
                 break;
             }
             sortedChildren.add(pred);
-            visit.accept(pred, currentRoot);
+            visit.accept(currentRoot, pred);
         };
         sortedChildren.forEach(child -> traversePcs(rootToChildren, child, visit));
     }
 
-    private static class Builder implements BiConsumer<CtWrapper, CtWrapper> {
+    private static class Builder implements BiConsumer<SpoonNode, SpoonNode> {
         private CtClass<?> actualRoot;
-        private Map<CtWrapper, CtWrapper> nodes;
-        private Map<CtWrapper, Set<Content<CtWrapper>>> contents;
+        private Map<SpoonNode, SpoonNode> nodes;
+        private Map<SpoonNode, Set<Content<SpoonNode>>> contents;
         private SpoonMapping baseLeft;
         private SpoonMapping baseRight;
 
-        private Builder(Map<CtWrapper, Set<Content<CtWrapper>>> contents, SpoonMapping baseLeft, SpoonMapping baseRight) {
+        private Builder(Map<SpoonNode, Set<Content<SpoonNode>>> contents, SpoonMapping baseLeft, SpoonMapping baseRight) {
             nodes = new HashMap<>();
             this.contents = contents;
             this.baseLeft = baseLeft;
@@ -113,35 +120,35 @@ public class SpoonPcs {
          * used, as there may then be nodes that only match between left and right, and no clear way of determining
          * which of the two roles should be used, if they differ. I have yet to figure out how to resolve that.
          *
-         * @param wrapper
-         * @return
+         * @param wrapper A wrapped Spoon node.
+         * @return The resolved role of this node in the merged tree.
          */
-        private CtRole resolveRole(CtWrapper wrapper) {
+        private CtRole resolveRole(SpoonNode wrapper) {
             List<CtRole> matches = new ArrayList<>();
             CtElement tree = wrapper.getElement();
             matches.add(wrapper.getElement().getRoleInParent());
 
-            Optional<CtWrapper> base = Optional.empty();
+            Optional<SpoonNode> base = Optional.empty();
 
             switch ((Revision) tree.getMetadata(TdmMerge.REV)) {
                 case BASE: {
                     base = Optional.of(wrapper);
-                    CtWrapper left = baseLeft.getDst(wrapper);
-                    CtWrapper right = baseRight.getDst(wrapper);
+                    SpoonNode left = baseLeft.getDst(wrapper);
+                    SpoonNode right = baseRight.getDst(wrapper);
                     if (left != null)
                         matches.add(left.getElement().getRoleInParent());
                     if (right != null)
                         matches.add(right.getElement().getRoleInParent());
                 } break;
                 case RIGHT: {
-                    CtWrapper match = baseRight.getSrc(wrapper);
+                    SpoonNode match = baseRight.getSrc(wrapper);
                     if (match != null) {
                         matches.add(match.getElement().getRoleInParent());
                         base = Optional.of(match);
                     }
                 } break;
                 case LEFT: {
-                    CtWrapper match = baseLeft.getSrc(wrapper);
+                    SpoonNode match = baseLeft.getSrc(wrapper);
                     if (match != null) {
                         matches.add(match.getElement().getRoleInParent());
                         base = Optional.of(match);
@@ -164,12 +171,16 @@ public class SpoonPcs {
             return matches.get(0);
         }
 
+        /**
+         * @param treeWrapper A wrapper around the current node being visited.
+         * @param rootWrapper A wrapper around the current node's parent.
+         */
         @Override
-        public void accept(CtWrapper treeWrapper, CtWrapper root) {
-            CtElement currentRoot = root == null ? null : nodes.get(root).getElement();
+        public void accept(SpoonNode rootWrapper, SpoonNode treeWrapper) {
+            CtElement currentRoot = rootWrapper == null ? null : nodes.get(rootWrapper).getElement();
 
             CtElement tree = treeWrapper.getElement();
-            CtWrapper treeCopyWrapper = nodes.get(treeWrapper);
+            SpoonNode treeCopyWrapper = nodes.get(treeWrapper);
             CtElement treeCopy = treeCopyWrapper == null ? null : treeCopyWrapper.getElement();
 
             if (treeCopy == null) { // first time we see this node
@@ -201,12 +212,13 @@ public class SpoonPcs {
             }
 
 
-            nodes.put(treeWrapper, WrapperFactory.wrap(treeCopy));
+            nodes.put(treeWrapper, NodeFactory.wrap(treeCopy));
 
         if (actualRoot == null)
             actualRoot = (CtClass<?>) currentRoot;
         }
 
+        @SuppressWarnings({"unchecked", "rawtypes"})
         private CtElement copyTree(CtElement tree, CtElement root) {
             CtElement treeCopy = tree.clone();
             for (CtElement child : treeCopy.getDirectChildren()) {
@@ -214,9 +226,10 @@ public class SpoonPcs {
             }
             treeCopy.setAllMetadata(new HashMap<>()); // empty the metadata
 
+            // TODO properly set the content of types other than CtLiteral
             if (treeCopy instanceof CtLiteral) {
-                CtWrapper wrapped = WrapperFactory.wrap(tree);
-                Set<Content<CtWrapper>> value = contents.get(wrapped);
+                SpoonNode wrapped = NodeFactory.wrap(tree);
+                Set<Content<SpoonNode>> value = contents.get(wrapped);
                 if (value != null) {
                     ((CtLiteral) treeCopy).setValue(value.iterator().next().getValue());
                 }

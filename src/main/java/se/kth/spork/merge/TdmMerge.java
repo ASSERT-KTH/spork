@@ -1,7 +1,5 @@
 package se.kth.spork.merge;
 
-import spoon.reflect.declaration.CtModule;
-
 import java.util.*;
 
 /**
@@ -14,10 +12,14 @@ public class TdmMerge {
     public static final String REV = "rev";
 
     /**
-     * Attempt to resolve a raw merge by incrementally removing inconsistencies.
+     * Attempt to resolve a raw merge by incrementally removing inconsistencies. The input delta is the raw merge, which
+     * typically is an inconsistent PCS tree. When the algorithm has finished running, delta should be a forest of
+     * consistent PCS trees. The forest consists of the merged tree, as well as any deleted subtrees.
      *
-     * @param base
-     * @param delta
+     * A structural or content conflict means that 3DM was unable to create a consistent PCS structure.
+     *
+     * @param base The base revision.
+     * @param delta The raw merge.
      */
     public static <T> void resolveRawMerge(TStar<T> base, TStar<T> delta) {
         List<Conflict<Content<T>>> contentConflicts = new ArrayList<>();

@@ -27,8 +27,8 @@ import java.util.stream.Collectors;
  * @author Simon Larsén
  */
 public class SpoonMapping {
-    private Map<CtWrapper, CtWrapper> srcs;
-    private Map<CtWrapper, CtWrapper> dsts;
+    private Map<SpoonNode, SpoonNode> srcs;
+    private Map<SpoonNode, SpoonNode> dsts;
 
 
     // SpoonMapping should only be instantiated with fromGumTreeMapping, which is why the default constructor is private
@@ -88,8 +88,8 @@ public class SpoonMapping {
     private void inferAdditionalMappings(List<Pair<CtElement, CtElement>> matches) {
         while (!matches.isEmpty()) {
             List<Pair<CtElement, CtElement>> newMatches = new ArrayList<>();
-            for (CtWrapper dst : new ArrayList<>(srcs.values())) {
-                CtWrapper src = getSrc(dst);
+            for (SpoonNode dst : new ArrayList<>(srcs.values())) {
+                SpoonNode src = getSrc(dst);
                 newMatches.addAll(inferAdditionalMappings(src.getElement(), dst.getElement()));
             }
             matches = newMatches;
@@ -151,43 +151,43 @@ public class SpoonMapping {
         return element.isImplicit() || element instanceof CtReference;
     }
 
-    public boolean hasSrc(CtWrapper src) {
+    public boolean hasSrc(SpoonNode src) {
         return srcs.containsKey(src);
     }
 
-    public boolean hasDst(CtWrapper dst) {
+    public boolean hasDst(SpoonNode dst) {
         return dsts.containsKey(dst);
     }
 
     public boolean hasSrc(CtElement src) {
-        return hasSrc(WrapperFactory.wrap(src));
+        return hasSrc(NodeFactory.wrap(src));
     }
 
     public boolean hasDst(CtElement dst) {
-        return hasDst(WrapperFactory.wrap(dst));
+        return hasDst(NodeFactory.wrap(dst));
     }
 
-    public CtWrapper getDst(CtWrapper src) {
+    public SpoonNode getDst(SpoonNode src) {
         return srcs.get(src);
     }
 
     public CtElement getDst(CtElement src) {
-        return getDst(WrapperFactory.wrap(src)).getElement();
+        return getDst(NodeFactory.wrap(src)).getElement();
     }
 
-    public CtWrapper getSrc(CtWrapper dst) {
+    public SpoonNode getSrc(SpoonNode dst) {
         return dsts.get(dst);
     }
 
     public CtElement getSrc(CtElement dst) {
-        return getSrc(WrapperFactory.wrap(dst)).getElement();
+        return getSrc(NodeFactory.wrap(dst)).getElement();
     }
 
     public void put(CtElement src, CtElement dst) {
-        put(WrapperFactory.wrap(src), WrapperFactory.wrap(dst));
+        put(NodeFactory.wrap(src), NodeFactory.wrap(dst));
     }
 
-    public void put(CtWrapper src, CtWrapper dst) {
+    public void put(SpoonNode src, SpoonNode dst) {
         srcs.put(src, dst);
         dsts.put(dst, src);
     }
@@ -196,7 +196,7 @@ public class SpoonMapping {
         return (CtElement) gumtreeNode.getMetadata(SpoonGumTreeBuilder.SPOON_OBJECT);
     }
 
-    private String formatEntry(Map.Entry<CtWrapper, CtWrapper> entry) {
+    private String formatEntry(Map.Entry<SpoonNode, SpoonNode> entry) {
         return "(" + entry.getKey() + ", " + entry.getValue() + ")";
     }
 

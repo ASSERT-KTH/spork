@@ -7,7 +7,7 @@ import spoon.reflect.declaration.CtElement;
  *
  * @author Simon Larsén
  */
-public class WrapperFactory {
+public class NodeFactory {
     public static final String WRAPPER_METADATA = "spork_wrapper";
     private static long currentKey = 0;
 
@@ -19,14 +19,14 @@ public class WrapperFactory {
      * @param elem An element to wrap.
      * @return A wrapper around the CtElement that is more practical for hashing purposes.
      */
-    public static CtWrapper wrap(CtElement elem) {
+    public static SpoonNode wrap(CtElement elem) {
         Object wrapper = elem.getMetadata(WRAPPER_METADATA);
 
         if (wrapper == null) {
-            wrapper = new CtWrapper(elem, currentKey++);
+            wrapper = new SpoonNode(elem, currentKey++);
             elem.putMetadata(WRAPPER_METADATA, wrapper);
         }
 
-        return (CtWrapper) wrapper;
+        return (SpoonNode) wrapper;
     }
 }

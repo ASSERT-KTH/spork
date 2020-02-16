@@ -50,29 +50,29 @@ public class Spoon3dmMerge {
         SpoonMapping leftRight = SpoonMapping.fromGumTreeMapping(leftRightGumtreeMatch.getMappings());
 
         System.out.println("Mapping to class representatives");
-        Map<CtWrapper, CtWrapper> classRepMap = createClassRepresentativesMapping(
+        Map<SpoonNode, SpoonNode> classRepMap = createClassRepresentativesMapping(
                 base, left, right, baseLeft, baseRight, leftRight);
 
         System.out.println("Converting to PCS");
-        Set<Pcs<CtWrapper>> t0 = SpoonPcs.fromSpoon(base, Revision.BASE);
-        Set<Pcs<CtWrapper>> t1 = SpoonPcs.fromSpoon(left, Revision.LEFT);
-        Set<Pcs<CtWrapper>> t2 = SpoonPcs.fromSpoon(right, Revision.RIGHT);
+        Set<Pcs<SpoonNode>> t0 = SpoonPcs.fromSpoon(base, Revision.BASE);
+        Set<Pcs<SpoonNode>> t1 = SpoonPcs.fromSpoon(left, Revision.LEFT);
+        Set<Pcs<SpoonNode>> t2 = SpoonPcs.fromSpoon(right, Revision.RIGHT);
 
         System.out.println("Computing raw merge");
-        TStar<CtWrapper> delta = new TStar<>(classRepMap, new GetContent(), t0, t1, t2);
-        TStar<CtWrapper> t0Star = new TStar<>(classRepMap, new GetContent(), t0);
+        TStar<SpoonNode> delta = new TStar<>(classRepMap, new GetContent(), t0, t1, t2);
+        TStar<SpoonNode> t0Star = new TStar<>(classRepMap, new GetContent(), t0);
 
         System.out.println("Resolving raw merge");
         TdmMerge.resolveRawMerge(t0Star, delta);
 
         System.out.println("Interpreting PCS");
-        return SpoonPcs.fromPcs(delta.getStar(), delta.getContents(), baseLeft, baseRight);
+        return SpoonPcs.fromMergedPcs(delta.getStar(), delta.getContents(), baseLeft, baseRight);
     }
 
     /**
      * This class determines what the content of any given type of node is.
      */
-    private static class GetContent implements Function<CtWrapper, Object> {
+    private static class GetContent implements Function<SpoonNode, Object> {
 
         /**
          * Return the content of the supplied node. For example, the content of a CtLiteral is its value.
@@ -83,7 +83,7 @@ public class Spoon3dmMerge {
          * @return The content of the node.
          */
         @Override
-        public Object apply(CtWrapper wrapper) {
+        public Object apply(SpoonNode wrapper) {
             if (wrapper == null)
                 return null;
 
@@ -119,14 +119,14 @@ public class Spoon3dmMerge {
      * @param leftRight A matching from left to right.
      * @return The class representatives map.
      */
-    private static Map<CtWrapper, CtWrapper> createClassRepresentativesMapping(
+    private static Map<SpoonNode, SpoonNode> createClassRepresentativesMapping(
             CtClass<?> base,
             CtClass<?> left,
             CtClass<?> right,
             SpoonMapping baseLeft,
             SpoonMapping baseRight,
             SpoonMapping leftRight) {
-        Map<CtWrapper, CtWrapper> classRepMap = initializeClassRepresentatives(base);
+        Map<SpoonNode, SpoonNode> classRepMap = initializeClassRepresentatives(base);
         mapToClassRepresentatives(left, baseLeft, classRepMap, Revision.LEFT);
         mapToClassRepresentatives(right, baseRight, classRepMap, Revision.RIGHT);
         augmentClassRepresentatives(leftRight, classRepMap);
@@ -139,13 +139,13 @@ public class Spoon3dmMerge {
      * @param base The base revision of the trees to be merged.
      * @return An initialized class representatives map.
      */
-    private static Map<CtWrapper, CtWrapper> initializeClassRepresentatives(CtElement base) {
-        Map<CtWrapper, CtWrapper> classRepMap = new HashMap<>();
+    private static Map<SpoonNode, SpoonNode> initializeClassRepresentatives(CtElement base) {
+        Map<SpoonNode, SpoonNode> classRepMap = new HashMap<>();
         Iterator<CtElement> descIt = base.descendantIterator();
         while (descIt.hasNext()) {
             CtElement tree = descIt.next();
             tree.putMetadata(TdmMerge.REV, Revision.BASE);
-            CtWrapper wrapped = WrapperFactory.wrap(tree);
+            SpoonNode wrapped = NodeFactory.wrap(tree);
             classRepMap.put(wrapped, wrapped);
         }
         return classRepMap;
@@ -165,12 +165,12 @@ public class Spoon3dmMerge {
      * @param classRepMap The class representatives map.
      * @param rev         The provided tree's revision.
      */
-    private static void mapToClassRepresentatives(CtElement tree, SpoonMapping mappings, Map<CtWrapper, CtWrapper> classRepMap, Revision rev) {
+    private static void mapToClassRepresentatives(CtElement tree, SpoonMapping mappings, Map<SpoonNode, SpoonNode> classRepMap, Revision rev) {
         Iterator<CtElement> descIt = tree.descendantIterator();
         while (descIt.hasNext()) {
             CtElement t = descIt.next();
             t.putMetadata(TdmMerge.REV, rev);
-            CtWrapper wrapped = WrapperFactory.wrap(t);
+            SpoonNode wrapped = NodeFactory.wrap(t);
 
             if (mappings.hasDst(wrapped)) {
                 classRepMap.put(wrapped, mappings.getSrc(wrapped));
@@ -189,14 +189,14 @@ public class Spoon3dmMerge {
      * @param leftRight   A tree matching from the left revision to the right revision.
      * @param classRepMap The class representatives map.
      */
-    private static void augmentClassRepresentatives(SpoonMapping leftRight, Map<CtWrapper, CtWrapper> classRepMap) {
-        for (Map.Entry<CtWrapper, CtWrapper> entry : classRepMap.entrySet()) {
-            CtWrapper node = entry.getKey();
+    private static void augmentClassRepresentatives(SpoonMapping leftRight, Map<SpoonNode, SpoonNode> classRepMap) {
+        for (Map.Entry<SpoonNode, SpoonNode> entry : classRepMap.entrySet()) {
+            SpoonNode node = entry.getKey();
             Revision rev = (Revision) node.getElement().getMetadata(TdmMerge.REV);
-            CtWrapper classRep = entry.getValue();
+            SpoonNode classRep = entry.getValue();
 
             if (node == classRep && rev == Revision.RIGHT) {
-                CtWrapper leftClassRep = leftRight.getSrc(node);
+                SpoonNode leftClassRep = leftRight.getSrc(node);
                 if (leftClassRep != null)
                     classRepMap.put(node, leftClassRep);
             }

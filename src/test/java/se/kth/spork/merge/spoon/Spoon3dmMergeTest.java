@@ -1,13 +1,11 @@
 package se.kth.spork.merge.spoon;
 
-import com.github.gumtreediff.tree.ITree;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import se.kth.spork.merge.Util;
 import spoon.Launcher;
 import spoon.reflect.declaration.CtClass;
 import spoon.reflect.declaration.CtElement;
-import spoon.support.sniper.SniperJavaPrettyPrinter;
 
 import java.io.File;
 import java.io.IOException;
@@ -55,9 +53,9 @@ class Spoon3dmMergeTest {
     private static void runTestMerge(Util.TestSources sources) {
         CtElement expected = Launcher.parseClass(sources.expected);
 
-        CtElement base = Launcher.parseClass(sources.base);
-        CtElement left = Launcher.parseClass(sources.left);
-        CtElement right = Launcher.parseClass(sources.right);
+        CtClass<?> base = Launcher.parseClass(sources.base);
+        CtClass<?> left = Launcher.parseClass(sources.left);
+        CtClass<?> right = Launcher.parseClass(sources.right);
 
         CtClass<?> merged = Spoon3dmMerge.merge(base ,left, right);
 
