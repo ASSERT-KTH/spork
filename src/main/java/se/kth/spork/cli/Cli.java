@@ -5,6 +5,7 @@ import com.github.gumtreediff.matchers.Matchers;
 import com.github.gumtreediff.tree.ITree;
 import gumtree.spoon.builder.SpoonGumTreeBuilder;
 import se.kth.spork.merge.gumtree.GumTreeMerge;
+import se.kth.spork.merge.spoon.Spoon3dmMerge;
 import spoon.Launcher;
 import spoon.reflect.declaration.CtClass;
 
@@ -35,21 +36,24 @@ public class Cli {
         CtClass<?> leftTree = Launcher.parseClass(left);
         CtClass<?> rightTree = Launcher.parseClass(right);
 
-        ITree mergedTree = GumTreeMerge.mergeToTree(baseTree, leftTree, rightTree);
+        CtClass<?> mergedTree = Spoon3dmMerge.merge(baseTree, leftTree, rightTree);
 
         if (expected != null) {
-            ITree expectedTree = toGumTree(expected);
-            boolean isIsomorphic = mergedTree.isIsomorphicTo(expectedTree);
-            System.out.println("Merge isomorphic to expected tree: " + mergedTree.isIsomorphicTo(expectedTree));
+            CtClass<?> expectedTree = Launcher.parseClass(expected);
+            boolean isEqual = expectedTree.toString().equals(mergedTree.toString());
 
+            if (!isEqual) {
+                System.out.println("EXPECTED");
+                System.out.println(expected);
+                System.out.println();
 
-            if (!isIsomorphic) {
-                System.out.println("EXPECTED TREE");
-                expectedTree.preOrder().forEach(t -> System.out.println(t.toShortString()));
-
-                System.out.println("ACTUAL TREE");
-                mergedTree.preOrder().forEach(t -> System.out.println(t.toShortString()));
+                System.out.println("ACTUAL");
+                System.out.println(mergedTree);
+            } else {
+                System.out.println("Merged file matches expected file");
             }
+        } else {
+            System.out.println(mergedTree);
         }
     }
 
