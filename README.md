@@ -36,17 +36,16 @@ Naturally, if you want the absolute latest version, you will have to [build
 Spork yourself](#build).
 
 ## Build
-Maven can be used to build the artifact. It currently just reports conflicts that are trivially found by 3DM
-merge itself. Build with the following command:
+Maven can be used to build the latest version of Spork.
 
-> **Note:** Requires JDK10+ to build and JDK8+ to run.
+> **Note:** Requires JDK10+ to build and a Java 8+ runtime to run.
 
 ```
 mvn clean compile assembly:single
 ```
 
-This will produce a jar-file in the `target` directory called `spork-1.0-SNAPSHOT-jar-with-dependencies.jar`.
-Run the jar with `java -jar path/to/spork/jar`.
+This will produce a jar-file in the `target` directory called something along the lines of
+`spork-x.x.x-jar-with-dependencies.jar`. Run the jar with `java -jar path/to/spork/jar`.
 
 ## License
 Unless otherwise stated, files in Spork are under the [MIT license](LICENSE).
