@@ -4,7 +4,6 @@ import com.github.gumtreediff.matchers.Matcher;
 import com.github.gumtreediff.matchers.Matchers;
 import com.github.gumtreediff.tree.ITree;
 import gumtree.spoon.builder.SpoonGumTreeBuilder;
-import se.kth.spork.merge.gumtree.GumTreeMerge;
 import se.kth.spork.merge.spoon.Spoon3dmMerge;
 import spoon.Launcher;
 import spoon.reflect.declaration.CtClass;
