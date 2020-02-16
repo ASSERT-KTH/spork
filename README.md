@@ -14,6 +14,9 @@ Spork is built on top of a set of fantastic software, most notably:
 * [gumtree-spoon-ast-diff](https://github.com/spoonlabs/gumtree-spoon-ast-diff)
   bridges the gap between `Spoon` and `GumTree`.
 
+The merge implementation in Spork is based on the [3DM merge algorithm by
+Tancred Lindholm](https://doi.org/10.1145/1030397.1030399).
+
 ## Usage
 You can find a pre-built jar-file under
 [relases](https://github.com/kth/spork/releases). The jar-file includes all
