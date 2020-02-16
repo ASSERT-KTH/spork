@@ -5,11 +5,7 @@ import com.github.gumtreediff.matchers.MappingStore;
 import com.github.gumtreediff.tree.ITree;
 import com.github.gumtreediff.utils.Pair;
 import gumtree.spoon.builder.SpoonGumTreeBuilder;
-import spoon.reflect.code.CtCase;
-import spoon.reflect.code.CtStatementList;
 import spoon.reflect.declaration.CtElement;
-import spoon.reflect.path.CtRole;
-import spoon.reflect.reference.CtReference;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -23,6 +19,10 @@ import java.util.stream.Collectors;
  * See <a href="https://github.com/GumTreeDiff/gumtree/blob/f20565b6261fe3465cd1b3e0914028d5e87699b2/core/src/main/java/com/github/gumtreediff/matchers/MappingStore.java#L1-L151">
  *     MappingStore.java
  *     </a> in GumTree for comparison.
+ *
+ * It is my opinion that this file is sufficiently distinct from GumTree's MappingStore that the former does not count
+ * as a derivative of the latter, and the similar functionality is trivial. Therefore, I do not think that the
+ * LGPL license of the GumTree project needs to be applied to Spork.
  *
  * @author Simon Larsén
  */
@@ -108,9 +108,9 @@ public class SpoonMapping {
             CtElement srcChild = srcChildren.get(srcIdx);
             CtElement dstChild = dstChildren.get(dstIdx);
 
-            if (hasSrc(srcChild) || !isToIgnore(srcChild)) {
+            if (hasSrc(srcChild) || !GumTreeSpoonAstDiff.isToIgnore(srcChild)) {
                 srcIdx++;
-            } else if (hasDst(dstChild) || !isToIgnore(dstChild)) {
+            } else if (hasDst(dstChild) || !GumTreeSpoonAstDiff.isToIgnore(dstChild)) {
                 dstIdx++;
             } else {
                 //assert srcChild.equals(dstChild);
@@ -123,32 +123,6 @@ public class SpoonMapping {
         }
 
         return newMatches;
-    }
-
-    /**
-     * This method is taken from gumtree-spoon-ast-diff and identifies Spoon nodes that should not be mapped into
-     * the GumTree that's build by SpoonGumTreeBuilder.
-     *
-     * @author Mattias Martinez
-     *
-     * See <a href="https://github.com/SpoonLabs/gumtree-spoon-ast-diff/blob/dae908192bee7773b38d149baff831ee616ec524/src/main/java/gumtree/spoon/builder/TreeScanner.java#L71-L84">TreeScanner</a>
-     * for the original source.
-     *
-     * TODO Don't duplicate this code...
-     *
-     * @param element An element to check if it is to be ignored.
-     * @return Whether or not to ignore the argument.
-     */
-    private boolean isToIgnore(CtElement element) {
-        if (element instanceof CtStatementList && !(element instanceof CtCase)) {
-            return element.getRoleInParent() != CtRole.ELSE && element.getRoleInParent() != CtRole.THEN;
-        }
-
-        if (element instanceof CtReference && element.getRoleInParent() == CtRole.SUPER_TYPE) {
-            return false;
-        }
-
-        return element.isImplicit() || element instanceof CtReference;
     }
 
     public boolean hasSrc(SpoonNode src) {
