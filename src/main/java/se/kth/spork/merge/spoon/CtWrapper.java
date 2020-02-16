@@ -2,8 +2,6 @@ package se.kth.spork.merge.spoon;
 
 import spoon.reflect.declaration.CtClass;
 import spoon.reflect.declaration.CtElement;
-import spoon.reflect.declaration.CtModule;
-import spoon.reflect.declaration.CtPackage;
 
 import java.util.Objects;
 
@@ -14,11 +12,11 @@ import java.util.Objects;
  *
  * This class should only be instantiated with the CtWrapperFactory singleton.
  */
-public class CtWrapper {
+public class Wrapper {
     private final CtElement element;
     private final long key;
 
-    CtWrapper(CtElement element, long key) {
+    Wrapper(CtElement element, long key) {
         this.element = element;
         this.key = key;
     }
@@ -27,7 +25,7 @@ public class CtWrapper {
         return element;
     }
 
-    public CtWrapper getParent() {
+    public Wrapper getParent() {
         if (element instanceof CtClass)
             return null;
         return WrapperFactory.wrap(element.getParent());
@@ -50,8 +48,8 @@ public class CtWrapper {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        CtWrapper ctWrapper = (CtWrapper) o;
-        return key == ctWrapper.key;
+        Wrapper wrapper = (Wrapper) o;
+        return key == wrapper.key;
     }
 
     @Override
