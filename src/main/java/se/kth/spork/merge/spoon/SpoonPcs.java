@@ -10,6 +10,7 @@ import spoon.reflect.declaration.CtElement;
 import spoon.reflect.path.CtRole;
 
 import java.util.*;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
@@ -44,15 +45,13 @@ public class SpoonPcs {
     }
 
     /**
-     * Visits each node twice. In the first visit, the node is a child of the previously visited root, and in the
-     * second visit, it is the root of the current subtree.
-     *
-     * Consequently, the first node(s) to be visited are children of a virtual root node.
+     * Traverses the PCS structure and visits each (parent, node) pair. That is to say, when a node is visited, its
+     * parent is also made available. This is necessary to be able to rebuild a tree.
      *
      * @param pcses A well-formed PCS structure.
      * @param visit A function to apply to the nodes in the PCS structure.
      */
-    private static <V> void traversePcs(Set<Pcs<V>> pcses, Consumer<V> visit) {
+    private static <V> void traversePcs(Set<Pcs<V>> pcses, BiConsumer<V, V> visit) {
         Map<V, Map<V, Pcs<V>>> rootToChildren = new HashMap<>();
         for (Pcs<V> pcs : pcses) {
             Map<V, Pcs<V>> children = rootToChildren.getOrDefault(pcs.getRoot(), new HashMap<>());
@@ -64,9 +63,7 @@ public class SpoonPcs {
         traversePcs(rootToChildren, null, visit);
     }
 
-    private static <K,V> void traversePcs(Map<V, Map<V, Pcs<V>>> rootToChildren, V currentRoot, Consumer<V> visit) {
-        if (currentRoot != null)
-            visit.accept(currentRoot);
+    private static <K,V> void traversePcs(Map<V, Map<V, Pcs<V>>> rootToChildren, V currentRoot, BiConsumer<V, V> visit) {
         Map<V, Pcs<V>> children = rootToChildren.get(currentRoot);
         if (children == null) // leaf node
             return;
@@ -80,13 +77,12 @@ public class SpoonPcs {
                 break;
             }
             sortedChildren.add(pred);
-            visit.accept(pred);
+            visit.accept(pred, currentRoot);
         };
         sortedChildren.forEach(child -> traversePcs(rootToChildren, child, visit));
     }
 
-    private static class Builder implements Consumer<CtWrapper> {
-        private CtElement currentRoot;
+    private static class Builder implements BiConsumer<CtWrapper, CtWrapper> {
         private CtClass<?> actualRoot;
         private Map<CtWrapper, CtWrapper> nodes;
         private Map<CtWrapper, Set<Content<CtWrapper>>> contents;
@@ -169,49 +165,46 @@ public class SpoonPcs {
         }
 
         @Override
-        public void accept(CtWrapper treeWrapper) {
+        public void accept(CtWrapper treeWrapper, CtWrapper root) {
+            CtElement currentRoot = root == null ? null : nodes.get(root).getElement();
+
             CtElement tree = treeWrapper.getElement();
             CtWrapper treeCopyWrapper = nodes.get(treeWrapper);
             CtElement treeCopy = treeCopyWrapper == null ? null : treeCopyWrapper.getElement();
 
-            if (treeCopy == null) { // first time we see this node; it's a child node of the current root
-
+            if (treeCopy == null) { // first time we see this node
                 treeCopy = copyTree(tree, currentRoot);
+            }
 
+            if (currentRoot != null) {
+                CtRole childRole = resolveRole(treeWrapper);
 
+                Object current = currentRoot.getValueByRole(childRole);
+                Object toSet;
 
-                if (currentRoot != null) {
-                    CtRole childRole = resolveRole(treeWrapper);
-
-                    Object current = currentRoot.getValueByRole(childRole);
-                    Object toSet;
-
-                    if (current instanceof Collection) {
-                        Collection<CtElement> mutableCurrent;
-                        if (current instanceof Set) {
-                            mutableCurrent = new HashSet<>((Collection) current);
-                        } else if (current instanceof List) {
-                            mutableCurrent = new ArrayList<>((Collection) current);
-                        } else {
-                            throw new IllegalStateException("unexpected value by role: " + current.getClass());
-                        }
-                        mutableCurrent.add(treeCopy);
-                        toSet = mutableCurrent;
+                if (current instanceof Collection) {
+                    Collection<CtElement> mutableCurrent;
+                    if (current instanceof Set) {
+                        mutableCurrent = new HashSet<>((Collection) current);
+                    } else if (current instanceof List) {
+                        mutableCurrent = new ArrayList<>((Collection) current);
                     } else {
-                        toSet = treeCopy;
+                        throw new IllegalStateException("unexpected value by role: " + current.getClass());
                     }
-
-                    currentRoot.setValueByRole(childRole, toSet);
+                    mutableCurrent.add(treeCopy);
+                    toSet = mutableCurrent;
+                } else {
+                    toSet = treeCopy;
                 }
 
-
-                nodes.put(treeWrapper, WrapperFactory.wrap(treeCopy));
-            } else { // second time we see this node; it's now the root
-                currentRoot = treeCopy;
-
-                if (actualRoot == null)
-                    actualRoot = (CtClass<?>) currentRoot;
+                currentRoot.setValueByRole(childRole, toSet);
             }
+
+
+            nodes.put(treeWrapper, WrapperFactory.wrap(treeCopy));
+
+        if (actualRoot == null)
+            actualRoot = (CtClass<?>) currentRoot;
         }
 
         private CtElement copyTree(CtElement tree, CtElement root) {
