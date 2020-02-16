@@ -1,12 +1,13 @@
 # Spork - AST based merging for Java files
-Spork is an AST based structured merge tool for Java. That means that instead of
-merging Java files by their raw text, it resolves tha abstract syntax trees and
-merges based on these instead.
+Spork is an AST based structured merge tool for Java. This means that instead of
+merging Java files by their raw text, it resolves the abstract syntax trees and
+merges based on them instead.
 
 > **Early development:** Spork is in very early development. See the [issue
 > tracker](https://github.com/kth/spork/issues) for known issues.
 
-Spork is built on top of a set of fantastic software, most notably:
+## Attribution
+Spork is built on top of a few pieces of fantastic software, most notably:
 
 * [Spoon](https;//github.com/inria/spoon) provides the AST representation used
   in Spork.
