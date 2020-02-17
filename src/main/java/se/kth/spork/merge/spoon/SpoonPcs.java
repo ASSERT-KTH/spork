@@ -43,7 +43,7 @@ public class SpoonPcs {
      */
     public static CtClass<?> fromMergedPcs(
             Set<Pcs<SpoonNode>> pcses,
-            Map<SpoonNode, Set<Content<SpoonNode>>> contents,
+            Map<SpoonNode, Set<Content<SpoonNode,Object>>> contents,
             SpoonMapping baseLeft,
             SpoonMapping baseRight) {
         Builder builder = new Builder(contents, baseLeft, baseRight);
@@ -92,11 +92,11 @@ public class SpoonPcs {
     private static class Builder implements BiConsumer<SpoonNode, SpoonNode> {
         private CtClass<?> actualRoot;
         private Map<SpoonNode, SpoonNode> nodes;
-        private Map<SpoonNode, Set<Content<SpoonNode>>> contents;
+        private Map<SpoonNode, Set<Content<SpoonNode,Object>>> contents;
         private SpoonMapping baseLeft;
         private SpoonMapping baseRight;
 
-        private Builder(Map<SpoonNode, Set<Content<SpoonNode>>> contents, SpoonMapping baseLeft, SpoonMapping baseRight) {
+        private Builder(Map<SpoonNode, Set<Content<SpoonNode,Object>>> contents, SpoonMapping baseLeft, SpoonMapping baseRight) {
             nodes = new HashMap<>();
             this.contents = contents;
             this.baseLeft = baseLeft;
@@ -229,7 +229,7 @@ public class SpoonPcs {
             // TODO properly set the content of types other than CtLiteral
             if (treeCopy instanceof CtLiteral) {
                 SpoonNode wrapped = NodeFactory.wrap(tree);
-                Set<Content<SpoonNode>> value = contents.get(wrapped);
+                Set<Content<SpoonNode,Object>> value = contents.get(wrapped);
                 if (value != null) {
                     ((CtLiteral) treeCopy).setValue(value.iterator().next().getValue());
                 }

@@ -62,8 +62,8 @@ public class Spoon3dmMerge {
         Set<Pcs<SpoonNode>> t2 = SpoonPcs.fromSpoon(right, Revision.RIGHT);
 
         LOGGER.info("Computing raw PCS merge");
-        TStar<SpoonNode> delta = new TStar<>(classRepMap, new GetContent(), t0, t1, t2);
-        TStar<SpoonNode> t0Star = new TStar<>(classRepMap, new GetContent(), t0);
+        TStar<SpoonNode, Object> delta = new TStar<>(classRepMap, new GetContent(), t0, t1, t2);
+        TStar<SpoonNode, Object> t0Star = new TStar<>(classRepMap, new GetContent(), t0);
 
         LOGGER.info("Resolving final PCS merge");
         TdmMerge.resolveRawMerge(t0Star, delta);
