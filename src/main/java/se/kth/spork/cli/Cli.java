@@ -4,6 +4,8 @@ import com.github.gumtreediff.matchers.Matcher;
 import com.github.gumtreediff.matchers.Matchers;
 import com.github.gumtreediff.tree.ITree;
 import gumtree.spoon.builder.SpoonGumTreeBuilder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import se.kth.spork.merge.spoon.Spoon3dmMerge;
 import spoon.Launcher;
 import spoon.reflect.declaration.CtClass;
@@ -20,21 +22,26 @@ import java.util.stream.Collectors;
  * @author Simon Larsén
  */
 public class Cli {
+    private static final Logger LOGGER = LoggerFactory.getLogger(Spoon3dmMerge.class);
+
     public static void main(String[] args) throws IOException {
         if (args.length < 3 || args.length > 4) {
             usage();
             System.exit(1);
         }
 
+        LOGGER.info("Reading input files");
         String left = readFile(args[0]);
         String base = readFile(args[1]);
         String right = readFile(args[2]);
         String expected = args.length == 4 ? readFile(args[3]) : null;
 
+        LOGGER.info("Parsing input files to Spoon trees");
         CtClass<?> baseTree = Launcher.parseClass(base);
         CtClass<?> leftTree = Launcher.parseClass(left);
         CtClass<?> rightTree = Launcher.parseClass(right);
 
+        LOGGER.info("Starting merge");
         CtClass<?> mergedTree = Spoon3dmMerge.merge(baseTree, leftTree, rightTree);
 
         if (expected != null) {

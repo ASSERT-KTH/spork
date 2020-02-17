@@ -4,6 +4,8 @@ import com.github.gumtreediff.matchers.Matcher;
 import com.github.gumtreediff.matchers.Matchers;
 import com.github.gumtreediff.tree.ITree;
 import gumtree.spoon.builder.SpoonGumTreeBuilder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import se.kth.spork.merge.Pcs;
 import se.kth.spork.merge.Revision;
 import se.kth.spork.merge.TStar;
@@ -23,6 +25,7 @@ import java.util.function.Function;
  * @author Simon Larsén
  */
 public class Spoon3dmMerge {
+    private static final Logger LOGGER = LoggerFactory.getLogger(Spoon3dmMerge.class);
 
     /**
      * Merge the left and right revisions. The base revision is used for computing edits, and should be the best common
@@ -34,38 +37,38 @@ public class Spoon3dmMerge {
      * @return The merge of left and right.
      */
     public static CtClass<?> merge(CtClass<?> base, CtClass<?> left, CtClass<?> right) {
-        System.out.println("Converting to GumTree");
+        LOGGER.info("Converting to GumTree trees");
         ITree baseGumtree = new SpoonGumTreeBuilder().getTree(base);
         ITree leftGumtree = new SpoonGumTreeBuilder().getTree(left);
         ITree rightGumtree = new SpoonGumTreeBuilder().getTree(right);
 
-        System.out.println("Matching trees");
+        LOGGER.info("Matching trees with GumTree");
         Matcher baseLeftGumtreeMatch = matchTrees(baseGumtree, leftGumtree);
         Matcher baseRightGumtreeMatch = matchTrees(baseGumtree, rightGumtree);
         Matcher leftRightGumtreeMatch = matchTrees(leftGumtree, rightGumtree);
 
-        System.out.println("Converting matches to Spoon matches");
+        LOGGER.info("Converting GumTree matches to Spoon matches");
         SpoonMapping baseLeft = SpoonMapping.fromGumTreeMapping(baseLeftGumtreeMatch.getMappings());
         SpoonMapping baseRight = SpoonMapping.fromGumTreeMapping(baseRightGumtreeMatch.getMappings());
         SpoonMapping leftRight = SpoonMapping.fromGumTreeMapping(leftRightGumtreeMatch.getMappings());
 
-        System.out.println("Mapping to class representatives");
+        LOGGER.info("Mapping nodes to class representatives");
         Map<SpoonNode, SpoonNode> classRepMap = createClassRepresentativesMapping(
                 base, left, right, baseLeft, baseRight, leftRight);
 
-        System.out.println("Converting to PCS");
+        LOGGER.info("Converting Spoon trees to PCS triples");
         Set<Pcs<SpoonNode>> t0 = SpoonPcs.fromSpoon(base, Revision.BASE);
         Set<Pcs<SpoonNode>> t1 = SpoonPcs.fromSpoon(left, Revision.LEFT);
         Set<Pcs<SpoonNode>> t2 = SpoonPcs.fromSpoon(right, Revision.RIGHT);
 
-        System.out.println("Computing raw merge");
+        LOGGER.info("Computing raw PCS merge");
         TStar<SpoonNode> delta = new TStar<>(classRepMap, new GetContent(), t0, t1, t2);
         TStar<SpoonNode> t0Star = new TStar<>(classRepMap, new GetContent(), t0);
 
-        System.out.println("Resolving raw merge");
+        LOGGER.info("Resolving final PCS merge");
         TdmMerge.resolveRawMerge(t0Star, delta);
 
-        System.out.println("Interpreting PCS");
+        LOGGER.info("Interpreting resolved PCS merge");
         return SpoonPcs.fromMergedPcs(delta.getStar(), delta.getContents(), baseLeft, baseRight);
     }
 
