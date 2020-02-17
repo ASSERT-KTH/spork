@@ -7,9 +7,9 @@ import java.util.Objects;
  *
  * @author Simon Larsén
  */
-public class Content<T> {
+public class Content<T,V> {
     private Pcs<T> context;
-    private Object value;
+    private V value;
 
     /**
      * Create a content container.
@@ -17,7 +17,7 @@ public class Content<T> {
      * @param context The context of this content. The value is associated with the predecessor of the context.
      * @param value The value of the this content.
      */
-    public Content(Pcs<T> context, Object value) {
+    public Content(Pcs<T> context, V value) {
         this.context = context;
         this.value = value;
     }
@@ -26,7 +26,7 @@ public class Content<T> {
         return context;
     }
 
-    public Object getValue() {
+    public V getValue() {
         return value;
     }
 

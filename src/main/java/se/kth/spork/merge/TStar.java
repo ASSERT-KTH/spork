@@ -8,10 +8,10 @@ import java.util.function.Function;
  *
  * @author Simon Larsén
  */
-public class TStar<T> {
+public class TStar<T,V> {
     private Map<T, Set<Pcs<T>>> successors;
     private Map<T, Set<Pcs<T>>> predecessors;
-    private Map<T, Set<Content<T>>> content;
+    private Map<T, Set<Content<T,V>>> content;
     private Map<T, T> classRepMap;
     private Set<Pcs<T>> star;
 
@@ -26,7 +26,7 @@ public class TStar<T> {
      * @param getContent A function for getting content from
      * @param trees The trees to add to this T*.
      */
-    public TStar(Map<T, T> classRepMap, Function<T, ?> getContent, Set<Pcs<T>>... trees) {
+    public TStar(Map<T, T> classRepMap, Function<T, V> getContent, Set<Pcs<T>>... trees) {
         this.classRepMap = classRepMap;
         successors = new HashMap<>();
         predecessors = new HashMap<>();
@@ -45,7 +45,7 @@ public class TStar<T> {
     /**
      * @return The current state of the merge's node contents.
      */
-    public Map<T, Set<Content<T>>> getContents() {
+    public Map<T, Set<Content<T,V>>> getContents() {
         return new HashMap<>(content);
     }
 
@@ -86,7 +86,7 @@ public class TStar<T> {
      * @param pcs A PCS triple.
      * @return The content associated with the argument's predecessor node.
      */
-    public Set<Content<T>> getContent(Pcs<T> pcs) {
+    public Set<Content<T,V>> getContent(Pcs<T> pcs) {
         return content.get(pcs.getPredecessor());
     }
 
@@ -103,7 +103,7 @@ public class TStar<T> {
      * @param cont A Content container.
      * @return true iff the argument is contained in this T*.
      */
-    public boolean contains(Content cont) {
+    public boolean contains(Content<T,V> cont) {
         return content.getOrDefault(cont.getContext().getPredecessor(), new HashSet<>()).contains(cont);
     }
 
@@ -126,7 +126,7 @@ public class TStar<T> {
     /**
      * @param cont Content to remove from this T*.
      */
-    public void remove(Content<T> cont) {
+    public void remove(Content<T,V> cont) {
         content.get(cont.getContext().getPredecessor()).remove(cont);
     }
 
@@ -138,7 +138,7 @@ public class TStar<T> {
      * @param tree A PCS tree structure.
      * @param getContent A function that returns the content of a T node.
      */
-    private void add(Set<Pcs<T>> tree, Function<T, ?> getContent) {
+    private void add(Set<Pcs<T>> tree, Function<T, V> getContent) {
         for (Pcs<T> pcs : tree) {
             Pcs<T> classRepPcs = addToStar(pcs);
             T pred = pcs.getPredecessor();
@@ -150,7 +150,7 @@ public class TStar<T> {
                 addToLookupTable(classRepSucc, classRepPcs, successors);
             }
             if (pred != null) {
-                Content<T> c = new Content<T>(pcs, getContent.apply(pred));
+                Content<T,V> c = new Content<T,V>(pcs, getContent.apply(pred));
                 addToLookupTable(classRepPred, c, content);
             }
         }

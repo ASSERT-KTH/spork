@@ -21,8 +21,8 @@ public class TdmMerge {
      * @param base The base revision.
      * @param delta The raw merge.
      */
-    public static <T> void resolveRawMerge(TStar<T> base, TStar<T> delta) {
-        List<Conflict<Content<T>>> contentConflicts = new ArrayList<>();
+    public static <T,V> void resolveRawMerge(TStar<T,V> base, TStar<T,V> delta) {
+        List<Conflict<Content<T,V>>> contentConflicts = new ArrayList<>();
         List<Conflict<Pcs<T>>> structuralConflicts = new ArrayList<>();
 
         for (Pcs<T> pcs : delta.getStar()) {
@@ -30,7 +30,7 @@ public class TdmMerge {
                 continue;
 
             if (pcs.getPredecessor() != null) {
-                Set<Content<T>> contents = delta.getContent(pcs);
+                Set<Content<T,V>> contents = delta.getContent(pcs);
                 if (contents != null && contents.size() > 1) {
                     handleContentConflict(contents, base).ifPresent(contentConflicts::add);
                 }
@@ -69,21 +69,21 @@ public class TdmMerge {
      *
      * TODO have this method modify the contents in a less dirty way
      */
-    private static <T> Optional<Conflict<Content<T>>> handleContentConflict(Set<Content<T>> contents, TStar<T> base) {
+    private static <T,V> Optional<Conflict<Content<T,V>>> handleContentConflict(Set<Content<T,V>> contents, TStar<T,V> base) {
         if (contents.size() > 3)
             throw new IllegalArgumentException("expected at most 3 pieces of conflicting content, got: " + contents);
 
         // contents equal to that in base never takes precedence over left and right revisions
-        Optional<Content<T>> basePcsOpt = contents.stream().filter(base::contains).findAny();
+        Optional<Content<T,V>> basePcsOpt = contents.stream().filter(base::contains).findAny();
 
         basePcsOpt.ifPresent(content -> contents.removeIf(c -> Objects.equals(c.getValue(), content.getValue())));
 
         if (contents.size() == 0) { // everything was equal to base, re-add
             contents.add(basePcsOpt.get());
         } else if (contents.size() == 2) { // both left and right have been modified from base
-            Iterator<Content<T>> it = contents.iterator();
-            Content<T> first = it.next();
-            Content<T> second = it.next();
+            Iterator<Content<T,V>> it = contents.iterator();
+            Content<T,V> first = it.next();
+            Content<T,V> second = it.next();
             if (second.getValue().equals(first.getValue()))
                 it.remove();
         } else if (contents.size() > 2) {
@@ -95,9 +95,9 @@ public class TdmMerge {
         if (contents.size() != 1) {
             // there was new content both in left and right revisions that was not equal
 
-            Iterator<Content<T>> it = contents.iterator();
-            Content<T> first = it.next();
-            Content<T> second = it.next();
+            Iterator<Content<T,V>> it = contents.iterator();
+            Content<T,V> first = it.next();
+            Content<T,V> second = it.next();
 
             if (basePcsOpt.isPresent()) {
                 return Optional.of(new Conflict<>(basePcsOpt.get(), first, second));
