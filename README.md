@@ -18,6 +18,32 @@ Spork is built on top of a few pieces of fantastic software, most notably:
 The merge implementation in Spork is based on the [3DM merge algorithm by
 Tancred Lindholm](https://doi.org/10.1145/1030397.1030399).
 
+## Quickstart
+Want to just try out Spork on a small merge scenario? Below are a few shell
+commands that will download Spork along with a [sample merge
+scenario](https://github.com/KTH/spork/tree/fe906f537d1bb7205256d1fe81fda9f323849a60/src/test/resources/clean/both_modified/move_if),
+and then run it!
+
+```bash
+# Download Spork
+wget https://github.com/KTH/spork/releases/download/v0.0.1/spork-0.0.1-SNAPSHOT-jar-with-dependencies.jar -O spork.jar
+
+# Download a sample merge scenario
+wget https://raw.githubusercontent.com/KTH/spork/fe906f537d1bb7205256d1fe81fda9f323849a60/src/test/resources/clean/both_modified/move_if/Left.java
+wget https://raw.githubusercontent.com/KTH/spork/fe906f537d1bb7205256d1fe81fda9f323849a60/src/test/resources/clean/both_modified/move_if/Base.java
+wget https://raw.githubusercontent.com/KTH/spork/fe906f537d1bb7205256d1fe81fda9f323849a60/src/test/resources/clean/both_modified/move_if/Right.java
+
+# You should now have spork.jar, Left.java, Base.java and Right.java in your local directory
+
+# Run Spork!
+java -jar spork.jar Left.java Base.java Right.java
+```
+
+It should print the result of the merge to stdout. See `Base.java` for the
+original version, and `Left.java` and `Right.java` for the respective changes.
+They should all be neatly integrated into the resulting merge. For more on
+using Spork, see [Usage](#usage).
+
 ## Usage
 You can find a pre-built jar-file under
 [relases](https://github.com/kth/spork/releases). The jar-file includes all
