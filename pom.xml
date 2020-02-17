@@ -54,7 +54,6 @@
                 <configuration>
                     <source>8</source>
                     <target>8</target>
-                    <release>8</release>
                     <testSource>8</testSource>
                     <testTarget>8</testTarget>
                 </configuration>

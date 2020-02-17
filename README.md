@@ -70,7 +70,7 @@ Spork yourself](#build).
 ## Build
 Maven can be used to build the latest version of Spork.
 
-> **Note:** Requires JDK10+ to build and a Java 8+ runtime to run.
+> **Note:** Requires JDK8+ to build.
 
 ```
 mvn clean compile assembly:single
