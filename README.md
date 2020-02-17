@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.com/KTH/spork.svg?branch=master)](https://travis-ci.com/KTH/spork)
+
 # Spork - AST based merging for Java files
 Spork is an AST based structured merge tool for Java. This means that instead of
 merging Java files by their raw text, it resolves the abstract syntax trees and
