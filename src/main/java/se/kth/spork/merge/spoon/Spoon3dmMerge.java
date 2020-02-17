@@ -12,6 +12,7 @@ import se.kth.spork.merge.TStar;
 import se.kth.spork.merge.TdmMerge;
 import spoon.reflect.code.CtLiteral;
 import spoon.reflect.declaration.*;
+import spoon.reflect.path.CtRole;
 
 import java.util.HashMap;
 import java.util.Iterator;
@@ -62,8 +63,8 @@ public class Spoon3dmMerge {
         Set<Pcs<SpoonNode>> t2 = SpoonPcs.fromSpoon(right, Revision.RIGHT);
 
         LOGGER.info("Computing raw PCS merge");
-        TStar<SpoonNode, Object> delta = new TStar<>(classRepMap, new GetContent(), t0, t1, t2);
-        TStar<SpoonNode, Object> t0Star = new TStar<>(classRepMap, new GetContent(), t0);
+        TStar<SpoonNode, RoledValue> delta = new TStar<>(classRepMap, new GetContent(), t0, t1, t2);
+        TStar<SpoonNode, RoledValue> t0Star = new TStar<>(classRepMap, new GetContent(), t0);
 
         LOGGER.info("Resolving final PCS merge");
         TdmMerge.resolveRawMerge(t0Star, delta);
@@ -75,7 +76,7 @@ public class Spoon3dmMerge {
     /**
      * This class determines what the content of any given type of node is.
      */
-    private static class GetContent implements Function<SpoonNode, Object> {
+    private static class GetContent implements Function<SpoonNode, RoledValue> {
 
         /**
          * Return the content of the supplied node. For example, the content of a CtLiteral is its value.
@@ -86,7 +87,7 @@ public class Spoon3dmMerge {
          * @return The content of the node.
          */
         @Override
-        public Object apply(SpoonNode wrapper) {
+        public RoledValue apply(SpoonNode wrapper) {
             if (wrapper == null)
                 return null;
 
@@ -94,9 +95,9 @@ public class Spoon3dmMerge {
             if (elem instanceof CtModule || elem instanceof CtPackage) {
                 return null;
             } else if (elem instanceof CtLiteral) {
-                return ((CtLiteral<?>) elem).getValue();
+                return new RoledValue(((CtLiteral<?>) elem).getValue(), CtRole.VALUE);
             }
-            return elem.getShortRepresentation();
+            return new RoledValue(elem.getShortRepresentation(), null);
         }
     }
 

@@ -4,7 +4,6 @@ import se.kth.spork.merge.Content;
 import se.kth.spork.merge.Pcs;
 import se.kth.spork.merge.Revision;
 import se.kth.spork.merge.TdmMerge;
-import spoon.reflect.code.CtLiteral;
 import spoon.reflect.declaration.CtClass;
 import spoon.reflect.declaration.CtElement;
 import spoon.reflect.path.CtRole;
@@ -43,7 +42,7 @@ public class SpoonPcs {
      */
     public static CtClass<?> fromMergedPcs(
             Set<Pcs<SpoonNode>> pcses,
-            Map<SpoonNode, Set<Content<SpoonNode,Object>>> contents,
+            Map<SpoonNode, Set<Content<SpoonNode, RoledValue>>> contents,
             SpoonMapping baseLeft,
             SpoonMapping baseRight) {
         Builder builder = new Builder(contents, baseLeft, baseRight);
@@ -92,11 +91,11 @@ public class SpoonPcs {
     private static class Builder implements BiConsumer<SpoonNode, SpoonNode> {
         private CtClass<?> actualRoot;
         private Map<SpoonNode, SpoonNode> nodes;
-        private Map<SpoonNode, Set<Content<SpoonNode,Object>>> contents;
+        private Map<SpoonNode, Set<Content<SpoonNode, RoledValue>>> contents;
         private SpoonMapping baseLeft;
         private SpoonMapping baseRight;
 
-        private Builder(Map<SpoonNode, Set<Content<SpoonNode,Object>>> contents, SpoonMapping baseLeft, SpoonMapping baseRight) {
+        private Builder(Map<SpoonNode, Set<Content<SpoonNode, RoledValue>>> contents, SpoonMapping baseLeft, SpoonMapping baseRight) {
             nodes = new HashMap<>();
             this.contents = contents;
             this.baseLeft = baseLeft;
@@ -226,17 +225,23 @@ public class SpoonPcs {
             }
             treeCopy.setAllMetadata(new HashMap<>()); // empty the metadata
 
-            // TODO properly set the content of types other than CtLiteral
-            if (treeCopy instanceof CtLiteral) {
-                SpoonNode wrapped = NodeFactory.wrap(tree);
-                Set<Content<SpoonNode,Object>> value = contents.get(wrapped);
-                if (value != null) {
-                    ((CtLiteral) treeCopy).setValue(value.iterator().next().getValue());
-                }
-            }
+            SpoonNode wrapped = NodeFactory.wrap(tree);
+            Set<Content<SpoonNode, RoledValue>> nodeContents = contents.get(wrapped);
+            setContent(treeCopy, nodeContents);
 
             treeCopy.setParent(root);
             return treeCopy;
+        }
+
+        private void setContent(CtElement node, Set<Content<SpoonNode, RoledValue>> nodeContents) {
+            if (nodeContents.size() > 1) {
+                throw new IllegalStateException("unexpected amount of content: " + nodeContents);
+            }
+
+            RoledValue roledValue = nodeContents.iterator().next().getValue();
+            if (roledValue.getRole() != null) {
+                node.setValueByRole(roledValue.getRole(), roledValue.getValue());
+            }
         }
     }
 
