@@ -32,10 +32,13 @@ wget https://github.com/KTH/spork/releases/download/v0.0.1/spork-0.0.1-SNAPSHOT-
 wget https://raw.githubusercontent.com/KTH/spork/fe906f537d1bb7205256d1fe81fda9f323849a60/src/test/resources/clean/both_modified/move_if/Left.java
 wget https://raw.githubusercontent.com/KTH/spork/fe906f537d1bb7205256d1fe81fda9f323849a60/src/test/resources/clean/both_modified/move_if/Base.java
 wget https://raw.githubusercontent.com/KTH/spork/fe906f537d1bb7205256d1fe81fda9f323849a60/src/test/resources/clean/both_modified/move_if/Right.java
-
 # You should now have spork.jar, Left.java, Base.java and Right.java in your local directory
 
-# Run Spork!
+# a line based-merge is not possible
+merge Left.java Base.java Right.java
+# merge: warning: conflicts during merge
+
+# an AST-merge with Spork does
 java -jar spork.jar Left.java Base.java Right.java
 ```
 
