@@ -13,6 +13,7 @@ import se.kth.spork.merge.TdmMerge;
 import spoon.reflect.code.CtLiteral;
 import spoon.reflect.declaration.*;
 import spoon.reflect.path.CtRole;
+import spoon.reflect.reference.CtReference;
 
 import java.util.HashMap;
 import java.util.Iterator;
@@ -79,9 +80,8 @@ public class Spoon3dmMerge {
     private static class GetContent implements Function<SpoonNode, RoledValue> {
 
         /**
-         * Return the content of the supplied node. For example, the content of a CtLiteral is its value.
-         * <p>
-         * TODO extract more types of content
+         * Return the content of the supplied node. For example, the content of a CtLiteral is its value, and the
+         * content of a CtNamedElement is its simple name.
          *
          * @param wrapper A wrapped Spoon node.
          * @return The content of the node.
@@ -92,10 +92,15 @@ public class Spoon3dmMerge {
                 return null;
 
             CtElement elem = wrapper.getElement();
-            if (elem instanceof CtModule || elem instanceof CtPackage) {
-                return null;
-            } else if (elem instanceof CtLiteral) {
-                return new RoledValue(((CtLiteral<?>) elem).getValue(), CtRole.VALUE);
+            if (elem instanceof CtLiteral) {
+                CtLiteral<?> lit = (CtLiteral<?>) elem;
+                return new RoledValue(lit.getValue(), CtRole.VALUE);
+            } else if (elem instanceof CtReference) {
+                CtReference ref = (CtReference) elem;
+                return new RoledValue(ref.getSimpleName(), CtRole.NAME);
+            } else if (elem instanceof CtNamedElement) {
+                CtNamedElement namedElem = (CtNamedElement) elem;
+                return new RoledValue(namedElem.getSimpleName(), CtRole.NAME);
             }
             return new RoledValue(elem.getShortRepresentation(), null);
         }

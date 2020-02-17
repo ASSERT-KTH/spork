@@ -21,7 +21,18 @@ class Spoon3dmMergeTest {
     private static final Path bothModifiedDirpath = cleanMergeDirpath.resolve("both_modified");
 
     @ParameterizedTest
-    @ValueSource(strings = {"add_parameter", "delete_method", "add_if_block", "delete_if_block"})
+    @ValueSource(strings = {
+            "add_parameter",
+            "delete_method",
+            "add_if_block",
+            "delete_if_block",
+            "rename_method",
+            "rename_class",
+            "change_declared_type",
+            "rename_variable",
+            "rename_parameter",
+            "rename_type_parameter",
+    })
     void mergeToTree_shouldReturnExpectedTree_whenLeftVersionIsModified(String testName) throws IOException{
         File testDir = leftModifiedDirpath.resolve(testName).toFile();
         Util.TestSources sources = fromTestDirectory(testDir);
@@ -29,7 +40,18 @@ class Spoon3dmMergeTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"add_parameter", "delete_method", "add_if_block", "delete_if_block"})
+    @ValueSource(strings = {
+            "add_parameter",
+            "delete_method",
+            "add_if_block",
+            "delete_if_block",
+            "rename_method",
+            "rename_class",
+            "change_declared_type",
+            "rename_variable",
+            "rename_parameter",
+            "rename_type_parameter",
+    })
     void mergeToTree_shouldReturnExpectedTree_whenRightVersionIsModified(String testName) throws IOException{
         File testDir = leftModifiedDirpath.resolve(testName).toFile();
         Util.TestSources sources = fromTestDirectory(testDir);
