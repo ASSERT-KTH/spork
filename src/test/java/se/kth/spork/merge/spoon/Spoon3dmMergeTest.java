@@ -34,6 +34,7 @@ class Spoon3dmMergeTest {
             "add_nested_class",
             "add_package_private_class",
             "rename_enum",
+            "edit_annotations",
     })
     void mergeToTree_shouldReturnExpectedTree_whenLeftVersionIsModified(String testName) throws IOException{
         File testDir = leftModifiedDirpath.resolve(testName).toFile();
@@ -57,6 +58,7 @@ class Spoon3dmMergeTest {
             "add_nested_class",
             "add_package_private_class",
             "rename_enum",
+            "edit_annotations",
     })
     void mergeToTree_shouldReturnExpectedTree_whenRightVersionIsModified(String testName) throws IOException{
         File testDir = leftModifiedDirpath.resolve(testName).toFile();

@@ -4,8 +4,12 @@ import se.kth.spork.merge.Content;
 import se.kth.spork.merge.Pcs;
 import se.kth.spork.merge.Revision;
 import se.kth.spork.merge.TdmMerge;
+import spoon.reflect.code.CtExpression;
+import spoon.reflect.code.CtLiteral;
+import spoon.reflect.declaration.CtAnnotation;
 import spoon.reflect.declaration.CtElement;
 import spoon.reflect.path.CtRole;
+import sun.reflect.generics.tree.Tree;
 
 import java.util.*;
 import java.util.function.BiConsumer;
@@ -21,7 +25,7 @@ public class SpoonPcs {
      * Convert a Spoon tree into a PCS structure.
      *
      * @param spoonClass A Spoon class.
-     * @param revision The revision this Spoon class belongs to. The revision is attached to each PCS triple.
+     * @param revision   The revision this Spoon class belongs to. The revision is attached to each PCS triple.
      * @return The Spoon tree represented by PCS triples.
      */
     public static Set<Pcs<SpoonNode>> fromSpoon(CtElement spoonClass, Revision revision) {
@@ -33,9 +37,9 @@ public class SpoonPcs {
     /**
      * Convert a merged PCS structure into a Spoon tree.
      *
-     * @param pcses A set of PCS triples.
-     * @param contents A mapping from SpoonNode objects to their respective contents.
-     * @param baseLeft A tree matching between the base revision and the left revision.
+     * @param pcses     A set of PCS triples.
+     * @param contents  A mapping from SpoonNode objects to their respective contents.
+     * @param baseLeft  A tree matching between the base revision and the left revision.
      * @param baseRight A tree matching between the base revision and the right revision.
      * @return A Spoon tree representing the merged PCS structure.
      */
@@ -83,7 +87,8 @@ public class SpoonPcs {
             }
             sortedChildren.add(pred);
             visit.accept(currentRoot, pred);
-        };
+        }
+        ;
         sortedChildren.forEach(child -> traversePcs(rootToChildren, child, visit));
     }
 
@@ -104,15 +109,15 @@ public class SpoonPcs {
         /**
          * Resolving the role of a node in the merged tree is tricky, but with a few assumptions it can be done
          * quickly.
-         *
+         * <p>
          * First of all, it is fairly safe to assume that the node can have at most two roles. Assume for a second
          * that a node could have three roles. This means that the node has been modified inconsistently in the left
          * and right revisions, and by the definition of 3DM merge there will have been a structural conflict already.
-         *
+         * <p>
          * Second, it is also safe to assume that if the role differs between base and either left or right, the role
          * in base should be discarded. This is safe to assume as all edits of left and right will appear in the
          * merged tree.
-         *
+         * <p>
          * Thus, given that the base revision's role is resolved, it will always be possible to resolve the unique
          * role that should be applied next. This also means that a problem occurs when a left-to-right mapping is
          * used, as there may then be nodes that only match between left and right, and no clear way of determining
@@ -137,21 +142,24 @@ public class SpoonPcs {
                         matches.add(left.getElement().getRoleInParent());
                     if (right != null)
                         matches.add(right.getElement().getRoleInParent());
-                } break;
+                }
+                break;
                 case RIGHT: {
                     SpoonNode match = baseRight.getSrc(wrapper);
                     if (match != null) {
                         matches.add(match.getElement().getRoleInParent());
                         base = Optional.of(match);
                     }
-                } break;
+                }
+                break;
                 case LEFT: {
                     SpoonNode match = baseLeft.getSrc(wrapper);
                     if (match != null) {
                         matches.add(match.getElement().getRoleInParent());
                         base = Optional.of(match);
                     }
-                } break;
+                }
+                break;
                 default:
                     throw new IllegalStateException("unmatched revision");
             }
@@ -202,6 +210,29 @@ public class SpoonPcs {
                     }
                     mutableCurrent.add(treeCopy);
                     toSet = mutableCurrent;
+                } else if (current instanceof Map) {
+                    // special handling of annotations
+                    assert currentRoot instanceof CtAnnotation;
+
+                    Map<Object, Object> mutableCurrent = new TreeMap<>((Map) current);
+
+                    // To find the key for the value, we find the key of the original value
+                    // in the original annotation. This intuitively seems like it should work,
+                    // but complex modifications to annotations may cause this to crash and burn.
+                    // TODO review if this approach is feasible
+                    CtAnnotation<?> annotation = (CtAnnotation<?>) rootWrapper.getElement();
+                    Optional<Map.Entry<String, CtExpression>> originalEntry = annotation
+                            .getValues().entrySet().stream().filter(
+                                    entry -> entry.getValue().equals(tree)).findFirst();
+
+                    if (!originalEntry.isPresent()) {
+                        throw new IllegalStateException(
+                                "Internal error: unable to find key for annotation value " + treeCopy);
+                    }
+
+                    mutableCurrent.put(originalEntry.get().getKey(), treeCopy);
+
+                    toSet = mutableCurrent;
                 } else {
                     toSet = treeCopy;
                 }
@@ -212,8 +243,8 @@ public class SpoonPcs {
 
             nodes.put(treeWrapper, NodeFactory.wrap(treeCopy));
 
-        if (actualRoot == null)
-            actualRoot = currentRoot;
+            if (actualRoot == null)
+                actualRoot = currentRoot;
         }
 
         @SuppressWarnings({"unchecked", "rawtypes"})
