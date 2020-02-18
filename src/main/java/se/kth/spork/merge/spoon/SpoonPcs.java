@@ -5,11 +5,9 @@ import se.kth.spork.merge.Pcs;
 import se.kth.spork.merge.Revision;
 import se.kth.spork.merge.TdmMerge;
 import spoon.reflect.code.CtExpression;
-import spoon.reflect.code.CtLiteral;
 import spoon.reflect.declaration.CtAnnotation;
 import spoon.reflect.declaration.CtElement;
 import spoon.reflect.path.CtRole;
-import sun.reflect.generics.tree.Tree;
 
 import java.util.*;
 import java.util.function.BiConsumer;
@@ -94,16 +92,72 @@ public class SpoonPcs {
 
     private static class Builder implements BiConsumer<SpoonNode, SpoonNode> {
         private CtElement actualRoot;
-        private Map<SpoonNode, SpoonNode> nodes;
         private Map<SpoonNode, Set<Content<SpoonNode, RoledValue>>> contents;
         private SpoonMapping baseLeft;
         private SpoonMapping baseRight;
+
+
+        // A mapping from a node in the input PCS structure to its copy in the merged tree
+        private Map<SpoonNode, SpoonNode> nodes;
 
         private Builder(Map<SpoonNode, Set<Content<SpoonNode, RoledValue>>> contents, SpoonMapping baseLeft, SpoonMapping baseRight) {
             nodes = new HashMap<>();
             this.contents = contents;
             this.baseLeft = baseLeft;
             this.baseRight = baseRight;
+        }
+
+        /**
+         * Visit a node an merge it. Note that both the node being visited, and its parent, are the original nodes from
+         * the input trees.
+         *
+         * @param origTreeWrapper A wrapper around the current node being visited.
+         * @param origRootWrapper A wrapper around the current node's parent.
+         */
+        @Override
+        public void accept(SpoonNode origRootWrapper, SpoonNode origTreeWrapper) {
+            CtElement mergeParent = origRootWrapper == null ? null : nodes.get(origRootWrapper).getElement();
+
+            CtElement originalTree = origTreeWrapper.getElement();
+            SpoonNode mergeTreeWrapper = nodes.get(origTreeWrapper);
+            CtElement mergeTree = mergeTreeWrapper == null ? null : mergeTreeWrapper.getElement();
+
+            if (mergeTree == null) { // first time we see this node
+                mergeTree = shallowCopyTree(originalTree);
+                setContent(mergeTree, origTreeWrapper);
+            }
+
+            if (mergeParent != null) {
+                CtRole childRole = resolveRole(origTreeWrapper);
+
+                Object siblings = mergeParent.getValueByRole(childRole);
+                Object toSet;
+
+                if (siblings instanceof Collection) {
+                    Collection<CtElement> mutableCurrent;
+                    if (siblings instanceof Set) {
+                        mutableCurrent = new HashSet<>((Collection) siblings);
+                    } else if (siblings instanceof List) {
+                        mutableCurrent = new ArrayList<>((Collection) siblings);
+                    } else {
+                        throw new IllegalStateException("unexpected value by role: " + siblings.getClass());
+                    }
+                    mutableCurrent.add(mergeTree);
+                    toSet = mutableCurrent;
+                } else if (siblings instanceof Map) {
+                    toSet = resolveAnnotationMap(mergeTree, (Map<?, ?>) siblings, origRootWrapper, originalTree);
+                } else {
+                    toSet = mergeTree;
+                }
+
+                mergeParent.setValueByRole(childRole, toSet);
+            }
+
+
+            nodes.put(origTreeWrapper, NodeFactory.wrap(mergeTree));
+
+            if (actualRoot == null)
+                actualRoot = mergeParent;
         }
 
         /**
@@ -177,100 +231,82 @@ public class SpoonPcs {
             return matches.get(0);
         }
 
+
         /**
-         * @param treeWrapper A wrapper around the current node being visited.
-         * @param rootWrapper A wrapper around the current node's parent.
+         * Resolve they key/value mapping that forms the "body" of an annotation, assuming that mergeTree is a new value
+         * to be inserted (i.e. mergeTree's parent is an annotation).
+         * <p>
+         * This is a bit fiddly, as there are many ways in which the key/value map can be expressed in source code.
+         * See <a href="https://docs.oracle.com/javase/tutorial/java/annotations/basics.html">the Oracle docs</a> for
+         * more info on annotations.
+         * <p>
+         * Note: This method mutates none of the input.
+         *
+         * @param mergeTree         The tree node currently being merged, to be inserted as a value among siblings.
+         * @param siblings          A potentially empty map of annotation keys->values currently in the merge tree's parent's
+         *                          children, i.e. the siblings of the current mergeTree.
+         * @param origParentWrapper Wrapped tree from which the merge tree's parent was originally copied.
+         * @param originalTree      The tree from which mergeTree was copied.
+         * @return A map representing the key/value pairs of an annotation, wich mergeTree inserted among its siblings.
          */
-        @Override
-        public void accept(SpoonNode rootWrapper, SpoonNode treeWrapper) {
-            CtElement currentRoot = rootWrapper == null ? null : nodes.get(rootWrapper).getElement();
+        private Map<?, ?> resolveAnnotationMap(
+                CtElement mergeTree, Map<?, ?> siblings, SpoonNode origParentWrapper, CtElement originalTree) {
 
-            CtElement tree = treeWrapper.getElement();
-            SpoonNode treeCopyWrapper = nodes.get(treeWrapper);
-            CtElement treeCopy = treeCopyWrapper == null ? null : treeCopyWrapper.getElement();
+            Map<Object, Object> mutableCurrent = new TreeMap<>(siblings);
 
-            if (treeCopy == null) { // first time we see this node
-                treeCopy = copyTree(tree, currentRoot);
+            // To find the key for the value, we find the key of the original value
+            // in the original annotation. This intuitively seems like it should work,
+            // but complex modifications to annotations may cause this to crash and burn.
+            // TODO review if this approach is feasible
+            CtAnnotation<?> annotation = (CtAnnotation<?>) origParentWrapper.getElement();
+            Optional<Map.Entry<String, CtExpression>> originalEntry = annotation
+                    .getValues().entrySet().stream().filter(
+                            entry -> entry.getValue().equals(originalTree)).findFirst();
+
+            if (!originalEntry.isPresent()) {
+                throw new IllegalStateException(
+                        "Internal error: unable to find key for annotation value " + mergeTree);
             }
 
-            if (currentRoot != null) {
-                CtRole childRole = resolveRole(treeWrapper);
+            mutableCurrent.put(originalEntry.get().getKey(), mergeTree);
 
-                Object current = currentRoot.getValueByRole(childRole);
-                Object toSet;
-
-                if (current instanceof Collection) {
-                    Collection<CtElement> mutableCurrent;
-                    if (current instanceof Set) {
-                        mutableCurrent = new HashSet<>((Collection) current);
-                    } else if (current instanceof List) {
-                        mutableCurrent = new ArrayList<>((Collection) current);
-                    } else {
-                        throw new IllegalStateException("unexpected value by role: " + current.getClass());
-                    }
-                    mutableCurrent.add(treeCopy);
-                    toSet = mutableCurrent;
-                } else if (current instanceof Map) {
-                    // special handling of annotations
-                    assert currentRoot instanceof CtAnnotation;
-
-                    Map<Object, Object> mutableCurrent = new TreeMap<>((Map) current);
-
-                    // To find the key for the value, we find the key of the original value
-                    // in the original annotation. This intuitively seems like it should work,
-                    // but complex modifications to annotations may cause this to crash and burn.
-                    // TODO review if this approach is feasible
-                    CtAnnotation<?> annotation = (CtAnnotation<?>) rootWrapper.getElement();
-                    Optional<Map.Entry<String, CtExpression>> originalEntry = annotation
-                            .getValues().entrySet().stream().filter(
-                                    entry -> entry.getValue().equals(tree)).findFirst();
-
-                    if (!originalEntry.isPresent()) {
-                        throw new IllegalStateException(
-                                "Internal error: unable to find key for annotation value " + treeCopy);
-                    }
-
-                    mutableCurrent.put(originalEntry.get().getKey(), treeCopy);
-
-                    toSet = mutableCurrent;
-                } else {
-                    toSet = treeCopy;
-                }
-
-                currentRoot.setValueByRole(childRole, toSet);
-            }
-
-
-            nodes.put(treeWrapper, NodeFactory.wrap(treeCopy));
-
-            if (actualRoot == null)
-                actualRoot = currentRoot;
+            return mutableCurrent;
         }
 
+        /**
+         * Create a shallow copy of a tree.
+         *
+         * @param tree A tree to copy.
+         * @return A shallow copy of the input tree.
+         */
         @SuppressWarnings({"unchecked", "rawtypes"})
-        private CtElement copyTree(CtElement tree, CtElement root) {
+        private CtElement shallowCopyTree(CtElement tree) {
+            // FIXME This is super inefficient, cloning the whole tree just to delete all its children
             CtElement treeCopy = tree.clone();
             for (CtElement child : treeCopy.getDirectChildren()) {
                 child.delete();
             }
             treeCopy.setAllMetadata(new HashMap<>()); // empty the metadata
 
-            SpoonNode wrapped = NodeFactory.wrap(tree);
-            Set<Content<SpoonNode, RoledValue>> nodeContents = contents.get(wrapped);
-            setContent(treeCopy, nodeContents);
-
-            treeCopy.setParent(root);
             return treeCopy;
         }
 
-        private void setContent(CtElement node, Set<Content<SpoonNode, RoledValue>> nodeContents) {
+        /**
+         * Set the content of a tree that is being/has been merged to the merged content of the original tree.
+         *
+         * @param mergeTree    A tree in the merge output.
+         * @param originalTree A wrapper around the tree from which mergeTree was copied.
+         */
+        private void setContent(CtElement mergeTree, SpoonNode originalTree) {
+            Set<Content<SpoonNode, RoledValue>> nodeContents = contents.get(originalTree);
+
             if (nodeContents.size() > 1) {
                 throw new IllegalStateException("unexpected amount of content: " + nodeContents);
             }
 
             RoledValue roledValue = nodeContents.iterator().next().getValue();
             if (roledValue.getRole() != null) {
-                node.setValueByRole(roledValue.getRole(), roledValue.getValue());
+                mergeTree.setValueByRole(roledValue.getRole(), roledValue.getValue());
             }
         }
     }
