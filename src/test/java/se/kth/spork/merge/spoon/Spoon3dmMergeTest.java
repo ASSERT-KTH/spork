@@ -3,9 +3,7 @@ package se.kth.spork.merge.spoon;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import se.kth.spork.merge.Util;
-import spoon.Launcher;
-import spoon.reflect.declaration.CtClass;
-import spoon.reflect.declaration.CtElement;
+import spoon.reflect.declaration.*;
 
 import java.io.File;
 import java.io.IOException;
@@ -32,6 +30,10 @@ class Spoon3dmMergeTest {
             "rename_variable",
             "rename_parameter",
             "rename_type_parameter",
+            "rename_interface",
+            "add_nested_class",
+            "add_package_private_class",
+            "rename_enum",
     })
     void mergeToTree_shouldReturnExpectedTree_whenLeftVersionIsModified(String testName) throws IOException{
         File testDir = leftModifiedDirpath.resolve(testName).toFile();
@@ -51,13 +53,17 @@ class Spoon3dmMergeTest {
             "rename_variable",
             "rename_parameter",
             "rename_type_parameter",
+            "rename_interface",
+            "add_nested_class",
+            "add_package_private_class",
+            "rename_enum",
     })
     void mergeToTree_shouldReturnExpectedTree_whenRightVersionIsModified(String testName) throws IOException{
         File testDir = leftModifiedDirpath.resolve(testName).toFile();
         Util.TestSources sources = fromTestDirectory(testDir);
 
         // swap left and right around to make this a "right modified" test case
-        String left = sources.left;
+        Path left = sources.left;
         sources.left = sources.right;
         sources.right = left;
 
@@ -73,14 +79,11 @@ class Spoon3dmMergeTest {
     }
 
     private static void runTestMerge(Util.TestSources sources) {
-        CtElement expected = Launcher.parseClass(sources.expected);
+        CtElement expected = Spoon3dmMerge.parse(sources.expected);
 
-        CtClass<?> base = Launcher.parseClass(sources.base);
-        CtClass<?> left = Launcher.parseClass(sources.left);
-        CtClass<?> right = Launcher.parseClass(sources.right);
-
-        CtClass<?> merged = Spoon3dmMerge.merge(base ,left, right);
+        CtElement merged = Spoon3dmMerge.merge(sources.base, sources.left, sources.right);
 
         assertEquals(expected, merged);
     }
 }
+

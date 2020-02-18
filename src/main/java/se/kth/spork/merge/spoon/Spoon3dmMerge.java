@@ -10,15 +10,15 @@ import se.kth.spork.merge.Pcs;
 import se.kth.spork.merge.Revision;
 import se.kth.spork.merge.TStar;
 import se.kth.spork.merge.TdmMerge;
+import spoon.Launcher;
+import spoon.reflect.CtModel;
 import spoon.reflect.code.CtLiteral;
 import spoon.reflect.declaration.*;
 import spoon.reflect.path.CtRole;
 import spoon.reflect.reference.CtReference;
 
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.Set;
+import java.nio.file.Path;
+import java.util.*;
 import java.util.function.Function;
 
 /**
@@ -30,6 +30,38 @@ public class Spoon3dmMerge {
     private static final Logger LOGGER = LoggerFactory.getLogger(Spoon3dmMerge.class);
 
     /**
+     * Merge the left and right revisions with an AST-based merge.
+     *
+     * @param base The base revision.
+     * @param left The left revision.
+     * @param right The right revision.
+     * @return A merged Spoon tree.
+     */
+    public static CtElement merge(Path base, Path left, Path right) {
+        Launcher launcher = new Launcher();
+        launcher.addInputResource(base.toString());
+
+        CtElement baseTree = parse(base);
+        CtElement leftTree = parse(left);
+        CtElement rightTree = parse(right);
+
+        return merge(baseTree, leftTree, rightTree);
+    }
+
+    static CtElement parse(Path javaFile) {
+        Launcher launcher = new Launcher();
+        launcher.addInputResource(javaFile.toString());
+        launcher.buildModel();
+
+        CtModel model = launcher.getModel();
+        Collection<CtModule> modules = model.getAllModules();
+
+        assert modules.size() == 1;
+
+        return model.getUnnamedModule();
+    }
+
+    /**
      * Merge the left and right revisions. The base revision is used for computing edits, and should be the best common
      * ancestor of left and right.
      *
@@ -38,7 +70,7 @@ public class Spoon3dmMerge {
      * @param right The right revision.
      * @return The merge of left and right.
      */
-    public static CtClass<?> merge(CtClass<?> base, CtClass<?> left, CtClass<?> right) {
+    public static CtElement merge(CtElement base, CtElement left, CtElement right) {
         LOGGER.info("Converting to GumTree trees");
         ITree baseGumtree = new SpoonGumTreeBuilder().getTree(base);
         ITree leftGumtree = new SpoonGumTreeBuilder().getTree(left);
@@ -129,9 +161,9 @@ public class Spoon3dmMerge {
      * @return The class representatives map.
      */
     private static Map<SpoonNode, SpoonNode> createClassRepresentativesMapping(
-            CtClass<?> base,
-            CtClass<?> left,
-            CtClass<?> right,
+            CtElement base,
+            CtElement left,
+            CtElement right,
             SpoonMapping baseLeft,
             SpoonMapping baseRight,
             SpoonMapping leftRight) {

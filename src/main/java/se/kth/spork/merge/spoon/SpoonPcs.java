@@ -4,7 +4,6 @@ import se.kth.spork.merge.Content;
 import se.kth.spork.merge.Pcs;
 import se.kth.spork.merge.Revision;
 import se.kth.spork.merge.TdmMerge;
-import spoon.reflect.declaration.CtClass;
 import spoon.reflect.declaration.CtElement;
 import spoon.reflect.path.CtRole;
 
@@ -19,13 +18,13 @@ import java.util.function.BiConsumer;
 public class SpoonPcs {
 
     /**
-     * Convert a Spoon class into a PCS structure.
+     * Convert a Spoon tree into a PCS structure.
      *
      * @param spoonClass A Spoon class.
      * @param revision The revision this Spoon class belongs to. The revision is attached to each PCS triple.
-     * @return The Spoon class represented by PCS triples.
+     * @return The Spoon tree represented by PCS triples.
      */
-    public static Set<Pcs<SpoonNode>> fromSpoon(CtClass<?> spoonClass, Revision revision) {
+    public static Set<Pcs<SpoonNode>> fromSpoon(CtElement spoonClass, Revision revision) {
         PcsBuilder scanner = new PcsBuilder(revision);
         scanner.scan(spoonClass);
         return scanner.getPcses();
@@ -38,9 +37,9 @@ public class SpoonPcs {
      * @param contents A mapping from SpoonNode objects to their respective contents.
      * @param baseLeft A tree matching between the base revision and the left revision.
      * @param baseRight A tree matching between the base revision and the right revision.
-     * @return A Spoon CtClass representing the merged PCS structure.
+     * @return A Spoon tree representing the merged PCS structure.
      */
-    public static CtClass<?> fromMergedPcs(
+    public static CtElement fromMergedPcs(
             Set<Pcs<SpoonNode>> pcses,
             Map<SpoonNode, Set<Content<SpoonNode, RoledValue>>> contents,
             SpoonMapping baseLeft,
@@ -89,7 +88,7 @@ public class SpoonPcs {
     }
 
     private static class Builder implements BiConsumer<SpoonNode, SpoonNode> {
-        private CtClass<?> actualRoot;
+        private CtElement actualRoot;
         private Map<SpoonNode, SpoonNode> nodes;
         private Map<SpoonNode, Set<Content<SpoonNode, RoledValue>>> contents;
         private SpoonMapping baseLeft;
@@ -214,7 +213,7 @@ public class SpoonPcs {
             nodes.put(treeWrapper, NodeFactory.wrap(treeCopy));
 
         if (actualRoot == null)
-            actualRoot = (CtClass<?>) currentRoot;
+            actualRoot = currentRoot;
         }
 
         @SuppressWarnings({"unchecked", "rawtypes"})

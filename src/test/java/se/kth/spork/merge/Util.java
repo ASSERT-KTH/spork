@@ -27,12 +27,12 @@ public class Util {
     }
 
     public static class TestSources {
-        public String base;
-        public String left;
-        public String right;
-        public String expected;
+        public Path base;
+        public Path left;
+        public Path right;
+        public Path expected;
 
-        TestSources(String base, String left, String right, String expected) {
+        TestSources(Path base, Path left, Path right, Path expected) {
             this.base = base;
             this.left = left;
             this.right = right;
@@ -40,13 +40,13 @@ public class Util {
         }
 
 
-        public static TestSources fromTestDirectory(File testDir) throws IOException {
+        public static TestSources fromTestDirectory(File testDir) {
             Path path = testDir.toPath();
             return new TestSources(
-                    read(path.resolve("Base.java")),
-                    read(path.resolve("Left.java")),
-                    read(path.resolve("Right.java")),
-                    read(path.resolve("Expected.java"))
+                    path.resolve("Base.java"),
+                    path.resolve("Left.java"),
+                    path.resolve("Right.java"),
+                    path.resolve("Expected.java")
             );
         }
     }

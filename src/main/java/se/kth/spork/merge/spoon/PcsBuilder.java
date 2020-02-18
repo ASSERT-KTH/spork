@@ -43,14 +43,9 @@ class PcsBuilder extends CtScanner {
     }
 
     /**
-     * Add the last element to each PCS list (i.e. Pcs(root, child, null)) as well as the fake root node.
+     * Add the last element to each PCS list (i.e. Pcs(root, child, null)).
      */
     private void finalizePcsLists() {
-        // add fake root
-        pcses.add(newPcs(null, root, null, revision));
-        pcses.add(newPcs(null, null, root, revision));
-
-        // add the end-of-list to each PCS list
         for (SpoonNode predecessor : rootTolastSibling.values()) {
             pcses.add(newPcs(predecessor.getParent(), predecessor, null, revision));
         }
@@ -61,7 +56,7 @@ class PcsBuilder extends CtScanner {
     }
 
     private static Pcs<SpoonNode> newPcs(SpoonNode root, SpoonNode predecessor, SpoonNode successor, Revision revision) {
-        Pcs<SpoonNode> pcs = new Pcs(root, predecessor, successor);
+        Pcs<SpoonNode> pcs = new Pcs<>(root, predecessor, successor);
         pcs.setRevision(revision);
         return pcs;
     }

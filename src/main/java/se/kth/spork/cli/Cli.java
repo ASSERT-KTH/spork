@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 import se.kth.spork.merge.spoon.Spoon3dmMerge;
 import spoon.Launcher;
 import spoon.reflect.declaration.CtClass;
+import spoon.reflect.declaration.CtElement;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -42,10 +43,10 @@ public class Cli {
         CtClass<?> rightTree = Launcher.parseClass(right);
 
         LOGGER.info("Starting merge");
-        CtClass<?> mergedTree = Spoon3dmMerge.merge(baseTree, leftTree, rightTree);
+        CtElement mergedTree = Spoon3dmMerge.merge(baseTree, leftTree, rightTree);
 
         if (expected != null) {
-            CtClass<?> expectedTree = Launcher.parseClass(expected);
+            CtElement expectedTree = Launcher.parseClass(expected);
             boolean isEqual = expectedTree.toString().equals(mergedTree.toString());
 
             if (!isEqual) {

@@ -1,7 +1,7 @@
 package se.kth.spork.merge.spoon;
 
-import spoon.reflect.declaration.CtClass;
 import spoon.reflect.declaration.CtElement;
+import spoon.reflect.factory.ModuleFactory;
 
 import java.util.Objects;
 
@@ -26,7 +26,7 @@ public class SpoonNode {
     }
 
     public SpoonNode getParent() {
-        if (element instanceof CtClass)
+        if (element instanceof ModuleFactory.CtUnnamedModule)
             return null;
         return NodeFactory.wrap(element.getParent());
     }
