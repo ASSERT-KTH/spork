@@ -8,8 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import se.kth.spork.merge.spoon.Spoon3dmMerge;
 import spoon.Launcher;
-import spoon.reflect.declaration.CtClass;
-import spoon.reflect.declaration.CtElement;
+import spoon.reflect.declaration.*;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -25,43 +24,61 @@ import java.util.stream.Collectors;
 public class Cli {
     private static final Logger LOGGER = LoggerFactory.getLogger(Spoon3dmMerge.class);
 
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) {
         if (args.length < 3 || args.length > 4) {
             usage();
             System.exit(1);
         }
 
+
         LOGGER.info("Reading input files");
-        String left = readFile(args[0]);
-        String base = readFile(args[1]);
-        String right = readFile(args[2]);
-        String expected = args.length == 4 ? readFile(args[3]) : null;
+        CtModule left = Spoon3dmMerge.parse(Paths.get(args[0]));
+        CtModule base = Spoon3dmMerge.parse(Paths.get(args[1]));
+        CtModule right = Spoon3dmMerge.parse(Paths.get(args[2]));
+        CtModule expected = args.length == 4 ? Spoon3dmMerge.parse(Paths.get(args[3])) : null;
 
         LOGGER.info("Parsing input files to Spoon trees");
-        CtClass<?> baseTree = Launcher.parseClass(base);
-        CtClass<?> leftTree = Launcher.parseClass(left);
-        CtClass<?> rightTree = Launcher.parseClass(right);
 
         LOGGER.info("Starting merge");
-        CtElement mergedTree = Spoon3dmMerge.merge(baseTree, leftTree, rightTree);
+        CtModule merged = (CtModule) Spoon3dmMerge.merge(base, left, right);
 
         if (expected != null) {
-            CtElement expectedTree = Launcher.parseClass(expected);
-            boolean isEqual = expectedTree.toString().equals(mergedTree.toString());
+            boolean isEqual = expected.equals(merged);
 
             if (!isEqual) {
                 System.out.println("EXPECTED");
-                System.out.println(expected);
+                System.out.println(composeOutput(expected));
                 System.out.println();
 
                 System.out.println("ACTUAL");
-                System.out.println(mergedTree);
+                System.out.println(composeOutput(merged));
             } else {
                 System.out.println("Merged file matches expected file");
             }
         } else {
-            System.out.println(mergedTree);
+            System.out.println(composeOutput(merged));
         }
+    }
+
+    /**
+     * Compose the output, assuming that spoonRoot is the merge of two files (i.e. the output is a _single_ file).
+     *
+     * @param spoonRoot Root of a merged Spoon tree.
+     * @return A pretty-printed string representing the merged output.
+     */
+    private static String composeOutput(CtModule spoonRoot) {
+        CtPackage activePackage = spoonRoot.getRootPackage();
+        while (!activePackage.getPackages().isEmpty()) {
+            assert activePackage.getPackages().size() == 1;
+            activePackage = activePackage.getPackages().iterator().next();
+        }
+
+        StringBuilder sb = new StringBuilder();
+        for (CtType<?> type : activePackage.getTypes()) {
+            sb.append(type.toString()).append("\n\n");
+        }
+
+        return sb.toString();
     }
 
     private static String readFile(String s) throws IOException {

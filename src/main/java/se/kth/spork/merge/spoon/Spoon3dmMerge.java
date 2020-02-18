@@ -48,15 +48,18 @@ public class Spoon3dmMerge {
         return merge(baseTree, leftTree, rightTree);
     }
 
-    static CtElement parse(Path javaFile) {
+    /**
+     * Parse a Java file to a Spoon tree.
+     *
+     * @param javaFile Path to a Java file.
+     * @return The root module of the Spoon tree.
+     */
+    public static CtModule parse(Path javaFile) {
         Launcher launcher = new Launcher();
         launcher.addInputResource(javaFile.toString());
         launcher.buildModel();
 
         CtModel model = launcher.getModel();
-        Collection<CtModule> modules = model.getAllModules();
-
-        assert modules.size() == 1;
 
         return model.getUnnamedModule();
     }
