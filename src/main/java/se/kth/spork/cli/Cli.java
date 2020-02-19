@@ -6,6 +6,7 @@ import com.github.gumtreediff.tree.ITree;
 import gumtree.spoon.builder.SpoonGumTreeBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import se.kth.spork.merge.spoon.Parser;
 import se.kth.spork.merge.spoon.Spoon3dmMerge;
 import spoon.Launcher;
 import spoon.reflect.declaration.*;
@@ -14,6 +15,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Collection;
 import java.util.stream.Collectors;
 
 /**
@@ -32,10 +34,10 @@ public class Cli {
 
 
         LOGGER.info("Parsing input files");
-        CtModule left = Spoon3dmMerge.parse(Paths.get(args[0]));
-        CtModule base = Spoon3dmMerge.parse(Paths.get(args[1]));
-        CtModule right = Spoon3dmMerge.parse(Paths.get(args[2]));
-        CtModule expected = args.length == 4 ? Spoon3dmMerge.parse(Paths.get(args[3])) : null;
+        CtModule left = Parser.parse(Paths.get(args[0]));
+        CtModule base = Parser.parse(Paths.get(args[1]));
+        CtModule right = Parser.parse(Paths.get(args[2]));
+        CtModule expected = args.length == 4 ? Parser.parse(Paths.get(args[3])) : null;
 
         LOGGER.info("Starting merge");
         CtModule merged = (CtModule) Spoon3dmMerge.merge(base, left, right);
@@ -74,6 +76,11 @@ public class Cli {
         StringBuilder sb = new StringBuilder();
         if (!activePackage.isUnnamedPackage()) {
             sb.append("package ").append(activePackage.getQualifiedName()).append(";").append("\n\n");
+        }
+
+        Collection<?> imports = (Collection<?>) spoonRoot.getMetadata(Parser.IMPORT_STATEMENTS);
+        for (Object imp : imports) {
+            sb.append(imp.toString()).append("\n");
         }
 
         for (CtType<?> type : activePackage.getTypes()) {

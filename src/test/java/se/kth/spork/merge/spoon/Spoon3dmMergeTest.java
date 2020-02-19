@@ -8,6 +8,7 @@ import spoon.reflect.declaration.*;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static se.kth.spork.Util.TestSources.fromTestDirectory;
@@ -71,7 +72,14 @@ class Spoon3dmMergeTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"move_if", "delete_method", "add_same_method", "add_identical_elements_in_method", "add_parameter"})
+    @ValueSource(strings = {
+            "move_if",
+            "delete_method",
+            "add_same_method",
+            "add_identical_elements_in_method",
+            "add_parameter",
+            "add_import_statements",
+    })
     void mergeToTree_shouldReturnExpectedTree_whenBothVersionsAreModified(String testName) throws IOException {
         File testDir = Util.BOTH_MODIFIED_DIRPATH.resolve(testName).toFile();
         Util.TestSources sources = fromTestDirectory(testDir);
@@ -79,11 +87,15 @@ class Spoon3dmMergeTest {
     }
 
     private static void runTestMerge(Util.TestSources sources) {
-        CtElement expected = Spoon3dmMerge.parse(sources.expected);
+        CtElement expected = Parser.parse(sources.expected);
+        Object expectedImports = expected.getMetadata(Parser.IMPORT_STATEMENTS);
+        assert expectedImports != null;
 
         CtElement merged = Spoon3dmMerge.merge(sources.base, sources.left, sources.right);
+        Object mergedImports = merged.getMetadata(Parser.IMPORT_STATEMENTS);
 
         assertEquals(expected, merged);
+        assertEquals(expectedImports, mergedImports);
     }
 }
 

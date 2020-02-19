@@ -11,12 +11,10 @@ import se.kth.spork.merge.Revision;
 import se.kth.spork.merge.TStar;
 import se.kth.spork.merge.TdmMerge;
 import spoon.Launcher;
-import spoon.reflect.CtModel;
 import spoon.reflect.code.CtLiteral;
 import spoon.reflect.declaration.*;
 import spoon.reflect.path.CtRole;
 import spoon.reflect.reference.CtReference;
-import spoon.support.compiler.VirtualFile;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -44,38 +42,11 @@ public class Spoon3dmMerge {
         Launcher launcher = new Launcher();
         launcher.addInputResource(base.toString());
 
-        CtElement baseTree = parse(base);
-        CtElement leftTree = parse(left);
-        CtElement rightTree = parse(right);
+        CtElement baseTree = Parser.parse(base);
+        CtElement leftTree = Parser.parse(left);
+        CtElement rightTree = Parser.parse(right);
 
         return merge(baseTree, leftTree, rightTree);
-    }
-
-    /**
-     * Parse a Java file to a Spoon tree.
-     *
-     * @param javaFile Path to a Java file.
-     * @return The root module of the Spoon tree.
-     */
-    public static CtModule parse(Path javaFile) {
-        Launcher launcher = new Launcher();
-        // Reading from a virtual file is a workaround to a bug in Spoon
-        // Sometimes, the class comment is dropped when reading from the file system
-        launcher.addInputResource(new VirtualFile(read(javaFile)));
-        launcher.buildModel();
-
-        CtModel model = launcher.getModel();
-
-        return model.getUnnamedModule();
-    }
-
-    public static String read(Path path) {
-        try {
-            return String.join("\n", Files.readAllLines(path));
-        } catch (IOException e) {
-            e.printStackTrace();
-            throw new RuntimeException("Error reading from " + path);
-        }
     }
 
     /**
@@ -120,7 +91,50 @@ public class Spoon3dmMerge {
         TdmMerge.resolveRawMerge(t0Star, delta);
 
         LOGGER.info("Interpreting resolved PCS merge");
-        return SpoonPcs.fromMergedPcs(delta.getStar(), delta.getContents(), baseLeft, baseRight);
+        CtElement merge = SpoonPcs.fromMergedPcs(delta.getStar(), delta.getContents(), baseLeft, baseRight);
+
+        LOGGER.info("Merging import statements");
+        List<CtImport> mergedImports = mergeImportStatements(base, left, right);
+        merge.putMetadata(Parser.IMPORT_STATEMENTS, mergedImports);
+
+        return merge;
+    }
+
+    /**
+     * Merge import statements from base, left and right. Import statements are expected to be attached
+     * to each tree's root node metadata with the {@link Parser#IMPORT_STATEMENTS} key.
+     *
+     * This method naively merges import statements by respecting additions and deletions from both revisions.
+     *
+     * @param base The base revision.
+     * @param left The left revision.
+     * @param right The right revision.
+     * @return A merged import list, sorted in lexicographical order.
+     */
+    @SuppressWarnings("unchecked")
+    private static List<CtImport> mergeImportStatements(CtElement base, CtElement left, CtElement right) {
+        Set<CtImport> baseImports = new HashSet<>((Collection<CtImport>) base.getMetadata(Parser.IMPORT_STATEMENTS));
+        Set<CtImport> leftImports = new HashSet<>((Collection<CtImport>) left.getMetadata(Parser.IMPORT_STATEMENTS));
+        Set<CtImport> rightImports = new HashSet<>((Collection<CtImport>) right.getMetadata(Parser.IMPORT_STATEMENTS));
+        Set<CtImport> merge = new HashSet<>();
+
+        // first create union, this respects all additions
+        merge.addAll(baseImports);
+        merge.addAll(leftImports);
+        merge.addAll(rightImports);
+
+        // now remove all elements that were deleted
+        Set<CtImport> baseLeftDeletions = new HashSet<>(baseImports);
+        baseLeftDeletions.removeAll(leftImports);
+        Set<CtImport> baseRightDeletions = new HashSet<>(baseImports);
+        baseRightDeletions.removeAll(rightImports);
+
+        merge.removeAll(baseLeftDeletions);
+        merge.removeAll(baseRightDeletions);
+
+        List<CtImport> ret = new ArrayList<>(merge);
+        ret.sort(Comparator.comparing(CtImport::toString));
+        return ret;
     }
 
     /**

@@ -4,7 +4,9 @@ import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import se.kth.spork.Util;
+import se.kth.spork.merge.spoon.Parser;
 import se.kth.spork.merge.spoon.Spoon3dmMerge;
+import spoon.reflect.declaration.CtImport;
 import spoon.reflect.declaration.CtModule;
 
 import java.io.File;
@@ -12,6 +14,8 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.util.HashSet;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static se.kth.spork.Util.TestSources.fromTestDirectory;
@@ -78,6 +82,7 @@ class CliTest {
             "add_same_method",
             "add_identical_elements_in_method",
             "add_parameter",
+            "add_import_statements",
     })
     void mergeTreeShouldEqualReParsedPrettyPrent_whenBothRevisionsAreModified(String testName, @TempDir Path tempDir) throws IOException {
         File testDir = Util.BOTH_MODIFIED_DIRPATH.resolve(testName).toFile();
@@ -96,13 +101,18 @@ class CliTest {
      */
     private static void runTestMerge(Util.TestSources sources, Path tempDir) throws IOException {
         CtModule merged = (CtModule) Spoon3dmMerge.merge(sources.base, sources.left, sources.right);
+
+        Object expectedImports = merged.getMetadata(Parser.IMPORT_STATEMENTS);
+        assert expectedImports != null;
+
         String expectedPrettyPrint = Cli.prettyPrint(merged);
 
         Path outFile = tempDir.resolve("Merge.java");
         Files.write(outFile, expectedPrettyPrint.getBytes(), StandardOpenOption.CREATE);
 
-        CtModule reParsedMerge = Spoon3dmMerge.parse(outFile);
+        CtModule reParsedMerge = Parser.parse(outFile);
         String reParsedPrettyPRint = Cli.prettyPrint(reParsedMerge);
+        Object reParsedImports = reParsedMerge.getMetadata(Parser.IMPORT_STATEMENTS);
 
         // this assert is to give a better diff when there are obvious failures
         // it will most likely miss consistent errors in the pretty printer
@@ -112,7 +122,7 @@ class CliTest {
         // that could potentially be lost in a pretty-print
         assertEquals(merged, reParsedMerge);
 
-        // TODO add assert for import statements
+        assertEquals(reParsedImports, expectedImports);
     }
 
 }
