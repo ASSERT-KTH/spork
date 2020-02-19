@@ -35,6 +35,7 @@ class CliTest {
             "add_package_private_class",
             "rename_enum",
             "edit_annotations",
+            "change_package_statement",
     })
     void mergeTreeShouldEqualReParsedPrettyPrint_whenLeftIsModified(
             String testName, @TempDir Path tempDir) throws IOException {
@@ -60,6 +61,7 @@ class CliTest {
             "add_package_private_class",
             "rename_enum",
             "edit_annotations",
+            "change_package_statement",
     })
     void mergeTreeShouldEqualReParsedPrettyPrint_whenRightIsModified(
             String testName, @TempDir Path tempDir) throws IOException {

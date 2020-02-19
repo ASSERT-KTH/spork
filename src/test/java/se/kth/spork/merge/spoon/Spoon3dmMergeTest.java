@@ -31,6 +31,7 @@ class Spoon3dmMergeTest {
             "add_package_private_class",
             "rename_enum",
             "edit_annotations",
+            "change_package_statement",
     })
     void mergeToTree_shouldReturnExpectedTree_whenLeftVersionIsModified(String testName) {
         File testDir = Util.LEFT_MODIFIED_DIRPATH.resolve(testName).toFile();
@@ -55,6 +56,7 @@ class Spoon3dmMergeTest {
             "add_package_private_class",
             "rename_enum",
             "edit_annotations",
+            "change_package_statement",
     })
     void mergeToTree_shouldReturnExpectedTree_whenRightVersionIsModified(String testName) {
         File testDir = Util.LEFT_MODIFIED_DIRPATH.resolve(testName).toFile();

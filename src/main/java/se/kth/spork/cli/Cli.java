@@ -72,6 +72,10 @@ public class Cli {
         }
 
         StringBuilder sb = new StringBuilder();
+        if (!activePackage.isUnnamedPackage()) {
+            sb.append("package ").append(activePackage.getQualifiedName()).append(";").append("\n\n");
+        }
+
         for (CtType<?> type : activePackage.getTypes()) {
             sb.append(type.toString()).append("\n\n");
         }
