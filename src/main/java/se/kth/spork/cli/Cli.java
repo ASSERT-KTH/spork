@@ -31,13 +31,11 @@ public class Cli {
         }
 
 
-        LOGGER.info("Reading input files");
+        LOGGER.info("Parsing input files");
         CtModule left = Spoon3dmMerge.parse(Paths.get(args[0]));
         CtModule base = Spoon3dmMerge.parse(Paths.get(args[1]));
         CtModule right = Spoon3dmMerge.parse(Paths.get(args[2]));
         CtModule expected = args.length == 4 ? Spoon3dmMerge.parse(Paths.get(args[3])) : null;
-
-        LOGGER.info("Parsing input files to Spoon trees");
 
         LOGGER.info("Starting merge");
         CtModule merged = (CtModule) Spoon3dmMerge.merge(base, left, right);
@@ -47,16 +45,16 @@ public class Cli {
 
             if (!isEqual) {
                 System.out.println("EXPECTED");
-                System.out.println(composeOutput(expected));
+                System.out.println(prettyPrint(expected));
                 System.out.println();
 
                 System.out.println("ACTUAL");
-                System.out.println(composeOutput(merged));
+                System.out.println(prettyPrint(merged));
             } else {
                 System.out.println("Merged file matches expected file");
             }
         } else {
-            System.out.println(composeOutput(merged));
+            System.out.println(prettyPrint(merged));
         }
     }
 
@@ -66,7 +64,7 @@ public class Cli {
      * @param spoonRoot Root of a merged Spoon tree.
      * @return A pretty-printed string representing the merged output.
      */
-    private static String composeOutput(CtModule spoonRoot) {
+    static String prettyPrint(CtModule spoonRoot) {
         CtPackage activePackage = spoonRoot.getRootPackage();
         while (!activePackage.getPackages().isEmpty()) {
             assert activePackage.getPackages().size() == 1;

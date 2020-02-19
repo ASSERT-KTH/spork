@@ -1,4 +1,4 @@
-package se.kth.spork.merge;
+package se.kth.spork;
 
 import com.github.gumtreediff.tree.ITree;
 import gumtree.spoon.builder.SpoonGumTreeBuilder;
@@ -9,6 +9,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 
 /**
  * Utility methods for the test suite.
@@ -16,6 +17,10 @@ import java.nio.file.Path;
  * @author Simon Larsén
  */
 public class Util {
+    public static final Path CLEAN_MERGE_DIRPATH = Paths.get("src/test/resources/clean");
+    public static final Path BOTH_MODIFIED_DIRPATH = CLEAN_MERGE_DIRPATH.resolve("both_modified");
+    public static final Path LEFT_MODIFIED_DIRPATH = CLEAN_MERGE_DIRPATH.resolve("left_modified");
+
     public static String read(Path path) throws IOException {
         return String.join("\n", Files.readAllLines(path));
     }
