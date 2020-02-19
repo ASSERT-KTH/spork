@@ -16,7 +16,10 @@ import spoon.reflect.code.CtLiteral;
 import spoon.reflect.declaration.*;
 import spoon.reflect.path.CtRole;
 import spoon.reflect.reference.CtReference;
+import spoon.support.compiler.VirtualFile;
 
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.function.Function;
@@ -56,12 +59,23 @@ public class Spoon3dmMerge {
      */
     public static CtModule parse(Path javaFile) {
         Launcher launcher = new Launcher();
-        launcher.addInputResource(javaFile.toString());
+        // Reading from a virtual file is a workaround to a bug in Spoon
+        // Sometimes, the class comment is dropped when reading from the file system
+        launcher.addInputResource(new VirtualFile(read(javaFile)));
         launcher.buildModel();
 
         CtModel model = launcher.getModel();
 
         return model.getUnnamedModule();
+    }
+
+    public static String read(Path path) {
+        try {
+            return String.join("\n", Files.readAllLines(path));
+        } catch (IOException e) {
+            e.printStackTrace();
+            throw new RuntimeException("Error reading from " + path);
+        }
     }
 
     /**
