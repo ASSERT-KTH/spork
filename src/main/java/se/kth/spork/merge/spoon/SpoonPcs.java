@@ -1,9 +1,6 @@
 package se.kth.spork.merge.spoon;
 
-import se.kth.spork.merge.Content;
-import se.kth.spork.merge.Pcs;
-import se.kth.spork.merge.Revision;
-import se.kth.spork.merge.TdmMerge;
+import se.kth.spork.merge.*;
 import spoon.reflect.code.CtExpression;
 import spoon.reflect.declaration.CtAnnotation;
 import spoon.reflect.declaration.CtElement;
@@ -300,15 +297,52 @@ public class SpoonPcs {
         private void setContent(CtElement mergeTree, SpoonNode originalTree) {
             Set<Content<SpoonNode, RoledValue>> nodeContents = contents.get(originalTree);
 
-            if (nodeContents.size() > 1) {
-                throw new IllegalStateException("unexpected amount of content: " + nodeContents);
-            }
-
-            RoledValue roledValue = nodeContents.iterator().next().getValue();
+            RoledValue roledValue = nodeContents.size() == 1 ?
+                    nodeContents.iterator().next().getValue() : handleContentConflict(nodeContents);
             if (roledValue.getRole() != null) {
                 mergeTree.setValueByRole(roledValue.getRole(), roledValue.getValue());
             }
         }
-    }
 
+        /**
+         * Prototype handling of a content conflict. Essentially, it just resolves the left and right values,
+         * and concatenates them with conflict delimiters. Very crude, but seems to work.
+         *
+         * TODO This is a severely limited approach as adjacent conflicts cannot be joined together, find a better way!
+         *
+         * One solution would be to do text-processing afterwards and just find adjacent conflicts, they will be
+         * very easy to find due to a ">>>>>>> RIGHT" line immediately preceeding a "<<<<<<< LEFT" line (possibly
+         * with a blank line in between).
+         *
+         * @param nodeContents A set of contents for the node, containing at least left and right revisions.
+         * @return A "conflict" value for the node.
+         */
+        private RoledValue handleContentConflict(Set<Content<SpoonNode, RoledValue>> nodeContents) {
+            String leftContent = null;
+            String rightContent = null;
+            CtRole role = null;
+
+            for (Content<SpoonNode, RoledValue> content : nodeContents) {
+                if (role == null)
+                    role = content.getValue().getRole();
+
+                switch (content.getContext().getRevision()) {
+                    case LEFT:
+                        leftContent = content.getValue().getValue().toString();
+                        break;
+                    case RIGHT:
+                        rightContent = content.getValue().getValue().toString();
+                        break;
+                    default:
+                        // skip base revision for now
+                }
+            }
+            assert leftContent != null;
+            assert rightContent != null;
+            assert role != null;
+
+            String conflict = "\n<<<<<<< LEFT\n" + leftContent + "\n=======\n" + rightContent + "\n>>>>>>> RIGHT\n";
+            return new RoledValue(conflict, role);
+        }
+    }
 }
