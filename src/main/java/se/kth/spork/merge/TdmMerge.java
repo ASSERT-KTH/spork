@@ -1,5 +1,8 @@
 package se.kth.spork.merge;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.*;
 
 /**
@@ -10,6 +13,8 @@ import java.util.*;
  */
 public class TdmMerge {
     public static final String REV = "rev";
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(TdmMerge.class);
 
     /**
      * Attempt to resolve a raw merge by incrementally removing inconsistencies. The input delta is the raw merge, which
@@ -57,7 +62,7 @@ public class TdmMerge {
 
 
         if (!contentConflicts.isEmpty()) {
-            throw new IllegalStateException("CONTENT CONFLICTS DETECTED: " + contentConflicts);
+            LOGGER.warn("CONTENT CONFLICTS DETECTED: " + contentConflicts);
         }
         if (!structuralConflicts.isEmpty()) {
             throw new IllegalStateException("STRUCTURAL CONFLICTS DETECTED: " + structuralConflicts);
