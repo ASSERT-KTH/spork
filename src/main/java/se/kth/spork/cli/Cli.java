@@ -1,22 +1,13 @@
 package se.kth.spork.cli;
 
-import com.github.gumtreediff.matchers.Matcher;
-import com.github.gumtreediff.matchers.Matchers;
-import com.github.gumtreediff.tree.ITree;
-import gumtree.spoon.builder.SpoonGumTreeBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import se.kth.spork.merge.spoon.Parser;
 import se.kth.spork.merge.spoon.Spoon3dmMerge;
-import spoon.Launcher;
 import spoon.reflect.declaration.*;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Collection;
-import java.util.stream.Collectors;
 
 /**
  * Command line interface for Spork.
@@ -88,25 +79,6 @@ public class Cli {
         }
 
         return sb.toString();
-    }
-
-    private static String readFile(String s) throws IOException {
-        Path path = Paths.get(s);
-        if (!path.toFile().isFile())
-            throw new IllegalArgumentException("no such file: " + path);
-        return Files.lines(path).collect(Collectors.joining("\n"));
-    }
-
-    private static ITree toGumTree(String clazz) {
-        CtClass<?> spoonTree = Launcher.parseClass(clazz);
-        SpoonGumTreeBuilder builder = new SpoonGumTreeBuilder();
-        return builder.getTree(spoonTree);
-    }
-
-    private static Matcher matchTrees(ITree src, ITree dst) {
-        Matcher matcher = Matchers.getInstance().getMatcher(src, dst);
-        matcher.match();
-        return matcher;
     }
 
     private static void usage() {
