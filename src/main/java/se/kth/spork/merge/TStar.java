@@ -78,7 +78,7 @@ public class TStar<T,V> {
      */
     public Optional<Pcs<T>> getOtherPredecessor(Pcs<T> pcs) {
         return successors.getOrDefault(pcs.getSuccessor(), EMPTY_PCS_SET).stream()
-                .filter(p -> !Objects.equals(p.getPredecessor(), p.getPredecessor()) && Objects.equals(p.getRoot(), pcs.getRoot()))
+                .filter(p -> !Objects.equals(p.getPredecessor(), pcs.getPredecessor()) && Objects.equals(p.getRoot(), pcs.getRoot()))
                 .findFirst();
     }
 
