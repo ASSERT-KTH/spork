@@ -55,7 +55,7 @@ public class SpoonPcs {
      * @param pcses A well-formed PCS structure.
      * @param visit A function to apply to the nodes in the PCS structure.
      */
-    private static <V> void traversePcs(Set<Pcs<V>> pcses, BiConsumer<V, V> visit) {
+    private static <V> void traversePcs(Set<Pcs<V>> pcses, PcsVisitor<V> visit) {
         Map<V, Map<V, Pcs<V>>> rootToChildren = new HashMap<>();
         for (Pcs<V> pcs : pcses) {
             Map<V, Pcs<V>> children = rootToChildren.getOrDefault(pcs.getRoot(), new HashMap<>());
@@ -67,7 +67,7 @@ public class SpoonPcs {
         traversePcs(rootToChildren, null, visit);
     }
 
-    private static <V> void traversePcs(Map<V, Map<V, Pcs<V>>> rootToChildren, V currentRoot, BiConsumer<V, V> visit) {
+    private static <V> void traversePcs(Map<V, Map<V, Pcs<V>>> rootToChildren, V currentRoot, PcsVisitor<V> visit) {
         Map<V, Pcs<V>> children = rootToChildren.get(currentRoot);
         if (children == null) // leaf node
             return;
@@ -81,13 +81,13 @@ public class SpoonPcs {
                 break;
             }
             sortedChildren.add(pred);
-            visit.accept(currentRoot, pred);
+            visit.visit(currentRoot, pred);
         }
-        ;
+
         sortedChildren.forEach(child -> traversePcs(rootToChildren, child, visit));
     }
 
-    private static class Builder implements BiConsumer<SpoonNode, SpoonNode> {
+    private static class Builder implements PcsVisitor<SpoonNode> {
         private CtElement actualRoot;
         private Map<SpoonNode, Set<Content<SpoonNode, RoledValue>>> contents;
         private SpoonMapping baseLeft;
@@ -112,7 +112,7 @@ public class SpoonPcs {
          * @param origRootWrapper A wrapper around the current node's parent.
          */
         @Override
-        public void accept(SpoonNode origRootWrapper, SpoonNode origTreeWrapper) {
+        public void visit(SpoonNode origRootWrapper, SpoonNode origTreeWrapper) {
             CtElement mergeParent = origRootWrapper == null ? null : nodes.get(origRootWrapper).getElement();
 
             CtElement originalTree = origTreeWrapper.getElement();
@@ -155,6 +155,16 @@ public class SpoonPcs {
 
             if (actualRoot == null)
                 actualRoot = mergeParent;
+        }
+
+        @Override
+        public void visitConflicting(SpoonNode parent, List<SpoonNode> left, List<SpoonNode> right) {
+            throw new UnsupportedOperationException("Not implemented");
+        }
+
+        @Override
+        public void endConflict() {
+            throw new UnsupportedOperationException("Not implemented");
         }
 
         /**
