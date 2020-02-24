@@ -32,6 +32,8 @@ public class TdmMerge {
         for (Pcs<T> pcs : delta.getStar()) {
             if (!delta.contains(pcs)) // was removed as otherPcs
                 continue;
+            if (delta.inStructuralConflict(pcs)) // was registered in conflict as otherPcs
+                continue;
 
             if (pcs.getPredecessor() != null) {
                 Set<Content<T,V>> contents = delta.getContent(pcs);
