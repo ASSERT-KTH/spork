@@ -9,9 +9,10 @@ import java.util.Map;
 
 /**
  * A scanner that conservatively expands the class representatives mapping with matches from a left-to-right
- * tree matching. If a node in the left tree is not mapped to base (i.e. mapped to itself in the class
+ * tree matching. If a node in the left tree is not mapped to base (i.e. self-mapped in the class
  * representatives map), but it is matched with some node in right, then the node in right is mapped
- * to the node in left iff their parents are already mapped.
+ * to the node in left iff their parents are already mapped, and the node in right is also self-mapped.
+ * The node in left remains self-mapped.
  *
  * This must be done by traversing the left tree top-down to allow augmenting mappings to propagate. For
  * example, if both the left and the right revision have added identical methods, then their declarations
@@ -53,17 +54,17 @@ public class ClassRepresentativeAugmenter extends CtScanner {
 
         assert element.getMetadata(TdmMerge.REV) == Revision.LEFT;
 
-        SpoonNode wrapped = NodeFactory.wrap(element);
-        if (classRepMap.get(wrapped) == wrapped) { // has no mapping in right
-            SpoonNode right = leftRightMatch.getDst(wrapped);
+        SpoonNode left = NodeFactory.wrap(element);
+        if (classRepMap.get(left) == left) {
+            SpoonNode right = leftRightMatch.getDst(left);
 
-            if (right != null && classRepMap.get(right) == right) { // right is self-mapped
+            if (right != null && classRepMap.get(right) == right) {
                 SpoonNode rightParentClassRep = classRepMap.get(right.getParent());
-                SpoonNode leftParentClassRep = classRepMap.get(wrapped.getParent());
+                SpoonNode leftParentClassRep = classRepMap.get(left.getParent());
 
                 if (leftParentClassRep == rightParentClassRep) {
                     // map right to left
-                    classRepMap.put(right, wrapped);
+                    classRepMap.put(right, left);
                 }
             }
         }
