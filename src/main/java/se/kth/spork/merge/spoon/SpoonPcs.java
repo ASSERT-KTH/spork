@@ -7,7 +7,6 @@ import spoon.reflect.declaration.CtElement;
 import spoon.reflect.path.CtRole;
 
 import java.util.*;
-import java.util.function.BiConsumer;
 
 /**
  * Class for converting between a Spoon tree and a PCS structure.
@@ -15,6 +14,9 @@ import java.util.function.BiConsumer;
  * @author Simon Larsén
  */
 public class SpoonPcs {
+    private final Map<SpoonNode, Map<SpoonNode, Pcs<SpoonNode>>> rootToChildren;
+    private final Map<Pcs<SpoonNode>, Set<Pcs<SpoonNode>>> structuralConflicts;
+    private final Builder visitor;
 
     /**
      * Convert a Spoon tree into a PCS structure.
@@ -32,62 +34,58 @@ public class SpoonPcs {
     /**
      * Convert a merged PCS structure into a Spoon tree.
      *
-     * @param pcses     A set of PCS triples.
-     * @param contents  A mapping from SpoonNode objects to their respective contents.
-     * @param baseLeft  A tree matching between the base revision and the left revision.
-     * @param baseRight A tree matching between the base revision and the right revision.
+     * @param baseLeft            A tree matching between the base revision and the left revision.
+     * @param baseRight           A tree matching between the base revision and the right revision.
      * @return A Spoon tree representing the merged PCS structure.
      */
     public static CtElement fromMergedPcs(
-            Set<Pcs<SpoonNode>> pcses,
-            Map<SpoonNode, Set<Content<SpoonNode, RoledValue>>> contents,
+            TStar<SpoonNode, RoledValue> delta,
             SpoonMapping baseLeft,
             SpoonMapping baseRight) {
-        Builder builder = new Builder(contents, baseLeft, baseRight);
-        traversePcs(pcses, builder);
-        return builder.actualRoot;
+        SpoonPcs spoonPcs = new SpoonPcs(delta, baseLeft, baseRight);
+        spoonPcs.traversePcs(null);
+        return spoonPcs.visitor.actualRoot;
     }
 
-    /**
-     * Traverses the PCS structure and visits each (parent, node) pair. That is to say, when a node is visited, its
-     * parent is also made available. This is necessary to be able to rebuild a tree.
-     *
-     * @param pcses A well-formed PCS structure.
-     * @param visit A function to apply to the nodes in the PCS structure.
-     */
-    private static <V> void traversePcs(Set<Pcs<V>> pcses, PcsVisitor<V> visit) {
-        Map<V, Map<V, Pcs<V>>> rootToChildren = new HashMap<>();
-        for (Pcs<V> pcs : pcses) {
-            Map<V, Pcs<V>> children = rootToChildren.getOrDefault(pcs.getRoot(), new HashMap<>());
+    private SpoonPcs(TStar<SpoonNode, RoledValue> delta, SpoonMapping baseLeft, SpoonMapping baseRight) {
+        rootToChildren = buildRootToChildren(delta.getStar());
+        visitor = new Builder(delta.getContents(), baseLeft, baseRight);
+        this.structuralConflicts = delta.getStructuralConflicts();
+    }
+
+    private static <T> Map<T, Map<T, Pcs<T>>> buildRootToChildren(Set<Pcs<T>> pcses) {
+        Map<T, Map<T, Pcs<T>>> rootToChildren = new HashMap<>();
+        for (Pcs<T> pcs : pcses) {
+            Map<T, Pcs<T>> children = rootToChildren.getOrDefault(pcs.getRoot(), new HashMap<>());
             if (children.isEmpty()) rootToChildren.put(pcs.getRoot(), children);
 
             children.put(pcs.getPredecessor(), pcs);
         }
 
-        traversePcs(rootToChildren, null, visit);
+        return rootToChildren;
     }
 
-    private static <V> void traversePcs(Map<V, Map<V, Pcs<V>>> rootToChildren, V currentRoot, PcsVisitor<V> visit) {
-        Map<V, Pcs<V>> children = rootToChildren.get(currentRoot);
+    private void traversePcs(SpoonNode currentRoot) {
+        Map<SpoonNode, Pcs<SpoonNode>> children = rootToChildren.get(currentRoot);
         if (children == null) // leaf node
             return;
 
-        V pred = null;
-        List<V> sortedChildren = new ArrayList<>();
+        SpoonNode pred = null;
+        List<SpoonNode> sortedChildren = new ArrayList<>();
         while (true) {
-            Pcs<V> nextPcs = children.get(pred);
+            Pcs<SpoonNode> nextPcs = children.get(pred);
             pred = nextPcs.getSuccessor();
             if (pred == null) {
                 break;
             }
             sortedChildren.add(pred);
-            visit.visit(currentRoot, pred);
+            visitor.visit(currentRoot, pred);
         }
 
-        sortedChildren.forEach(child -> traversePcs(rootToChildren, child, visit));
+        sortedChildren.forEach(this::traversePcs);
     }
 
-    private static class Builder implements PcsVisitor<SpoonNode> {
+    private static class Builder {
         private CtElement actualRoot;
         private Map<SpoonNode, Set<Content<SpoonNode, RoledValue>>> contents;
         private SpoonMapping baseLeft;
@@ -111,7 +109,6 @@ public class SpoonPcs {
          * @param origTreeWrapper A wrapper around the current node being visited.
          * @param origRootWrapper A wrapper around the current node's parent.
          */
-        @Override
         public void visit(SpoonNode origRootWrapper, SpoonNode origTreeWrapper) {
             CtElement mergeParent = origRootWrapper == null ? null : nodes.get(origRootWrapper).getElement();
 
@@ -157,13 +154,7 @@ public class SpoonPcs {
                 actualRoot = mergeParent;
         }
 
-        @Override
         public void visitConflicting(SpoonNode parent, List<SpoonNode> left, List<SpoonNode> right) {
-            throw new UnsupportedOperationException("Not implemented");
-        }
-
-        @Override
-        public void endConflict() {
             throw new UnsupportedOperationException("Not implemented");
         }
 
@@ -317,9 +308,9 @@ public class SpoonPcs {
         /**
          * Prototype handling of a content conflict. Essentially, it just resolves the left and right values,
          * and concatenates them with conflict delimiters. Very crude, but seems to work.
-         *
+         * <p>
          * TODO This is a severely limited approach as adjacent conflicts cannot be joined together, find a better way!
-         *
+         * <p>
          * One solution would be to do text-processing afterwards and just find adjacent conflicts, they will be
          * very easy to find due to a ">>>>>>> RIGHT" line immediately preceeding a "<<<<<<< LEFT" line (possibly
          * with a blank line in between).
