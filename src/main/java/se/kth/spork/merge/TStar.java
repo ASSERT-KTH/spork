@@ -14,6 +14,7 @@ public class TStar<T,V> {
     private Map<T, Set<Content<T,V>>> content;
     private Map<T, T> classRepMap;
     private Set<Pcs<T>> star;
+    private Map<Pcs<T>, Set<Pcs<T>>> structuralConflicts;
 
     // never add anything to this set!
     private final Set<Pcs<T>> EMPTY_PCS_SET = new HashSet<>();
@@ -33,6 +34,7 @@ public class TStar<T,V> {
         content = new HashMap<>();
         star = new HashSet<>();
         Arrays.stream(trees).forEach(t -> add(t, getContent));
+        structuralConflicts = new HashMap<>();
     }
 
     /**
@@ -107,7 +109,6 @@ public class TStar<T,V> {
         return content.getOrDefault(cont.getContext().getPredecessor(), new HashSet<>()).contains(cont);
     }
 
-
     /**
      * Remove the PCS from all lookup tables, except for the contents table. Also remove it from the *-set.
      *
@@ -128,6 +129,34 @@ public class TStar<T,V> {
      */
     public void remove(Content<T,V> cont) {
         content.get(cont.getContext().getPredecessor()).remove(cont);
+    }
+
+    /**
+     * Register a conflict in a bi-directional lookup table.
+     *
+     * @param first A PCS triple that conflicts with second.
+     * @param second A PCS triple that conflicts with first.
+     */
+    public void registerStructuralConflict(Pcs<T> first, Pcs<T> second) {
+        addToLookupTable(first, second, structuralConflicts);
+        addToLookupTable(second, first, structuralConflicts);
+    }
+
+    /**
+     * @return A copy of the internal structural conflicts lookup table.
+     */
+    public Map<Pcs<T>, Set<Pcs<T>>> getStructuralConflicts() {
+        return new HashMap<>(structuralConflicts);
+    }
+
+    /**
+     * Check if a PCS is involved in a structural conflict.
+     *
+     * @param pcs A PCS triple.
+     * @return true iff the argument is involved in a structural conflict.
+     */
+    public boolean inStructuralConflict(Pcs<T> pcs) {
+        return structuralConflicts.containsKey(pcs);
     }
 
     /**

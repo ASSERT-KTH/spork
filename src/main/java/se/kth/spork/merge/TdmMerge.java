@@ -28,7 +28,6 @@ public class TdmMerge {
      */
     public static <T,V> void resolveRawMerge(TStar<T,V> base, TStar<T,V> delta) {
         List<Conflict<Content<T,V>>> contentConflicts = new ArrayList<>();
-        List<Conflict<Pcs<T>>> structuralConflicts = new ArrayList<>();
 
         for (Pcs<T> pcs : delta.getStar()) {
             if (!delta.contains(pcs)) // was removed as otherPcs
@@ -55,12 +54,13 @@ public class TdmMerge {
                 } else if (base.contains(pcs)) {
                     delta.remove(pcs);
                 } else {
-                    structuralConflicts.add(new Conflict<>(pcs, otherPcs));
+                    delta.registerStructuralConflict(pcs, otherPcs);
                 }
             }
         }
 
 
+        Map<Pcs<T>, Set<Pcs<T>>> structuralConflicts = delta.getStructuralConflicts();
         if (!contentConflicts.isEmpty()) {
             LOGGER.warn("CONTENT CONFLICTS DETECTED: " + contentConflicts);
         }
