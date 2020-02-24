@@ -57,7 +57,7 @@ public class ClassRepresentativeAugmenter extends CtScanner {
         if (classRepMap.get(wrapped) == wrapped) { // has no mapping in right
             SpoonNode right = leftRightMatch.getDst(wrapped);
 
-            if (right != null) {
+            if (right != null && classRepMap.get(right) == right) { // right is self-mapped
                 SpoonNode rightParentClassRep = classRepMap.get(right.getParent());
                 SpoonNode leftParentClassRep = classRepMap.get(wrapped.getParent());
 
