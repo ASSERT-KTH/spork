@@ -174,8 +174,9 @@ public class Spoon3dmMerge {
      * 2. The class representative of a node NL in left is NB if there exists a tree matching NL -> NB in the baseLeft
      *    matching. Otherwise it is NL.
      * 3. The class representative of a node NR in right is NB if there exists a tree matching NR -> NB in the baseRight
-     *    matching. If that is not the case, the class representative es NL if there exists a matching NL -> NR in
-     *    leftRight. Otherwise it is NR.
+     *    matching. If that is not the case, the class representative may be NL if there exists a tree matching
+     *    NL -> NR. The latter is referred to as an augmentation, and is done conservatively to avoid spurious
+     *    mappings between left and right revisions. See {@link ClassRepresentativeAugmenter} for more info.
      *
      * Put briefly, base nodes are always mapped to themselves, nodes in left are mapped to base nodes if they are
      * matched, and nodes in right are mapped to base nodes or left nodes if they are matched, with base matchings
@@ -199,7 +200,7 @@ public class Spoon3dmMerge {
         Map<SpoonNode, SpoonNode> classRepMap = initializeClassRepresentatives(base);
         mapToClassRepresentatives(left, baseLeft, classRepMap, Revision.LEFT);
         mapToClassRepresentatives(right, baseRight, classRepMap, Revision.RIGHT);
-        augmentClassRepresentatives(leftRight, classRepMap);
+        new ClassRepresentativeAugmenter(classRepMap, leftRight).scan(left);
         return classRepMap;
     }
 
@@ -246,29 +247,6 @@ public class Spoon3dmMerge {
                 classRepMap.put(wrapped, mappings.getSrc(wrapped));
             } else {
                 classRepMap.put(wrapped, wrapped);
-            }
-        }
-    }
-
-    /**
-     * Augment the class representatives map with mappings between the non-base revisions. This helps alleviate
-     * problems that occur when code chunks have been copy-pasted between different revisions. For example, if
-     * both left and right have added the exact same method that does not exist in base, this step will help resolving
-     * that inconsistency.
-     *
-     * @param leftRight   A tree matching from the left revision to the right revision.
-     * @param classRepMap The class representatives map.
-     */
-    private static void augmentClassRepresentatives(SpoonMapping leftRight, Map<SpoonNode, SpoonNode> classRepMap) {
-        for (Map.Entry<SpoonNode, SpoonNode> entry : classRepMap.entrySet()) {
-            SpoonNode node = entry.getKey();
-            Revision rev = (Revision) node.getElement().getMetadata(TdmMerge.REV);
-            SpoonNode classRep = entry.getValue();
-
-            if (node == classRep && rev == Revision.RIGHT) {
-                SpoonNode leftClassRep = leftRight.getSrc(node);
-                if (leftClassRep != null)
-                    classRepMap.put(node, leftClassRep);
             }
         }
     }
