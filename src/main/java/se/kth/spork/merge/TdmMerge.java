@@ -7,7 +7,7 @@ import java.util.*;
 
 /**
  * An implementation of the 3DM merge algorithm by Tancred Lindholm. For details on 3DM merge, see the paper
- * <a href="https://doi.org/10.1145/1030397.1030399>A three-way merge for XML documents</a>.
+ * <a href="https://doi.org/10.1145/1030397.1030399">A three-way merge for XML documents</a>.
  *
  * @author Simon Larsén
  */
