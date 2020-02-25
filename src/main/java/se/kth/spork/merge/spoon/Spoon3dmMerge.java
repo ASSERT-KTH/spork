@@ -10,7 +10,6 @@ import se.kth.spork.merge.Pcs;
 import se.kth.spork.merge.Revision;
 import se.kth.spork.merge.TStar;
 import se.kth.spork.merge.TdmMerge;
-import spoon.Launcher;
 import spoon.reflect.code.CtLiteral;
 import spoon.reflect.declaration.CtElement;
 import spoon.reflect.declaration.CtImport;
@@ -39,9 +38,6 @@ public class Spoon3dmMerge {
      * @return A merged Spoon tree.
      */
     public static CtElement merge(Path base, Path left, Path right) {
-        Launcher launcher = new Launcher();
-        launcher.addInputResource(base.toString());
-
         CtElement baseTree = Parser.parse(base);
         CtElement leftTree = Parser.parse(left);
         CtElement rightTree = Parser.parse(right);
@@ -67,7 +63,7 @@ public class Spoon3dmMerge {
         LOGGER.info("Matching trees with GumTree");
         Matcher baseLeftGumtreeMatch = matchTrees(baseGumtree, leftGumtree);
         Matcher baseRightGumtreeMatch = matchTrees(baseGumtree, rightGumtree);
-        Matcher leftRightGumtreeMatch = matchTrees(leftGumtree, rightGumtree);
+        Matcher leftRightGumtreeMatch = matchTreesTopDown(leftGumtree, rightGumtree);
 
         LOGGER.info("Converting GumTree matches to Spoon matches");
         SpoonMapping baseLeft = SpoonMapping.fromGumTreeMapping(baseLeftGumtreeMatch.getMappings());
@@ -255,6 +251,12 @@ public class Spoon3dmMerge {
 
     private static Matcher matchTrees(ITree src, ITree dst) {
         Matcher matcher = Matchers.getInstance().getMatcher(src, dst);
+        matcher.match();
+        return matcher;
+    }
+
+    private static Matcher matchTreesTopDown(ITree src, ITree dst) {
+        Matcher matcher = Matchers.getInstance().getMatcher("gumtree-topdown", src, dst);
         matcher.match();
         return matcher;
     }
