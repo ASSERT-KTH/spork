@@ -6,7 +6,6 @@ import org.junit.jupiter.params.provider.ValueSource;
 import se.kth.spork.Util;
 import se.kth.spork.merge.spoon.Parser;
 import se.kth.spork.merge.spoon.Spoon3dmMerge;
-import spoon.reflect.declaration.CtImport;
 import spoon.reflect.declaration.CtModule;
 
 import java.io.File;
@@ -14,8 +13,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
-import java.util.HashSet;
-import java.util.Set;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static se.kth.spork.Util.TestSources.fromTestDirectory;
@@ -90,12 +88,53 @@ class CliTest {
         runTestMerge(sources, tempDir);
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "single_conflicting_statement",
+            "multiple_conflicting_statements",
+            "multiple_simple_conflicts",
+            "conflicting_variable_rename",
+            "conflicting_type_change",
+    })
+    void prettyPrint_shouldContainConflict(String testName, @TempDir Path tempDir) throws IOException {
+        File testDir = Util.CONFLICT_DIRPATH.resolve(testName).toFile();
+        Util.TestSources sources = fromTestDirectory(testDir);
+        List<Util.Conflict> expectedConflicts = Util.parseConflicts(sources.expected);
+
+        CtModule merged = (CtModule) Spoon3dmMerge.merge(sources.base, sources.left, sources.right);
+
+        String prettyPrint = Cli.prettyPrint(merged);
+
+        List<Util.Conflict> actualConflicts = Util.parseConflicts(prettyPrint);
+
+        assertEquals(expectedConflicts, actualConflicts);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "single_conflicting_statement",
+            "multiple_conflicting_statements",
+            "multiple_simple_conflicts",
+            "conflicting_variable_rename",
+            "conflicting_type_change",
+    })
+    void prettyPrint_shouldParseToExpectedTree_whenConflictHasBeenStrippedOut(String testName, @TempDir Path tempDir) throws IOException {
+        File testDir = Util.CONFLICT_DIRPATH.resolve(testName).toFile();
+        Util.TestSources sources = fromTestDirectory(testDir);
+        CtModule expected = Parser.parse(Util.keepLeftConflict(sources.expected));
+
+        CtModule merged = (CtModule) Spoon3dmMerge.merge(sources.base, sources.left, sources.right);
+
+        String prettyPrint = Cli.prettyPrint(merged);
+        CtModule actual = Parser.parse(Util.keepLeftConflict(prettyPrint));
+
+        assertEquals(expected, actual);
+    }
+
     /**
      * Test the CLI by running merging the sources to a merge AST A, pretty printing A to a file and
      * parsing that file into a control tree B. If A and B are equal, no information has been lost in
      * the pretty print as far as Spoon knows (apart from import statements).
-     *
-     * TODO also check for import statements
      *
      * @param sources
      */

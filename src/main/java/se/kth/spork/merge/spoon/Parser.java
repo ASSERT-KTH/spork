@@ -1,5 +1,6 @@
 package se.kth.spork.merge.spoon;
 
+import se.kth.spork.cli.SporkPrettyPrinter;
 import spoon.Launcher;
 import spoon.reflect.CtModel;
 import spoon.reflect.declaration.*;
@@ -9,6 +10,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.function.Consumer;
 
 /**
  * A class for dealing with parsing.
@@ -23,28 +25,42 @@ public class Parser {
      * metadata with the {@link Parser#IMPORT_STATEMENTS} key. The imports are sorted in ascending lexicographical
      * order.
      *
-     * TODO preserve order of import statements
-     *
      * @param javaFile Path to a Java file.
      * @return The root module of the Spoon tree.
      */
     public static CtModule parse(Path javaFile) {
-        Launcher launcher = new Launcher();
         // Reading from a virtual file is a workaround to a bug in Spoon
         // Sometimes, the class comment is dropped when reading from the file system
-        launcher.addInputResource(new VirtualFile(read(javaFile)));
+        return parse(launcher -> launcher.addInputResource(new VirtualFile(read(javaFile))));
+    }
+
+    /**
+     * Parse the contents of a single Java file.
+     *
+     * @param javaFileContents The contents of a single Java file.
+     * @return The root module of the Spoon tree.
+     */
+    public static CtModule parse(String javaFileContents) {
+        return parse(launcher -> launcher.addInputResource(new VirtualFile(javaFileContents)));
+    }
+
+    private static CtModule parse(Consumer<Launcher> addResource) {
+        Launcher launcher = new Launcher();
+        launcher.getEnvironment().setPrettyPrinterCreator(
+                () -> new SporkPrettyPrinter(launcher.getEnvironment()));
+        addResource.accept(launcher);
         launcher.buildModel();
 
         CtModel model = launcher.getModel();
         CtModule module = model.getUnnamedModule();
 
+        // TODO preserve order of import statements
         List<CtImport> imports = new ArrayList<>(parseImportStatements(model));
         imports.sort(Comparator.comparing(CtElement::prettyprint));
         module.putMetadata(IMPORT_STATEMENTS, imports);
 
         return module;
     }
-
 
     /**
      * Parse unique import statements from all types of the given model.

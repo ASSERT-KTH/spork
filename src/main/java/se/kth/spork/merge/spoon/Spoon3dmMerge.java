@@ -10,9 +10,10 @@ import se.kth.spork.merge.Pcs;
 import se.kth.spork.merge.Revision;
 import se.kth.spork.merge.TStar;
 import se.kth.spork.merge.TdmMerge;
-import spoon.Launcher;
 import spoon.reflect.code.CtLiteral;
-import spoon.reflect.declaration.*;
+import spoon.reflect.declaration.CtElement;
+import spoon.reflect.declaration.CtImport;
+import spoon.reflect.declaration.CtNamedElement;
 import spoon.reflect.path.CtRole;
 import spoon.reflect.reference.CtReference;
 
@@ -31,15 +32,12 @@ public class Spoon3dmMerge {
     /**
      * Merge the left and right revisions with an AST-based merge.
      *
-     * @param base The base revision.
-     * @param left The left revision.
+     * @param base  The base revision.
+     * @param left  The left revision.
      * @param right The right revision.
      * @return A merged Spoon tree.
      */
     public static CtElement merge(Path base, Path left, Path right) {
-        Launcher launcher = new Launcher();
-        launcher.addInputResource(base.toString());
-
         CtElement baseTree = Parser.parse(base);
         CtElement leftTree = Parser.parse(left);
         CtElement rightTree = Parser.parse(right);
@@ -51,8 +49,8 @@ public class Spoon3dmMerge {
      * Merge the left and right revisions. The base revision is used for computing edits, and should be the best common
      * ancestor of left and right.
      *
-     * @param base The base revision.
-     * @param left The left revision.
+     * @param base  The base revision.
+     * @param left  The left revision.
      * @param right The right revision.
      * @return The merge of left and right.
      */
@@ -65,7 +63,7 @@ public class Spoon3dmMerge {
         LOGGER.info("Matching trees with GumTree");
         Matcher baseLeftGumtreeMatch = matchTrees(baseGumtree, leftGumtree);
         Matcher baseRightGumtreeMatch = matchTrees(baseGumtree, rightGumtree);
-        Matcher leftRightGumtreeMatch = matchTrees(leftGumtree, rightGumtree);
+        Matcher leftRightGumtreeMatch = matchTreesTopDown(leftGumtree, rightGumtree);
 
         LOGGER.info("Converting GumTree matches to Spoon matches");
         SpoonMapping baseLeft = SpoonMapping.fromGumTreeMapping(baseLeftGumtreeMatch.getMappings());
@@ -89,7 +87,7 @@ public class Spoon3dmMerge {
         TdmMerge.resolveRawMerge(t0Star, delta);
 
         LOGGER.info("Interpreting resolved PCS merge");
-        CtElement merge = SpoonPcs.fromMergedPcs(delta.getStar(), delta.getContents(), baseLeft, baseRight);
+        CtElement merge = SpoonPcs.fromMergedPcs(delta, baseLeft, baseRight);
 
         LOGGER.info("Merging import statements");
         List<CtImport> mergedImports = mergeImportStatements(base, left, right);
@@ -101,11 +99,11 @@ public class Spoon3dmMerge {
     /**
      * Merge import statements from base, left and right. Import statements are expected to be attached
      * to each tree's root node metadata with the {@link Parser#IMPORT_STATEMENTS} key.
-     *
+     * <p>
      * This method naively merges import statements by respecting additions and deletions from both revisions.
      *
-     * @param base The base revision.
-     * @param left The left revision.
+     * @param base  The base revision.
+     * @param left  The left revision.
      * @param right The right revision.
      * @return A merged import list, sorted in lexicographical order.
      */
@@ -169,23 +167,23 @@ public class Spoon3dmMerge {
 
     /**
      * Create the class representatives mapping. The class representatives for the different revisions are defined as:
-     *
+     * <p>
      * 1. A node NB in base is its own class representative.
      * 2. The class representative of a node NL in left is NB if there exists a tree matching NL -> NB in the baseLeft
-     *    matching. Otherwise it is NL.
+     * matching. Otherwise it is NL.
      * 3. The class representative of a node NR in right is NB if there exists a tree matching NR -> NB in the baseRight
-     *    matching. If that is not the case, the class representative may be NL if there exists a tree matching
-     *    NL -> NR. The latter is referred to as an augmentation, and is done conservatively to avoid spurious
-     *    mappings between left and right revisions. See {@link ClassRepresentativeAugmenter} for more info.
-     *
+     * matching. If that is not the case, the class representative may be NL if there exists a tree matching
+     * NL -> NR. The latter is referred to as an augmentation, and is done conservatively to avoid spurious
+     * mappings between left and right revisions. See {@link ClassRepresentativeAugmenter} for more info.
+     * <p>
      * Put briefly, base nodes are always mapped to themselves, nodes in left are mapped to base nodes if they are
      * matched, and nodes in right are mapped to base nodes or left nodes if they are matched, with base matchings
      * having priority.
      *
-     * @param base The base revision.
-     * @param left The left revision.
-     * @param right The right revision.
-     * @param baseLeft A matching from base to left.
+     * @param base      The base revision.
+     * @param left      The left revision.
+     * @param right     The right revision.
+     * @param baseLeft  A matching from base to left.
      * @param baseRight A matching from base to right.
      * @param leftRight A matching from left to right.
      * @return The class representatives map.
@@ -253,6 +251,12 @@ public class Spoon3dmMerge {
 
     private static Matcher matchTrees(ITree src, ITree dst) {
         Matcher matcher = Matchers.getInstance().getMatcher(src, dst);
+        matcher.match();
+        return matcher;
+    }
+
+    private static Matcher matchTreesTopDown(ITree src, ITree dst) {
+        Matcher matcher = Matchers.getInstance().getMatcher("gumtree-topdown", src, dst);
         matcher.match();
         return matcher;
     }

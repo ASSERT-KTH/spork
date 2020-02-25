@@ -7,7 +7,7 @@ import java.util.*;
 
 /**
  * An implementation of the 3DM merge algorithm by Tancred Lindholm. For details on 3DM merge, see the paper
- * <a href="https://doi.org/10.1145/1030397.1030399>A three-way merge for XML documents</a>.
+ * <a href="https://doi.org/10.1145/1030397.1030399">A three-way merge for XML documents</a>.
  *
  * @author Simon Larsén
  */
@@ -28,10 +28,11 @@ public class TdmMerge {
      */
     public static <T,V> void resolveRawMerge(TStar<T,V> base, TStar<T,V> delta) {
         List<Conflict<Content<T,V>>> contentConflicts = new ArrayList<>();
-        List<Conflict<Pcs<T>>> structuralConflicts = new ArrayList<>();
 
         for (Pcs<T> pcs : delta.getStar()) {
             if (!delta.contains(pcs)) // was removed as otherPcs
+                continue;
+            if (delta.inStructuralConflict(pcs)) // was registered in conflict as otherPcs
                 continue;
 
             if (pcs.getPredecessor() != null) {
@@ -55,17 +56,18 @@ public class TdmMerge {
                 } else if (base.contains(pcs)) {
                     delta.remove(pcs);
                 } else {
-                    structuralConflicts.add(new Conflict<>(pcs, otherPcs));
+                    delta.registerStructuralConflict(pcs, otherPcs);
                 }
             }
         }
 
 
+        Map<Pcs<T>, Set<Pcs<T>>> structuralConflicts = delta.getStructuralConflicts();
         if (!contentConflicts.isEmpty()) {
             LOGGER.warn("CONTENT CONFLICTS DETECTED: " + contentConflicts);
         }
         if (!structuralConflicts.isEmpty()) {
-            throw new IllegalStateException("STRUCTURAL CONFLICTS DETECTED: " + structuralConflicts);
+            LOGGER.warn("STRUCTURAL CONFLICTS DETECTED: " + structuralConflicts);
         }
     }
 
