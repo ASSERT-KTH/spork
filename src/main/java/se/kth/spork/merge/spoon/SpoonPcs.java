@@ -1,6 +1,7 @@
 package se.kth.spork.merge.spoon;
 
 import se.kth.spork.merge.*;
+import se.kth.spork.util.Pair;
 import spoon.reflect.code.CtExpression;
 import spoon.reflect.declaration.CtAnnotation;
 import spoon.reflect.declaration.CtElement;
@@ -51,6 +52,8 @@ public class SpoonPcs {
         rootToChildren = buildRootToChildren(delta.getStar());
         visitor = new Builder(delta.getContents(), baseLeft, baseRight);
         this.structuralConflicts = delta.getStructuralConflicts();
+        // TODO what to do about root conflicts?
+        removePredecessorConflicts(structuralConflicts);
     }
 
     private static <T> Map<T, Map<T, Pcs<T>>> buildRootToChildren(Set<Pcs<T>> pcses) {
@@ -65,24 +68,132 @@ public class SpoonPcs {
         return rootToChildren;
     }
 
+    /**
+     * Remove any predecessor conflicts (i.e. conflicts on the form Pcs(a, b, c), Pcs(a, b', c)) from the
+     * structural conflicts. Predecessor conflicts mark the _end_ of conflicting segments, but we only
+     * want the starts.
+     *
+     * @param structuralConflicts A mapping of structural conflicts.
+     */
+    private static void removePredecessorConflicts(Map<Pcs<SpoonNode>, Set<Pcs<SpoonNode>>> structuralConflicts) {
+        for (Pcs<SpoonNode> pcs : new ArrayList<>(structuralConflicts.keySet())) {
+            Iterator<Pcs<SpoonNode>> it = structuralConflicts.get(pcs).iterator();
+            while (it.hasNext()) {
+                Pcs<SpoonNode> other = it.next();
+
+                if (isPredecessorConflict(pcs, other)) {
+                    it.remove();
+                    structuralConflicts.get(other).remove(pcs);
+                } else if (isRootConflict(pcs, other)) {
+                    throw new RuntimeException("Can't handle root conflict: " + pcs + ", " + other);
+                }
+            }
+        }
+    }
+
+    private static boolean isRootConflict(Pcs<?> left, Pcs<?> right) {
+        return left.getRoot() != right.getRoot();
+    }
+
+    private static boolean isPredecessorConflict(Pcs<?> left, Pcs<?> right) {
+        return left.getPredecessor() != right.getPredecessor();
+    }
+
     private void traversePcs(SpoonNode currentRoot) {
         Map<SpoonNode, Pcs<SpoonNode>> children = rootToChildren.get(currentRoot);
         if (children == null) // leaf node
             return;
 
-        SpoonNode pred = null;
+        SpoonNode next = null;
         List<SpoonNode> sortedChildren = new ArrayList<>();
         while (true) {
-            Pcs<SpoonNode> nextPcs = children.get(pred);
-            pred = nextPcs.getSuccessor();
-            if (pred == null) {
+            Pcs<SpoonNode> nextPcs = children.get(next);
+            next = nextPcs.getSuccessor();
+            if (next == null) {
                 break;
             }
-            sortedChildren.add(pred);
-            visitor.visit(currentRoot, pred);
+
+            Set<Pcs<SpoonNode>> conflicts = structuralConflicts.get(nextPcs);
+            if (conflicts != null && conflicts.size() > 0) {
+                assert conflicts.size() == 1; // this should have been seen to in pre-processing of conflicts
+                Pcs<SpoonNode> conflictingPcs = conflicts.iterator().next();
+                next = traverseConflict(nextPcs, conflictingPcs, currentRoot, children);
+            } else {
+                visitor.visit(currentRoot, next);
+                sortedChildren.add(next);
+            }
         }
 
         sortedChildren.forEach(this::traversePcs);
+    }
+
+    /**
+     * Traverse all nodes in the conflict.
+     *
+     * @param nextPcs The PCS triple currently being processed.
+     * @param conflicting A PCS triple conflicting with the one currently being processed. This is assumed
+     *                    to be a successor conflict (i.e. on the form Pcs(a, b, c), Pcs(a, b, c')).
+     * @param currentRoot The current root node.
+     * @param children The children of the current root node.
+     * @return The first node in the left tree that immediately follows the conflict. This is the
+     * next node to process.
+     */
+    private SpoonNode traverseConflict(
+            Pcs<SpoonNode> nextPcs,
+            Pcs<SpoonNode> conflicting,
+            SpoonNode currentRoot,
+            Map<SpoonNode, Pcs<SpoonNode>> children) {
+        SpoonNode next = nextPcs.getSuccessor();
+        SpoonNode conflictingNode = conflicting.getSuccessor();
+
+        SpoonNode left = conflicting.getRevision() == Revision.RIGHT ? next : conflictingNode;
+        SpoonNode right = left == next ? conflictingNode : next;
+
+        List<SpoonNode> leftNodes = extractConflictList(left, children);
+        List<SpoonNode> rightNodes = extractConflictList(right, children);
+        Pair<Integer, Integer> cutoffs = findConflictListCutoffs(leftNodes, rightNodes);
+        leftNodes = leftNodes.subList(0, cutoffs.first);
+        rightNodes = rightNodes.subList(0, cutoffs.second);
+
+        visitor.visitConflicting(currentRoot, leftNodes, rightNodes);
+        for (SpoonNode node : leftNodes) {
+            traversePcs(node);
+        }
+        for (SpoonNode node : rightNodes) {
+            traversePcs(node);
+        }
+        visitor.endConflict();
+
+        return leftNodes.isEmpty() ? next : leftNodes.get(leftNodes.size() - 1);
+    }
+
+    /**
+     * Scan ahead in the PCS structure to resolve the conflicting children. The start node is assumed to
+     * be the first conflicting node, and the end of the conflict is taken as the first node that is
+     * mapped to the base revision.
+     */
+    private static <V extends SpoonNode> List<V> extractConflictList(V start, Map<V, Pcs<V>> siblings) {
+        List<V> nodes = new ArrayList<V>();
+        V cur = start;
+        while (cur != null && cur.getElement().getMetadata(TdmMerge.REV) != Revision.BASE) {
+            nodes.add(cur);
+            cur = siblings.get(cur).getSuccessor();
+        }
+        return nodes;
+    }
+
+    /**
+     * Find the cutoff points in the left and right conflict lists, where they have elements in common.
+     */
+    private static <V extends SpoonNode> Pair<Integer, Integer> findConflictListCutoffs(List<V> left, List<V> right) {
+        // this algorithm is O(n^2), but conflict lists are typically short so it shouldn't matter in practice
+        for (int i = 0; i < left.size(); i++) {
+            for (int j = 0; j < right.size(); j++) {
+                if (left.get(i) == right.get(j))
+                    return new Pair<>(i, j);
+            }
+        }
+        return new Pair<>(left.size(), right.size());
     }
 
     private static class Builder {
@@ -90,6 +201,7 @@ public class SpoonPcs {
         private Map<SpoonNode, Set<Content<SpoonNode, RoledValue>>> contents;
         private SpoonMapping baseLeft;
         private SpoonMapping baseRight;
+        private boolean inConflict = false;
 
 
         // A mapping from a node in the input PCS structure to its copy in the merged tree
@@ -113,11 +225,11 @@ public class SpoonPcs {
             CtElement mergeParent = origRootWrapper == null ? null : nodes.get(origRootWrapper).getElement();
 
             CtElement originalTree = origTreeWrapper.getElement();
-            SpoonNode mergeTreeWrapper = nodes.get(origTreeWrapper);
-            CtElement mergeTree = mergeTreeWrapper == null ? null : mergeTreeWrapper.getElement();
 
-            if (mergeTree == null) { // first time we see this node
-                mergeTree = shallowCopyTree(originalTree);
+            CtElement mergeTree = shallowCopyTree(originalTree);
+            if (!inConflict) {
+                // content should only be merged if not in a conflict
+                // when in a conflict, the original tree's content should always be used
                 setContent(mergeTree, origTreeWrapper);
             }
 
@@ -147,15 +259,58 @@ public class SpoonPcs {
                 mergeParent.setValueByRole(childRole, toSet);
             }
 
-
+            assert !nodes.containsKey(origTreeWrapper); // if this happens, then there is a duplicate node in the tree
             nodes.put(origTreeWrapper, NodeFactory.wrap(mergeTree));
 
             if (actualRoot == null)
                 actualRoot = mergeParent;
         }
 
+        /**
+         * Visit the root nodes of a conflict. Note that the children of these nodes are not visited
+         * by this method, it is the responsibility of the caller to visit the children, and then call
+         * the {@link Builder#endConflict()} once the conflict has been concluded.
+         *
+         * @param parent The parent node of the conflict.
+         * @param left Ordered root nodes from the left part of the conflict.
+         * @param right Ordered root nodes from the right part of the conflict.
+         */
         public void visitConflicting(SpoonNode parent, List<SpoonNode> left, List<SpoonNode> right) {
-            throw new UnsupportedOperationException("Not implemented");
+            inConflict = true;
+            if (left.size() > 0) {
+                // if the left part is empty, the start marker will be missing in the conflict
+                // this is handled in the pretty printer
+                SpoonNode firstLeft = left.get(0);
+                firstLeft.getElement().putMetadata(ConflictInfo.CONFLICT_METADATA,
+                        new ConflictInfo(left.size(), right.size(), ConflictInfo.ConflictMarker.LEFT_START));
+            }
+            if (right.size() > 0) {
+                // if the right part is empty, this marker will be missing in the conflict
+                SpoonNode firstRight = right.get(0);
+                firstRight.getElement().putMetadata(ConflictInfo.CONFLICT_METADATA,
+                        new ConflictInfo(left.size(), right.size(), ConflictInfo.ConflictMarker.RIGHT_START));
+            }
+            if (right.size() > 1) {
+                SpoonNode lastRight = right.get(right.size() - 1);
+                lastRight.getElement().putMetadata(ConflictInfo.CONFLICT_METADATA,
+                        new ConflictInfo(left.size(), right.size(), ConflictInfo.ConflictMarker.RIGHT_END));
+            }
+
+            for (SpoonNode leftNode : left) {
+                visit(parent, leftNode);
+            }
+
+            for (SpoonNode rightNode : right) {
+                visit(parent, rightNode);
+            }
+        }
+
+        /**
+         * Signal the end of a structural conflict. Should be called when all children of the root conflict nodes
+         * have been visited.
+         */
+        public void endConflict() {
+            inConflict = false;
         }
 
         /**
@@ -284,7 +439,11 @@ public class SpoonPcs {
             for (CtElement child : treeCopy.getDirectChildren()) {
                 child.delete();
             }
-            treeCopy.setAllMetadata(new HashMap<>()); // empty the metadata
+
+            // remove the wrapper metadata
+            Map<String, Object> metadata = new HashMap<>(treeCopy.getAllMetadata());
+            metadata.remove(NodeFactory.WRAPPER_METADATA);
+            treeCopy.setAllMetadata(metadata);
 
             return treeCopy;
         }

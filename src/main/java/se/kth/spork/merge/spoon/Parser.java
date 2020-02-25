@@ -46,6 +46,8 @@ public class Parser {
 
     private static CtModule parse(Consumer<Launcher> addResource) {
         Launcher launcher = new Launcher();
+        launcher.getEnvironment().setPrettyPrinterCreator(
+                () -> new SporkPrettyPrinter(launcher.getEnvironment()));
         addResource.accept(launcher);
         launcher.buildModel();
 

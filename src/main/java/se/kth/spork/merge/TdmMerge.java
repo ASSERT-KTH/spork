@@ -67,7 +67,7 @@ public class TdmMerge {
             LOGGER.warn("CONTENT CONFLICTS DETECTED: " + contentConflicts);
         }
         if (!structuralConflicts.isEmpty()) {
-            throw new IllegalStateException("STRUCTURAL CONFLICTS DETECTED: " + structuralConflicts);
+            LOGGER.warn("STRUCTURAL CONFLICTS DETECTED: " + structuralConflicts);
         }
     }
 
