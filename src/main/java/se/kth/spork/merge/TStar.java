@@ -8,7 +8,7 @@ import java.util.function.Function;
  *
  * @author Simon Larsén
  */
-public class TStar<T,V> {
+public class TStar<T extends ListNode,V> {
     private Map<T, Set<Pcs<T>>> successors;
     private Map<T, Set<Pcs<T>>> predecessors;
     private Map<T, Set<Content<T,V>>> content;
@@ -116,7 +116,7 @@ public class TStar<T,V> {
      */
     public void remove(Pcs<T> pcs) {
         T pred = pcs.getPredecessor();
-        T succ = pcs.getPredecessor();
+        T succ = pcs.getSuccessor();
 
         predecessors.get(pred).remove(pcs);
         successors.get(succ).remove(pcs);

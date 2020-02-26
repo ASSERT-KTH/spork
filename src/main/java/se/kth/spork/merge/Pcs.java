@@ -9,7 +9,7 @@ import java.util.function.Function;
  *
  * @author Simon Larsén
  */
-public class Pcs<T> {
+public class Pcs<T extends ListNode> {
     private T root;
     private T predecessor;
     private T successor;

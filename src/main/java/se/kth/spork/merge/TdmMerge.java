@@ -26,7 +26,7 @@ public class TdmMerge {
      * @param base The base revision.
      * @param delta The raw merge.
      */
-    public static <T,V> void resolveRawMerge(TStar<T,V> base, TStar<T,V> delta) {
+    public static <T extends ListNode,V> void resolveRawMerge(TStar<T,V> base, TStar<T,V> delta) {
         List<Conflict<Content<T,V>>> contentConflicts = new ArrayList<>();
 
         for (Pcs<T> pcs : delta.getStar()) {
@@ -35,7 +35,7 @@ public class TdmMerge {
             if (delta.inStructuralConflict(pcs)) // was registered in conflict as otherPcs
                 continue;
 
-            if (pcs.getPredecessor() != null) {
+            if (!pcs.getPredecessor().isListEdge()) {
                 Set<Content<T,V>> contents = delta.getContent(pcs);
                 if (contents != null && contents.size() > 1) {
                     handleContentConflict(contents, base).ifPresent(contentConflicts::add);
@@ -76,7 +76,7 @@ public class TdmMerge {
      *
      * TODO have this method modify the contents in a less dirty way
      */
-    private static <T,V> Optional<Conflict<Content<T,V>>> handleContentConflict(Set<Content<T,V>> contents, TStar<T,V> base) {
+    private static <T extends ListNode,V> Optional<Conflict<Content<T,V>>> handleContentConflict(Set<Content<T,V>> contents, TStar<T,V> base) {
         if (contents.size() > 3)
             throw new IllegalArgumentException("expected at most 3 pieces of conflicting content, got: " + contents);
 

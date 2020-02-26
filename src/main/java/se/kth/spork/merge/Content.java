@@ -7,7 +7,7 @@ import java.util.Objects;
  *
  * @author Simon Larsén
  */
-public class Content<T,V> {
+public class Content<T extends ListNode,V> {
     private Pcs<T> context;
     private V value;
 

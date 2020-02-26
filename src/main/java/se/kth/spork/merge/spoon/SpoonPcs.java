@@ -44,7 +44,7 @@ public class SpoonPcs {
             SpoonMapping baseLeft,
             SpoonMapping baseRight) {
         SpoonPcs spoonPcs = new SpoonPcs(delta, baseLeft, baseRight);
-        spoonPcs.traversePcs(null);
+        spoonPcs.traversePcs(NodeFactory.ROOT);
         return spoonPcs.visitor.actualRoot;
     }
 
@@ -56,7 +56,7 @@ public class SpoonPcs {
         removePredecessorConflicts(structuralConflicts);
     }
 
-    private static <T> Map<T, Map<T, Pcs<T>>> buildRootToChildren(Set<Pcs<T>> pcses) {
+    private static <T extends ListNode> Map<T, Map<T, Pcs<T>>> buildRootToChildren(Set<Pcs<T>> pcses) {
         Map<T, Map<T, Pcs<T>>> rootToChildren = new HashMap<>();
         for (Pcs<T> pcs : pcses) {
             Map<T, Pcs<T>> children = rootToChildren.getOrDefault(pcs.getRoot(), new HashMap<>());
@@ -92,11 +92,11 @@ public class SpoonPcs {
     }
 
     private static boolean isRootConflict(Pcs<?> left, Pcs<?> right) {
-        return left.getRoot() != right.getRoot();
+        return !Objects.equals(left.getRoot(), right.getRoot());
     }
 
     private static boolean isPredecessorConflict(Pcs<?> left, Pcs<?> right) {
-        return left.getPredecessor() != right.getPredecessor();
+        return !Objects.equals(left.getPredecessor(), right.getPredecessor());
     }
 
     private void traversePcs(SpoonNode currentRoot) {
@@ -104,12 +104,13 @@ public class SpoonPcs {
         if (children == null) // leaf node
             return;
 
-        SpoonNode next = null;
+        SpoonNode next = NodeFactory.startOfChildList(currentRoot);
         List<SpoonNode> sortedChildren = new ArrayList<>();
         while (true) {
             Pcs<SpoonNode> nextPcs = children.get(next);
+
             next = nextPcs.getSuccessor();
-            if (next == null) {
+            if (next.isEndOfList()) {
                 break;
             }
 
@@ -175,7 +176,7 @@ public class SpoonPcs {
     private static <V extends SpoonNode> List<V> extractConflictList(V start, Map<V, Pcs<V>> siblings) {
         List<V> nodes = new ArrayList<V>();
         V cur = start;
-        while (cur != null && cur.getElement().getMetadata(TdmMerge.REV) != Revision.BASE) {
+        while (!cur.isEndOfList() && cur.getElement().getMetadata(TdmMerge.REV) != Revision.BASE) {
             nodes.add(cur);
             cur = siblings.get(cur).getSuccessor();
         }
@@ -222,7 +223,7 @@ public class SpoonPcs {
          * @param origRootWrapper A wrapper around the current node's parent.
          */
         public void visit(SpoonNode origRootWrapper, SpoonNode origTreeWrapper) {
-            CtElement mergeParent = origRootWrapper == null ? null : nodes.get(origRootWrapper).getElement();
+            CtElement mergeParent = origRootWrapper == NodeFactory.ROOT ? null : nodes.get(origRootWrapper).getElement();
 
             CtElement originalTree = origTreeWrapper.getElement();
 

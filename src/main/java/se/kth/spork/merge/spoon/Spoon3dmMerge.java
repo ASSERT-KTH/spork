@@ -6,6 +6,7 @@ import com.github.gumtreediff.tree.ITree;
 import gumtree.spoon.builder.SpoonGumTreeBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.w3c.dom.Node;
 import se.kth.spork.merge.Pcs;
 import se.kth.spork.merge.Revision;
 import se.kth.spork.merge.TStar;
@@ -38,9 +39,16 @@ public class Spoon3dmMerge {
      * @return A merged Spoon tree.
      */
     public static CtElement merge(Path base, Path left, Path right) {
+        long start = System.nanoTime();
+        LOGGER.info("Parsing files to Spoon trees");
+
         CtElement baseTree = Parser.parse(base);
         CtElement leftTree = Parser.parse(left);
         CtElement rightTree = Parser.parse(right);
+
+        long end = System.nanoTime();
+        double timeDelta = (double) (end - start) / 1e9;
+        LOGGER.info("Parsed files in " + timeDelta + " seconds");
 
         return merge(baseTree, leftTree, rightTree);
     }
@@ -55,6 +63,8 @@ public class Spoon3dmMerge {
      * @return The merge of left and right.
      */
     public static CtElement merge(CtElement base, CtElement left, CtElement right) {
+        long start = System.nanoTime();
+
         LOGGER.info("Converting to GumTree trees");
         ITree baseGumtree = new SpoonGumTreeBuilder().getTree(base);
         ITree leftGumtree = new SpoonGumTreeBuilder().getTree(left);
@@ -92,6 +102,8 @@ public class Spoon3dmMerge {
         LOGGER.info("Merging import statements");
         List<CtImport> mergedImports = mergeImportStatements(base, left, right);
         merge.putMetadata(Parser.IMPORT_STATEMENTS, mergedImports);
+
+        LOGGER.info("Merged in " + (double) (System.nanoTime() - start) / 1e9 + " seconds");
 
         return merge;
     }
@@ -147,7 +159,7 @@ public class Spoon3dmMerge {
          */
         @Override
         public RoledValue apply(SpoonNode wrapper) {
-            if (wrapper == null)
+            if (wrapper == null || wrapper.getElement() == null)
                 return null;
 
             CtElement elem = wrapper.getElement();
@@ -216,7 +228,21 @@ public class Spoon3dmMerge {
             tree.putMetadata(TdmMerge.REV, Revision.BASE);
             SpoonNode wrapped = NodeFactory.wrap(tree);
             classRepMap.put(wrapped, wrapped);
+
+            // also add the start/end of child list dummy nodes
+            SpoonNode startOfList = NodeFactory.startOfChildList(wrapped);
+            SpoonNode endOfList = NodeFactory.endOfChildList(wrapped);
+            classRepMap.put(startOfList, startOfList);
+            classRepMap.put(endOfList, endOfList);
         }
+
+        // and finally the fake root
+        classRepMap.put(NodeFactory.ROOT, NodeFactory.ROOT);
+        SpoonNode rootSol = NodeFactory.startOfChildList(NodeFactory.ROOT);
+        SpoonNode rootEol = NodeFactory.endOfChildList(NodeFactory.ROOT);
+        classRepMap.put(rootSol, rootSol);
+        classRepMap.put(rootEol, rootEol);
+
         return classRepMap;
     }
 
@@ -238,14 +264,33 @@ public class Spoon3dmMerge {
         Iterator<CtElement> descIt = tree.descendantIterator();
         while (descIt.hasNext()) {
             CtElement t = descIt.next();
-            t.putMetadata(TdmMerge.REV, rev);
-            SpoonNode wrapped = NodeFactory.wrap(t);
+            mapToClassRep(mappings, classRepMap, rev, t);
+        }
+    }
 
-            if (mappings.hasDst(wrapped)) {
-                classRepMap.put(wrapped, mappings.getSrc(wrapped));
-            } else {
-                classRepMap.put(wrapped, wrapped);
-            }
+    private static void mapToClassRep(SpoonMapping mappings, Map<SpoonNode, SpoonNode> classRepMap, Revision rev, CtElement t) {
+        t.putMetadata(TdmMerge.REV, rev);
+        SpoonNode wrapped = NodeFactory.wrap(t);
+        SpoonNode classRep = mappings.getSrc(wrapped);
+
+        map(wrapped, classRep, classRepMap);
+    }
+
+    private static void map(SpoonNode wrapped, SpoonNode classRep, Map<SpoonNode, SpoonNode> classRepMap) {
+        SpoonNode startOfChildList = NodeFactory.startOfChildList(wrapped);
+        SpoonNode endOfChildList = NodeFactory.endOfChildList(wrapped);
+
+        if (classRep != null) {
+            SpoonNode classRepSol = NodeFactory.startOfChildList(classRep);
+            SpoonNode classRepEol = NodeFactory.endOfChildList(classRep);
+
+            classRepMap.put(wrapped, classRep);
+            classRepMap.put(startOfChildList, classRepSol);
+            classRepMap.put(endOfChildList, classRepEol);
+        } else {
+            classRepMap.put(wrapped, wrapped);
+            classRepMap.put(startOfChildList, startOfChildList);
+            classRepMap.put(endOfChildList, endOfChildList);
         }
     }
 

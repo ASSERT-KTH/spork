@@ -13,6 +13,7 @@ import java.util.Objects;
 public class NodeFactory {
     public static final String WRAPPER_METADATA = "spork_wrapper";
     private static long currentKey = 0;
+    public static final SpoonNode ROOT = new Root();
 
     /**
      * Wrap a CtElement in a CtWrapper. The wrapper is stored in the CtElement's metadata. If a CtElement that has
@@ -31,6 +32,26 @@ public class NodeFactory {
         }
 
         return (SpoonNode) wrapper;
+    }
+
+    /**
+     * Create a node that represents the start of the child list of the provided node.
+     *
+     * @param node A Spoon node.
+     * @return The start of the child list of the given node.
+     */
+    public static SpoonNode startOfChildList(SpoonNode node) {
+        return new ListEdge(node, ListEdge.Side.START);
+    }
+
+    /**
+     * Create a node that represents the end of the child list of the provided node.
+     *
+     * @param elem A Spoon node.
+     * @return The end of the child list of the given node.
+     */
+    public static SpoonNode endOfChildList(SpoonNode elem) {
+        return new ListEdge(elem, ListEdge.Side.END);
     }
 
     /**
@@ -57,7 +78,7 @@ public class NodeFactory {
         @Override
         public SpoonNode getParent() {
             if (element instanceof ModuleFactory.CtUnnamedModule)
-                return null;
+                return NodeFactory.ROOT;
             return wrap(element.getParent());
         }
 
@@ -85,6 +106,80 @@ public class NodeFactory {
         @Override
         public int hashCode() {
             return Objects.hash(key);
+        }
+    }
+
+    private static class Root implements SpoonNode {
+        @Override
+        public CtElement getElement() {
+            return null;
+        }
+
+        @Override
+        public SpoonNode getParent() {
+            return null;
+        }
+
+        @Override
+        public String toString() {
+            return "ROOT";
+        }
+    }
+
+    /**
+     * A special SpoonNode that marks the start or end of a child list.
+     */
+    private static class ListEdge implements SpoonNode {
+        private enum Side {
+            START, END;
+        }
+
+        // the parent of the child list
+        private SpoonNode parent;
+        private Side side;
+
+        ListEdge(SpoonNode parent, Side side) {
+            this.parent = parent;
+            this.side = side;
+        }
+
+        @Override
+        public CtElement getElement() {
+            return null;
+        }
+
+        @Override
+        public SpoonNode getParent() {
+            return parent;
+        }
+
+        @Override
+        public boolean isEndOfList() {
+            return side == Side.END;
+        }
+
+        @Override
+        public boolean isStartOfList() {
+            return side == Side.START;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            ListEdge listEdge = (ListEdge) o;
+            return Objects.equals(parent, listEdge.parent) &&
+                    side == listEdge.side;
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(parent, side);
+        }
+
+        @Override
+        public String toString() {
+            return side.toString();
         }
     }
 }
