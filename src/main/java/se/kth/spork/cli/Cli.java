@@ -18,6 +18,8 @@ public class Cli {
     private static final Logger LOGGER = LoggerFactory.getLogger(Spoon3dmMerge.class);
 
     public static void main(String[] args) {
+        long start = System.nanoTime();
+
         if (args.length < 3 || args.length > 4) {
             usage();
             System.exit(1);
@@ -49,6 +51,8 @@ public class Cli {
         } else {
             System.out.println(prettyPrint(merged));
         }
+
+        LOGGER.info("Total time elapsed: " + (double) (System.nanoTime() - start) / 1e9 + " seconds");
     }
 
     /**
