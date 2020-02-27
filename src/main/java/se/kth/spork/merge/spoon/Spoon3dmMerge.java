@@ -6,7 +6,6 @@ import com.github.gumtreediff.tree.ITree;
 import gumtree.spoon.builder.SpoonGumTreeBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.w3c.dom.Node;
 import se.kth.spork.merge.Pcs;
 import se.kth.spork.merge.Revision;
 import se.kth.spork.merge.TStar;
@@ -85,9 +84,9 @@ public class Spoon3dmMerge {
                 base, left, right, baseLeft, baseRight, leftRight);
 
         LOGGER.info("Converting Spoon trees to PCS triples");
-        Set<Pcs<SpoonNode>> t0 = SpoonPcs.fromSpoon(base, Revision.BASE);
-        Set<Pcs<SpoonNode>> t1 = SpoonPcs.fromSpoon(left, Revision.LEFT);
-        Set<Pcs<SpoonNode>> t2 = SpoonPcs.fromSpoon(right, Revision.RIGHT);
+        Set<Pcs<SpoonNode>> t0 = PcsBuilder.fromSpoon(base, Revision.BASE);
+        Set<Pcs<SpoonNode>> t1 = PcsBuilder.fromSpoon(left, Revision.LEFT);
+        Set<Pcs<SpoonNode>> t2 = PcsBuilder.fromSpoon(right, Revision.RIGHT);
 
         LOGGER.info("Computing raw PCS merge");
         TStar<SpoonNode, RoledValue> delta = new TStar<>(classRepMap, new GetContent(), t0, t1, t2);
@@ -97,7 +96,7 @@ public class Spoon3dmMerge {
         TdmMerge.resolveRawMerge(t0Star, delta);
 
         LOGGER.info("Interpreting resolved PCS merge");
-        CtElement merge = SpoonPcs.fromMergedPcs(delta, baseLeft, baseRight);
+        CtElement merge = PcsInterpreter.fromMergedPcs(delta, baseLeft, baseRight);
 
         LOGGER.info("Merging import statements");
         List<CtImport> mergedImports = mergeImportStatements(base, left, right);

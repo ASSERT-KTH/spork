@@ -23,6 +23,19 @@ class PcsBuilder extends CtScanner {
        this.revision = revision;
     }
 
+    /**
+     * Convert a Spoon tree into a PCS structure.
+     *
+     * @param spoonClass A Spoon class.
+     * @param revision   The revision this Spoon class belongs to. The revision is attached to each PCS triple.
+     * @return The Spoon tree represented by PCS triples.
+     */
+    public static Set<Pcs<SpoonNode>> fromSpoon(CtElement spoonClass, Revision revision) {
+        PcsBuilder scanner = new PcsBuilder(revision);
+        scanner.scan(spoonClass);
+        return scanner.getPcses();
+    }
+
     @Override
     protected void enter(CtElement e) {
         SpoonNode wrapped = NodeFactory.wrap(e);
