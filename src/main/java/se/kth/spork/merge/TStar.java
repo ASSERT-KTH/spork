@@ -27,6 +27,7 @@ public class TStar<T extends ListNode,V> {
      * @param getContent A function for getting content from
      * @param trees The trees to add to this T*.
      */
+    @SafeVarargs
     public TStar(Map<T, T> classRepMap, Function<T, V> getContent, Set<Pcs<T>>... trees) {
         this.classRepMap = classRepMap;
         successors = new HashMap<>();
