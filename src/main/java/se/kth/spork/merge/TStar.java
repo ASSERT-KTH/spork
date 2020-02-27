@@ -190,8 +190,7 @@ public class TStar<T extends ListNode,V> {
         T root = pcs.getRoot();
         T pred = pcs.getPredecessor();
         T succ = pcs.getSuccessor();
-        Pcs<T> classRepPcs = new Pcs<T>(classRepMap.get(root), classRepMap.get(pred), classRepMap.get(succ));
-        classRepPcs.setRevision(pcs.getRevision());
+        Pcs<T> classRepPcs = new Pcs<T>(classRepMap.get(root), classRepMap.get(pred), classRepMap.get(succ), pcs.getRevision());
         star.add(classRepPcs);
         return classRepPcs;
     }

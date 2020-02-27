@@ -44,7 +44,7 @@ class PcsBuilder extends CtScanner {
 
         SpoonNode parent = wrapped.getParent();
         SpoonNode predecessor = rootTolastSibling.getOrDefault(parent, NodeFactory.startOfChildList(wrapped.getParent()));
-        pcses.add(newPcs(parent, predecessor, wrapped, revision));
+        pcses.add(new Pcs(parent, predecessor, wrapped, revision));
         rootTolastSibling.put(parent, wrapped);
     }
 
@@ -60,17 +60,11 @@ class PcsBuilder extends CtScanner {
      */
     private void finalizePcsLists() {
         for (SpoonNode predecessor : rootTolastSibling.values()) {
-            pcses.add(newPcs(predecessor.getParent(), predecessor, NodeFactory.endOfChildList(predecessor.getParent()), revision));
+            pcses.add(new Pcs(predecessor.getParent(), predecessor, NodeFactory.endOfChildList(predecessor.getParent()), revision));
         }
     }
 
     public Set<Pcs<SpoonNode>> getPcses() {
         return pcses;
-    }
-
-    private static Pcs<SpoonNode> newPcs(SpoonNode root, SpoonNode predecessor, SpoonNode successor, Revision revision) {
-        Pcs<SpoonNode> pcs = new Pcs<>(root, predecessor, successor);
-        pcs.setRevision(revision);
-        return pcs;
     }
 }
