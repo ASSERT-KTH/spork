@@ -1,4 +1,4 @@
-package se.kth.spork.merge;
+package se.kth.spork.base3dm;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

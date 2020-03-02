@@ -1,4 +1,4 @@
-package se.kth.spork.merge;
+package se.kth.spork.base3dm;
 
 /**
  * Represents which revision some piece of source code information is frome.

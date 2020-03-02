@@ -2,8 +2,8 @@ package se.kth.spork.cli;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import se.kth.spork.merge.spoon.Parser;
-import se.kth.spork.merge.spoon.Spoon3dmMerge;
+import se.kth.spork.spoon.Parser;
+import se.kth.spork.spoon.Spoon3dmMerge;
 import spoon.reflect.declaration.*;
 
 import java.nio.file.Paths;

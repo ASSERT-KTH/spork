@@ -1,4 +1,4 @@
-package se.kth.spork.merge.spoon;
+package se.kth.spork.spoon;
 
 import com.github.gumtreediff.matchers.Matcher;
 import com.github.gumtreediff.matchers.Matchers;
@@ -6,10 +6,10 @@ import com.github.gumtreediff.tree.ITree;
 import gumtree.spoon.builder.SpoonGumTreeBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import se.kth.spork.merge.Pcs;
-import se.kth.spork.merge.Revision;
-import se.kth.spork.merge.TStar;
-import se.kth.spork.merge.TdmMerge;
+import se.kth.spork.base3dm.Pcs;
+import se.kth.spork.base3dm.Revision;
+import se.kth.spork.base3dm.TStar;
+import se.kth.spork.base3dm.TdmMerge;
 import spoon.reflect.code.CtLiteral;
 import spoon.reflect.declaration.CtElement;
 import spoon.reflect.declaration.CtImport;

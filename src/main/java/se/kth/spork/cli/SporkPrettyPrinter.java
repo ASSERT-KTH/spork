@@ -1,6 +1,6 @@
 package se.kth.spork.cli;
 
-import se.kth.spork.merge.spoon.ConflictInfo;
+import se.kth.spork.spoon.ConflictInfo;
 import spoon.compiler.Environment;
 import spoon.reflect.declaration.CtElement;
 import spoon.reflect.visitor.DefaultJavaPrettyPrinter;

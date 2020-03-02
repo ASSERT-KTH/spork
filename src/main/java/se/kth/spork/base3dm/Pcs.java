@@ -1,7 +1,6 @@
-package se.kth.spork.merge;
+package se.kth.spork.base3dm;
 
 import java.util.Objects;
-import java.util.function.Function;
 
 /**
  * Representation of a Parent/Child/Successor triple for 3DM merge. Note that only root, predecessor and successor

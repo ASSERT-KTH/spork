@@ -4,8 +4,8 @@ import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import se.kth.spork.Util;
-import se.kth.spork.merge.spoon.Parser;
-import se.kth.spork.merge.spoon.Spoon3dmMerge;
+import se.kth.spork.spoon.Parser;
+import se.kth.spork.spoon.Spoon3dmMerge;
 import spoon.reflect.declaration.CtModule;
 
 import java.io.File;

@@ -1,4 +1,4 @@
-package se.kth.spork.merge.spoon;
+package se.kth.spork.spoon;
 
 import spoon.reflect.declaration.CtElement;
 import spoon.reflect.factory.ModuleFactory;

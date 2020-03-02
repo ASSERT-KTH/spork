@@ -1,6 +1,6 @@
-package se.kth.spork.merge.spoon;
+package se.kth.spork.spoon;
 
-import se.kth.spork.merge.*;
+import se.kth.spork.base3dm.*;
 import se.kth.spork.util.Pair;
 import spoon.reflect.code.CtExpression;
 import spoon.reflect.declaration.CtAnnotation;

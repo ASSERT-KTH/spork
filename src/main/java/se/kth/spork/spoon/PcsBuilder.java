@@ -1,7 +1,7 @@
-package se.kth.spork.merge.spoon;
+package se.kth.spork.spoon;
 
-import se.kth.spork.merge.Pcs;
-import se.kth.spork.merge.Revision;
+import se.kth.spork.base3dm.Pcs;
+import se.kth.spork.base3dm.Revision;
 import spoon.reflect.declaration.CtElement;
 import spoon.reflect.visitor.CtScanner;
 
