@@ -1,4 +1,4 @@
-package se.kth.spork.merge.spoon;
+package se.kth.spork.spoon;
 
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -8,7 +8,6 @@ import spoon.reflect.declaration.*;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
-import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static se.kth.spork.Util.TestSources.fromTestDirectory;

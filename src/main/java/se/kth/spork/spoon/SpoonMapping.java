@@ -1,10 +1,11 @@
-package se.kth.spork.merge.spoon;
+package se.kth.spork.spoon;
 
 import com.github.gumtreediff.matchers.Mapping;
 import com.github.gumtreediff.matchers.MappingStore;
 import com.github.gumtreediff.tree.ITree;
 import com.github.gumtreediff.utils.Pair;
 import gumtree.spoon.builder.SpoonGumTreeBuilder;
+import se.kth.spork.util.GumTreeSpoonAstDiff;
 import spoon.reflect.declaration.CtElement;
 
 import java.util.ArrayList;

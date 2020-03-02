@@ -1,4 +1,4 @@
-package se.kth.spork.merge.spoon;
+package se.kth.spork.spoon;
 
 import se.kth.spork.cli.SporkPrettyPrinter;
 import spoon.Launcher;

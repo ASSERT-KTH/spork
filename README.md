@@ -86,7 +86,7 @@ This will produce a jar-file in the `target` directory called something along th
 Unless otherwise stated, files in Spork are under the [MIT license](LICENSE).
 
 * The
-  [GumTreeSpoonAstDiff](src/main/java/se/kth/spork/merge/spoon/GumTreeSpoonAstDiff.java)
+  [GumTreeSpoonAstDiff](src/main/java/se/kth/spork/spoon/GumTreeSpoonAstDiff.java)
   file is composed of code from
   [gumtree-spoon-ast-diff](https://github.com/spoon/gumtree-spoon-ast-diff) and
   is therefore individually licensed under Apache License 2.0.

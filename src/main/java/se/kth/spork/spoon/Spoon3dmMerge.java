@@ -1,4 +1,4 @@
-package se.kth.spork.merge.spoon;
+package se.kth.spork.spoon;
 
 import com.github.gumtreediff.matchers.Matcher;
 import com.github.gumtreediff.matchers.Matchers;
@@ -6,11 +6,10 @@ import com.github.gumtreediff.tree.ITree;
 import gumtree.spoon.builder.SpoonGumTreeBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.w3c.dom.Node;
-import se.kth.spork.merge.Pcs;
-import se.kth.spork.merge.Revision;
-import se.kth.spork.merge.TStar;
-import se.kth.spork.merge.TdmMerge;
+import se.kth.spork.base3dm.Pcs;
+import se.kth.spork.base3dm.Revision;
+import se.kth.spork.base3dm.TStar;
+import se.kth.spork.base3dm.TdmMerge;
 import spoon.reflect.code.CtLiteral;
 import spoon.reflect.declaration.CtElement;
 import spoon.reflect.declaration.CtImport;
@@ -81,13 +80,13 @@ public class Spoon3dmMerge {
         SpoonMapping leftRight = SpoonMapping.fromGumTreeMapping(leftRightGumtreeMatch.getMappings());
 
         LOGGER.info("Mapping nodes to class representatives");
-        Map<SpoonNode, SpoonNode> classRepMap = createClassRepresentativesMapping(
+        Map<SpoonNode, SpoonNode> classRepMap = ClassRepresentatives.createClassRepresentativesMapping(
                 base, left, right, baseLeft, baseRight, leftRight);
 
         LOGGER.info("Converting Spoon trees to PCS triples");
-        Set<Pcs<SpoonNode>> t0 = SpoonPcs.fromSpoon(base, Revision.BASE);
-        Set<Pcs<SpoonNode>> t1 = SpoonPcs.fromSpoon(left, Revision.LEFT);
-        Set<Pcs<SpoonNode>> t2 = SpoonPcs.fromSpoon(right, Revision.RIGHT);
+        Set<Pcs<SpoonNode>> t0 = PcsBuilder.fromSpoon(base, Revision.BASE);
+        Set<Pcs<SpoonNode>> t1 = PcsBuilder.fromSpoon(left, Revision.LEFT);
+        Set<Pcs<SpoonNode>> t2 = PcsBuilder.fromSpoon(right, Revision.RIGHT);
 
         LOGGER.info("Computing raw PCS merge");
         TStar<SpoonNode, RoledValue> delta = new TStar<>(classRepMap, new GetContent(), t0, t1, t2);
@@ -97,7 +96,7 @@ public class Spoon3dmMerge {
         TdmMerge.resolveRawMerge(t0Star, delta);
 
         LOGGER.info("Interpreting resolved PCS merge");
-        CtElement merge = SpoonPcs.fromMergedPcs(delta, baseLeft, baseRight);
+        CtElement merge = PcsInterpreter.fromMergedPcs(delta, baseLeft, baseRight);
 
         LOGGER.info("Merging import statements");
         List<CtImport> mergedImports = mergeImportStatements(base, left, right);
@@ -174,123 +173,6 @@ public class Spoon3dmMerge {
                 return new RoledValue(namedElem.getSimpleName(), CtRole.NAME);
             }
             return new RoledValue(elem.getShortRepresentation(), null);
-        }
-    }
-
-    /**
-     * Create the class representatives mapping. The class representatives for the different revisions are defined as:
-     * <p>
-     * 1. A node NB in base is its own class representative.
-     * 2. The class representative of a node NL in left is NB if there exists a tree matching NL -> NB in the baseLeft
-     * matching. Otherwise it is NL.
-     * 3. The class representative of a node NR in right is NB if there exists a tree matching NR -> NB in the baseRight
-     * matching. If that is not the case, the class representative may be NL if there exists a tree matching
-     * NL -> NR. The latter is referred to as an augmentation, and is done conservatively to avoid spurious
-     * mappings between left and right revisions. See {@link ClassRepresentativeAugmenter} for more info.
-     * <p>
-     * Put briefly, base nodes are always mapped to themselves, nodes in left are mapped to base nodes if they are
-     * matched, and nodes in right are mapped to base nodes or left nodes if they are matched, with base matchings
-     * having priority.
-     *
-     * @param base      The base revision.
-     * @param left      The left revision.
-     * @param right     The right revision.
-     * @param baseLeft  A matching from base to left.
-     * @param baseRight A matching from base to right.
-     * @param leftRight A matching from left to right.
-     * @return The class representatives map.
-     */
-    private static Map<SpoonNode, SpoonNode> createClassRepresentativesMapping(
-            CtElement base,
-            CtElement left,
-            CtElement right,
-            SpoonMapping baseLeft,
-            SpoonMapping baseRight,
-            SpoonMapping leftRight) {
-        Map<SpoonNode, SpoonNode> classRepMap = initializeClassRepresentatives(base);
-        mapToClassRepresentatives(left, baseLeft, classRepMap, Revision.LEFT);
-        mapToClassRepresentatives(right, baseRight, classRepMap, Revision.RIGHT);
-        new ClassRepresentativeAugmenter(classRepMap, leftRight).scan(left);
-        return classRepMap;
-    }
-
-    /**
-     * Initialize the class representatives map by mapping each element in base to itself.
-     *
-     * @param base The base revision of the trees to be merged.
-     * @return An initialized class representatives map.
-     */
-    private static Map<SpoonNode, SpoonNode> initializeClassRepresentatives(CtElement base) {
-        Map<SpoonNode, SpoonNode> classRepMap = new HashMap<>();
-        Iterator<CtElement> descIt = base.descendantIterator();
-        while (descIt.hasNext()) {
-            CtElement tree = descIt.next();
-            tree.putMetadata(TdmMerge.REV, Revision.BASE);
-            SpoonNode wrapped = NodeFactory.wrap(tree);
-            classRepMap.put(wrapped, wrapped);
-
-            // also add the start/end of child list dummy nodes
-            SpoonNode startOfList = NodeFactory.startOfChildList(wrapped);
-            SpoonNode endOfList = NodeFactory.endOfChildList(wrapped);
-            classRepMap.put(startOfList, startOfList);
-            classRepMap.put(endOfList, endOfList);
-        }
-
-        // and finally the fake root
-        classRepMap.put(NodeFactory.ROOT, NodeFactory.ROOT);
-        SpoonNode rootSol = NodeFactory.startOfChildList(NodeFactory.ROOT);
-        SpoonNode rootEol = NodeFactory.endOfChildList(NodeFactory.ROOT);
-        classRepMap.put(rootSol, rootSol);
-        classRepMap.put(rootEol, rootEol);
-
-        return classRepMap;
-    }
-
-    /**
-     * Map the nodes of a tree revision (left or right) to their corresponding class representatives. For example, if a
-     * node NL in the left revision is matched to a node NB in the base revision, then the mapping NL -> NB is entered
-     * into the class representatives map.
-     * <p>
-     * This method also attaches the tree's revision to each node in the tree.
-     * <p>
-     * TODO move attaching of the tree revision somewhere else, it's super obtuse to have here.
-     *
-     * @param tree        A revision of the trees to be merged (left or right).
-     * @param mappings    A tree matching from the base revision to the provided tree.
-     * @param classRepMap The class representatives map.
-     * @param rev         The provided tree's revision.
-     */
-    private static void mapToClassRepresentatives(CtElement tree, SpoonMapping mappings, Map<SpoonNode, SpoonNode> classRepMap, Revision rev) {
-        Iterator<CtElement> descIt = tree.descendantIterator();
-        while (descIt.hasNext()) {
-            CtElement t = descIt.next();
-            mapToClassRep(mappings, classRepMap, rev, t);
-        }
-    }
-
-    private static void mapToClassRep(SpoonMapping mappings, Map<SpoonNode, SpoonNode> classRepMap, Revision rev, CtElement t) {
-        t.putMetadata(TdmMerge.REV, rev);
-        SpoonNode wrapped = NodeFactory.wrap(t);
-        SpoonNode classRep = mappings.getSrc(wrapped);
-
-        map(wrapped, classRep, classRepMap);
-    }
-
-    private static void map(SpoonNode wrapped, SpoonNode classRep, Map<SpoonNode, SpoonNode> classRepMap) {
-        SpoonNode startOfChildList = NodeFactory.startOfChildList(wrapped);
-        SpoonNode endOfChildList = NodeFactory.endOfChildList(wrapped);
-
-        if (classRep != null) {
-            SpoonNode classRepSol = NodeFactory.startOfChildList(classRep);
-            SpoonNode classRepEol = NodeFactory.endOfChildList(classRep);
-
-            classRepMap.put(wrapped, classRep);
-            classRepMap.put(startOfChildList, classRepSol);
-            classRepMap.put(endOfChildList, classRepEol);
-        } else {
-            classRepMap.put(wrapped, wrapped);
-            classRepMap.put(startOfChildList, startOfChildList);
-            classRepMap.put(endOfChildList, endOfChildList);
         }
     }
 

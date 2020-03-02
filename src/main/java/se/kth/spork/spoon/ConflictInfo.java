@@ -1,4 +1,4 @@
-package se.kth.spork.merge.spoon;
+package se.kth.spork.spoon;
 
 /**
  * A simple class that provides some information on a conflict. Meant to be put as metadata on certain

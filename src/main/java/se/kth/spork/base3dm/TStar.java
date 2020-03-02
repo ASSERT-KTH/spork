@@ -1,4 +1,4 @@
-package se.kth.spork.merge;
+package se.kth.spork.base3dm;
 
 import java.util.*;
 import java.util.function.Function;
@@ -27,6 +27,7 @@ public class TStar<T extends ListNode,V> {
      * @param getContent A function for getting content from
      * @param trees The trees to add to this T*.
      */
+    @SafeVarargs
     public TStar(Map<T, T> classRepMap, Function<T, V> getContent, Set<Pcs<T>>... trees) {
         this.classRepMap = classRepMap;
         successors = new HashMap<>();
@@ -189,8 +190,7 @@ public class TStar<T extends ListNode,V> {
         T root = pcs.getRoot();
         T pred = pcs.getPredecessor();
         T succ = pcs.getSuccessor();
-        Pcs<T> classRepPcs = new Pcs<T>(classRepMap.get(root), classRepMap.get(pred), classRepMap.get(succ));
-        classRepPcs.setRevision(pcs.getRevision());
+        Pcs<T> classRepPcs = new Pcs<T>(classRepMap.get(root), classRepMap.get(pred), classRepMap.get(succ), pcs.getRevision());
         star.add(classRepPcs);
         return classRepPcs;
     }

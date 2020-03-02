@@ -1,6 +1,6 @@
-package se.kth.spork.merge.spoon;
+package se.kth.spork.spoon;
 
-import se.kth.spork.merge.*;
+import se.kth.spork.base3dm.*;
 import se.kth.spork.util.Pair;
 import spoon.reflect.code.CtExpression;
 import spoon.reflect.declaration.CtAnnotation;
@@ -10,27 +10,14 @@ import spoon.reflect.path.CtRole;
 import java.util.*;
 
 /**
- * Class for converting between a Spoon tree and a PCS structure.
+ * Class for interpreting a merged PCS structure into a Spoon tree.
  *
  * @author Simon Larsén
  */
-public class SpoonPcs {
+public class PcsInterpreter {
     private final Map<SpoonNode, Map<SpoonNode, Pcs<SpoonNode>>> rootToChildren;
     private final Map<Pcs<SpoonNode>, Set<Pcs<SpoonNode>>> structuralConflicts;
     private final Builder visitor;
-
-    /**
-     * Convert a Spoon tree into a PCS structure.
-     *
-     * @param spoonClass A Spoon class.
-     * @param revision   The revision this Spoon class belongs to. The revision is attached to each PCS triple.
-     * @return The Spoon tree represented by PCS triples.
-     */
-    public static Set<Pcs<SpoonNode>> fromSpoon(CtElement spoonClass, Revision revision) {
-        PcsBuilder scanner = new PcsBuilder(revision);
-        scanner.scan(spoonClass);
-        return scanner.getPcses();
-    }
 
     /**
      * Convert a merged PCS structure into a Spoon tree.
@@ -43,12 +30,12 @@ public class SpoonPcs {
             TStar<SpoonNode, RoledValue> delta,
             SpoonMapping baseLeft,
             SpoonMapping baseRight) {
-        SpoonPcs spoonPcs = new SpoonPcs(delta, baseLeft, baseRight);
-        spoonPcs.traversePcs(NodeFactory.ROOT);
-        return spoonPcs.visitor.actualRoot;
+        PcsInterpreter pcsInterpreter = new PcsInterpreter(delta, baseLeft, baseRight);
+        pcsInterpreter.traversePcs(NodeFactory.ROOT);
+        return pcsInterpreter.visitor.actualRoot;
     }
 
-    private SpoonPcs(TStar<SpoonNode, RoledValue> delta, SpoonMapping baseLeft, SpoonMapping baseRight) {
+    private PcsInterpreter(TStar<SpoonNode, RoledValue> delta, SpoonMapping baseLeft, SpoonMapping baseRight) {
         rootToChildren = buildRootToChildren(delta.getStar());
         visitor = new Builder(delta.getContents(), baseLeft, baseRight);
         this.structuralConflicts = delta.getStructuralConflicts();
@@ -433,7 +420,6 @@ public class SpoonPcs {
          * @param tree A tree to copy.
          * @return A shallow copy of the input tree.
          */
-        @SuppressWarnings({"unchecked", "rawtypes"})
         private CtElement shallowCopyTree(CtElement tree) {
             // FIXME This is super inefficient, cloning the whole tree just to delete all its children
             CtElement treeCopy = tree.clone();

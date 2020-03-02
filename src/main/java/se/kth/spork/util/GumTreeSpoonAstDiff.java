@@ -1,4 +1,4 @@
-package se.kth.spork.merge.spoon;
+package se.kth.spork.util;
 
 import spoon.reflect.code.CtCase;
 import spoon.reflect.code.CtStatementList;
@@ -31,7 +31,7 @@ public class GumTreeSpoonAstDiff {
      * @param element An element to check if it is to be ignored.
      * @return Whether or not to ignore the argument.
      */
-    static boolean isToIgnore(CtElement element) {
+    public static boolean isToIgnore(CtElement element) {
         if (element instanceof CtStatementList && !(element instanceof CtCase)) {
             return element.getRoleInParent() != CtRole.ELSE && element.getRoleInParent() != CtRole.THEN;
         }
