@@ -3,6 +3,7 @@ package se.kth.spork.spoon;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import se.kth.spork.Util;
+import se.kth.spork.cli.Cli;
 import spoon.reflect.declaration.*;
 
 import java.io.File;
@@ -80,6 +81,8 @@ class Spoon3dmMergeTest {
             "add_identical_elements_in_method",
             "add_parameter",
             "add_import_statements",
+            "change_binops",
+            "change_unary_ops",
     })
     void mergeToTree_shouldReturnExpectedTree_whenBothVersionsAreModified(String testName) throws IOException {
         File testDir = Util.BOTH_MODIFIED_DIRPATH.resolve(testName).toFile();

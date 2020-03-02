@@ -10,13 +10,17 @@ import se.kth.spork.base3dm.Pcs;
 import se.kth.spork.base3dm.Revision;
 import se.kth.spork.base3dm.TStar;
 import se.kth.spork.base3dm.TdmMerge;
+import spoon.reflect.code.CtBinaryOperator;
 import spoon.reflect.code.CtLiteral;
+import spoon.reflect.code.CtOperatorAssignment;
+import spoon.reflect.code.CtUnaryOperator;
 import spoon.reflect.declaration.CtElement;
 import spoon.reflect.declaration.CtImport;
 import spoon.reflect.declaration.CtNamedElement;
 import spoon.reflect.path.CtRole;
 import spoon.reflect.reference.CtReference;
 
+import javax.management.relation.Role;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.function.Function;
@@ -171,6 +175,15 @@ public class Spoon3dmMerge {
             } else if (elem instanceof CtNamedElement) {
                 CtNamedElement namedElem = (CtNamedElement) elem;
                 return new RoledValue(namedElem.getSimpleName(), CtRole.NAME);
+            } else if (elem instanceof CtOperatorAssignment) {
+                CtOperatorAssignment<?, ?> op = (CtOperatorAssignment<?, ?>) elem;
+                return new RoledValue(op.getKind(), CtRole.OPERATOR_KIND);
+            } else if (elem instanceof CtBinaryOperator) {
+                CtBinaryOperator<?> op = (CtBinaryOperator<?>) elem;
+                return new RoledValue(op.getKind(), CtRole.OPERATOR_KIND);
+            } else if (elem instanceof CtUnaryOperator) {
+                CtUnaryOperator<?> op = (CtUnaryOperator<?>) elem;
+                return new RoledValue(op.getKind(), CtRole.OPERATOR_KIND);
             }
             return new RoledValue(elem.getShortRepresentation(), null);
         }
