@@ -2,6 +2,7 @@ package se.kth.spork.cli;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import se.kth.spork.spoon.Compare;
 import se.kth.spork.spoon.Parser;
 import se.kth.spork.spoon.Spoon3dmMerge;
 import spoon.reflect.declaration.*;
@@ -36,17 +37,16 @@ public class Cli {
         CtModule merged = (CtModule) Spoon3dmMerge.merge(base, left, right);
 
         if (expected != null) {
-            boolean isEqual = expected.equals(merged);
+            boolean preciselyEqual = expected.equals(merged);
+            boolean equalDownToOrdering = Compare.compare(merged, expected);
 
-            if (!isEqual) {
-                System.out.println("EXPECTED");
-                System.out.println(prettyPrint(expected));
-                System.out.println();
-
-                System.out.println("ACTUAL");
-                System.out.println(prettyPrint(merged));
+            if (preciselyEqual && equalDownToOrdering) {
+                System.out.println("Merged tree precisely matches expected tree");
+            } else if (equalDownToOrdering) {
+                System.out.println("Merged tree matches expected tree down to the order of unordered elements");
             } else {
-                System.out.println("Merged file matches expected file");
+                System.out.println("Merge tree does not match expected tree");
+                System.exit(1);
             }
         } else {
             System.out.println(prettyPrint(merged));
