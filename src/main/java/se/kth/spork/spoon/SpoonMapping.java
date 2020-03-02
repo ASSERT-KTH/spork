@@ -114,12 +114,12 @@ public class SpoonMapping {
             } else if (hasDst(dstChild) || !GumTreeSpoonAstDiff.isToIgnore(dstChild)) {
                 dstIdx++;
             } else {
-                //assert srcChild.equals(dstChild);
-                // TODO this is the sketchy part, is it really enough to check for class identity? Actual equality does not appear to work
-                assert srcChild.getClass() == dstChild.getClass();
-
-                put(srcChild, dstChild);
-                newMatches.add(new Pair<>(srcChild, dstChild));
+                if (srcChild.getClass() == dstChild.getClass()) {
+                    put(srcChild, dstChild);
+                    newMatches.add(new Pair<>(srcChild, dstChild));
+                }
+                srcIdx++;
+                dstIdx++;
             }
         }
 
