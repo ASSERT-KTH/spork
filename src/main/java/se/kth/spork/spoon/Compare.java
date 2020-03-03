@@ -1,7 +1,9 @@
 package se.kth.spork.spoon;
 
 import spoon.refactoring.Refactoring;
+import spoon.reflect.cu.SourcePosition;
 import spoon.reflect.declaration.*;
+import spoon.reflect.path.CtRole;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -102,6 +104,7 @@ public class Compare {
 
         for (CtTypeMember mem : typeMembers) {
             mem.delete();
+            mem.setValueByRole(CtRole.POSITION, SourcePosition.NOPOSITION);
 
             if (mem instanceof CtMethod) {
                 methods.add((CtMethod<?>) mem);
