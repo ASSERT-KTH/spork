@@ -87,6 +87,7 @@ class Spoon3dmMergeTest {
             "add_import_statements",
             "change_binops",
             "change_unary_ops",
+            "add_field_modifiers",
     })
     void mergeToTree_shouldReturnExpectedTree_whenBothVersionsAreModified(String testName) throws IOException {
         File testDir = Util.BOTH_MODIFIED_DIRPATH.resolve(testName).toFile();

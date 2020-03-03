@@ -2,10 +2,8 @@ package se.kth.spork.spoon;
 
 import spoon.reflect.path.CtRole;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Class representing some form of value in a Spoon node, along with the role the value has. This is for
@@ -44,6 +42,14 @@ class RoledValue {
 
     public boolean hasSecondaryValues() {
         return !secondaryValues.isEmpty();
+    }
+
+    public RoledValue getSecondaryByRole(CtRole role) {
+        Optional<RoledValue> val = secondaryValues.stream().filter(v -> v.getRole() == role).findFirst();
+        if (!val.isPresent()) {
+            throw new RuntimeException("No secondary value with role " + role);
+        }
+        return val.get();
     }
 
     @Override

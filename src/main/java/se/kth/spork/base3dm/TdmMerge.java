@@ -34,10 +34,10 @@ public class TdmMerge {
                 continue;
 
             if (!pcs.getPredecessor().isListEdge()) {
-                Set<Content<T,V>> contents = delta.getContent(pcs);
+                Set<Content<T,V>> contents = delta.getContent(pcs.getPredecessor());
                 if (contents != null && contents.size() > 1) {
                     Set<Content<T,V>> newContent = handleContentConflict(contents, base);
-                    delta.setContent(pcs, newContent);
+                    delta.setContent(pcs.getPredecessor(), newContent);
                 }
             }
 

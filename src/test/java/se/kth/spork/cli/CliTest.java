@@ -89,6 +89,7 @@ class CliTest {
             "add_import_statements",
             "change_binops",
             "change_unary_ops",
+            "add_field_modifiers",
     })
     void mergeTreeShouldEqualReParsedPrettyPrent_whenBothRevisionsAreModified(String testName, @TempDir Path tempDir) throws IOException {
         File testDir = Util.BOTH_MODIFIED_DIRPATH.resolve(testName).toFile();

@@ -6,10 +6,8 @@ import com.github.gumtreediff.tree.ITree;
 import gumtree.spoon.builder.SpoonGumTreeBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import se.kth.spork.base3dm.Pcs;
-import se.kth.spork.base3dm.Revision;
-import se.kth.spork.base3dm.TStar;
-import se.kth.spork.base3dm.TdmMerge;
+import se.kth.spork.base3dm.*;
+import se.kth.spork.util.Triple;
 import spoon.reflect.code.CtBinaryOperator;
 import spoon.reflect.code.CtLiteral;
 import spoon.reflect.code.CtOperatorAssignment;
@@ -21,6 +19,8 @@ import spoon.reflect.reference.CtReference;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.function.Function;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Spoon specialization of the 3DM merge algorithm.
@@ -95,6 +95,7 @@ public class Spoon3dmMerge {
 
         LOGGER.info("Resolving final PCS merge");
         TdmMerge.resolveRawMerge(t0Star, delta);
+        handleContentConflicts(delta);
 
         LOGGER.info("Interpreting resolved PCS merge");
         CtElement merge = PcsInterpreter.fromMergedPcs(delta, baseLeft, baseRight);
@@ -201,6 +202,134 @@ public class Spoon3dmMerge {
             }
         }
     }
+
+    /**
+     * Try to automatically resolve content conflicts in delta.
+     *
+     * @param delta A merge.
+     */
+    private static void handleContentConflicts(TStar<SpoonNode, RoledValue> delta) {
+        for (Pcs<SpoonNode> pcs : delta.getStar()) {
+            SpoonNode pred = pcs.getPredecessor();
+            Set<Content<SpoonNode, RoledValue>> nodeContents = delta.getContent(pred);
+
+            if (nodeContents.size() > 1) {
+                Triple<Optional<Content<SpoonNode, RoledValue>>, Content<SpoonNode, RoledValue>, Content<SpoonNode, RoledValue>> revisions = getContentRevisions(nodeContents);
+                Optional<Content<SpoonNode, RoledValue>> baseOpt = revisions.first;
+                Content<SpoonNode, RoledValue> left = revisions.second;
+                RoledValue leftVal = revisions.second.getValue();
+                RoledValue rightVal = revisions.third.getValue();
+
+                if (leftVal.hasSecondaryValues() || rightVal.hasSecondaryValues()) {
+                    // can currently only resolve content conflicts that occur with modifier lists
+                    if (left.getContext().getPredecessor().getElement() instanceof CtModifiable) {
+                        Optional<RoledValue> merged = mergeModifiable(baseOpt.map(Content::getValue), leftVal, rightVal);
+
+                        if (merged.isPresent()) {
+                            Set<Content<SpoonNode, RoledValue>> newContents = new HashSet<>();
+                            newContents.add(new Content<>(left.getContext(), merged.get()));
+                            delta.setContent(pred, newContents);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Optional<RoledValue> mergeModifiable(Optional<RoledValue> base, RoledValue left, RoledValue right) {
+        // all revisions must have the same primary value
+        if (!left.getValue().equals(right.getValue())
+                || (base.isPresent() && !base.get().getValue().equals(left.getValue()))
+        )
+            return Optional.empty();
+
+        Set<ModifierKind> baseModifiers = new HashSet<>();
+        base.ifPresent(rv ->
+                baseModifiers.addAll((Set<ModifierKind>) rv.getSecondaryByRole(CtRole.MODIFIER).getValue())
+        );
+
+        Set<ModifierKind> leftModifiers = (Set<ModifierKind>) left.getSecondaryByRole(CtRole.MODIFIER).getValue();
+        Set<ModifierKind> rightModifiers = (Set<ModifierKind>) right.getSecondaryByRole(CtRole.MODIFIER).getValue();
+
+        Set<ModifierKind> visibility = new HashSet<>();
+        Set<ModifierKind> keywords = new HashSet<>();
+        Set<ModifierKind> other = new HashSet<>();
+
+        Stream.of(baseModifiers, leftModifiers, rightModifiers).flatMap(Set::stream).forEach(mod -> {
+            switch (mod) {
+                // visibility
+                case PRIVATE:
+                case PUBLIC:
+                case PROTECTED:
+                    visibility.add(mod);
+                    break;
+                // keywords
+                case ABSTRACT:
+                case FINAL:
+                    keywords.add(mod);
+                    break;
+                default:
+                    other.add(mod);
+                    break;
+            }
+        });
+
+        if (visibility.size() > 1) {
+            visibility.removeIf(baseModifiers::contains);
+        }
+        // visibility is the only place where we can have obvious addition conflcits
+        // TODO further analyze conflicts among other modifiers (e.g. you can't combine static and volatile)
+        if (visibility.size() != 1) {
+            return Optional.empty();
+        }
+
+        Set<ModifierKind> mods = Stream.of(visibility, keywords, other).flatMap(Set::stream)
+                .filter(mod ->
+                        // present in both left and right == ALL GOOD
+                        leftModifiers.contains(mod) && rightModifiers.contains(mod) ||
+                                // respect deletions, if an element is present in only one of left and right, and is
+                                // present in base, then it has been deleted
+                                (leftModifiers.contains(mod) ^ rightModifiers.contains(mod)) && !baseModifiers.contains(mod)
+                )
+                .collect(Collectors.toSet());
+
+        RoledValue merge = new RoledValue(left.getValue(), left.getRole());
+        merge.addSecondaryValue(mods, CtRole.MODIFIER);
+        return Optional.of(merge);
+    }
+
+    /**
+     * Extract base, left and right revisions from the set of contents.
+     *
+     * @param contents A set of contents with precisely three elements.
+     * @return A triple with base in the first slot, left in the second and right in the third.
+     */
+    private static Triple<Optional<Content<SpoonNode, RoledValue>>, Content<SpoonNode, RoledValue>, Content<SpoonNode, RoledValue>> getContentRevisions(Set<Content<SpoonNode, RoledValue>> contents) {
+        Content<SpoonNode, RoledValue> base = null;
+        Content<SpoonNode, RoledValue> left = null;
+        Content<SpoonNode, RoledValue> right = null;
+
+        for (Content<SpoonNode, RoledValue> cnt : contents) {
+            switch (cnt.getContext().getRevision()) {
+                case BASE:
+                    base = cnt;
+                    break;
+                case LEFT:
+                    left = cnt;
+                    break;
+                case RIGHT:
+                    right = cnt;
+                    break;
+            }
+        }
+
+        if (left == null || right == null)
+            throw new IllegalStateException("Expected at least left and right revisions, got: " + contents);
+
+        return new Triple<>(Optional.ofNullable(base), left, right);
+    }
+
 
     private static Matcher matchTrees(ITree src, ITree dst) {
         Matcher matcher = Matchers.getInstance().getMatcher(src, dst);
