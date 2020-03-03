@@ -34,9 +34,10 @@ public class TdmMerge {
                 continue;
 
             if (!pcs.getPredecessor().isListEdge()) {
-                Set<Content<T,V>> contents = delta.getContent(pcs);
+                Set<Content<T,V>> contents = delta.getContent(pcs.getPredecessor());
                 if (contents != null && contents.size() > 1) {
-                    handleContentConflict(contents, base);
+                    Set<Content<T,V>> newContent = handleContentConflict(contents, base);
+                    delta.setContent(pcs.getPredecessor(), newContent);
                 }
             }
 
@@ -69,40 +70,50 @@ public class TdmMerge {
     /**
      * Handle content conflicts, i.e. the same node is associated with multiple (potentially equivalent) contents.
      *
-     * TODO have this method modify the contents in a less dirty way
+     * If the conflict can be automatically resolved, the new contents (with only one piece of content) are returned.
+     *
+     * If the content conflict cannot be automatically resolved, the contents argument is simply returned as-is.
      */
-    private static <T extends ListNode,V> void handleContentConflict(Set<Content<T,V>> contents, TStar<T,V> base) {
+    private static <T extends ListNode,V> Set<Content<T,V>> handleContentConflict(Set<Content<T,V>> contents, TStar<T,V> base) {
         if (contents.size() > 3)
             throw new IllegalArgumentException("expected at most 3 pieces of conflicting content, got: " + contents);
+
+        Set<Content<T,V>> newContent = new HashSet<>(contents);
 
         // contents equal to that in base never takes precedence over left and right revisions
         Optional<Content<T,V>> basePcsOpt = contents.stream().filter(base::contains).findAny();
 
-        basePcsOpt.ifPresent(content -> contents.removeIf(c -> Objects.equals(c.getValue(), content.getValue())));
+        basePcsOpt.ifPresent(content -> newContent.removeIf(c -> Objects.equals(c.getValue(), content.getValue())));
 
-        if (contents.size() == 0) { // everything was equal to base, re-add
-            contents.add(basePcsOpt.get());
-        } else if (contents.size() == 2) { // both left and right have been modified from base
-            Iterator<Content<T,V>> it = contents.iterator();
+        if (newContent.size() == 0) { // everything was equal to base, re-add
+            newContent.add(basePcsOpt.get());
+        } else if (newContent.size() == 2) { // both left and right have been modified from base
+            Iterator<Content<T,V>> it = newContent.iterator();
             Content<T,V> first = it.next();
             Content<T,V> second = it.next();
             if (second.getValue().equals(first.getValue()))
                 it.remove();
-        } else if (contents.size() > 2) {
+        } else if (newContent.size() > 2) {
             // This should never happen, as there are at most 3 pieces of content to begin with and base has been
             // removed.
-            throw new IllegalStateException("Unexpected amount of conflicting content: " + contents);
+            throw new IllegalStateException("Unexpected amount of conflicting content: " + newContent);
         }
 
-        if (contents.size() != 1) {
-            // there was new content both in left and right revisions that was not equal
+        if (newContent.size() != 1) {
+            // conflict could not be resolved
 
-            Iterator<Content<T,V>> it = contents.iterator();
+            Iterator<Content<T,V>> it = newContent.iterator();
             Content<T,V> first = it.next();
             Content<T,V> second = it.next();
 
             LOGGER.warn("Content conflict: " + first + ", " + second);
+
+            // the reason all content is returned is that further processing of conflicts may be done after the base
+            // 3DM merge has finished, which may require the content of all revisions
+            return contents;
         }
+
+        return newContent;
     }
 
 }

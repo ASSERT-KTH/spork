@@ -34,6 +34,8 @@ class Spoon3dmMergeTest {
             "edit_annotations",
             "change_package_statement",
             "generify_method",
+            "add_class_visibility",
+            "change_field_modifiers",
     })
     void mergeToTree_shouldReturnExpectedTree_whenLeftVersionIsModified(String testName) {
         File testDir = Util.LEFT_MODIFIED_DIRPATH.resolve(testName).toFile();
@@ -60,6 +62,8 @@ class Spoon3dmMergeTest {
             "edit_annotations",
             "change_package_statement",
             "generify_method",
+            "add_class_visibility",
+            "change_field_modifiers",
     })
     void mergeToTree_shouldReturnExpectedTree_whenRightVersionIsModified(String testName) {
         File testDir = Util.LEFT_MODIFIED_DIRPATH.resolve(testName).toFile();
@@ -83,6 +87,7 @@ class Spoon3dmMergeTest {
             "add_import_statements",
             "change_binops",
             "change_unary_ops",
+            "add_field_modifiers",
     })
     void mergeToTree_shouldReturnExpectedTree_whenBothVersionsAreModified(String testName) throws IOException {
         File testDir = Util.BOTH_MODIFIED_DIRPATH.resolve(testName).toFile();
@@ -98,6 +103,11 @@ class Spoon3dmMergeTest {
         CtElement merged = Spoon3dmMerge.merge(sources.base, sources.left, sources.right);
         Object mergedImports = merged.getMetadata(Parser.IMPORT_STATEMENTS);
 
+        // this assert is just to give a better overview of obvious errors, but it relies on the pretty printer's
+        // correctness
+        assertEquals(Cli.prettyPrint((CtModule) expected), Cli.prettyPrint((CtModule) merged));
+
+        // these asserts are what actually matters
         assertEquals(expected, merged);
         assertEquals(expectedImports, mergedImports);
     }

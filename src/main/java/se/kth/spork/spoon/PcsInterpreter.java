@@ -449,6 +449,12 @@ public class PcsInterpreter {
             if (roledValue.getRole() != null) {
                 mergeTree.setValueByRole(roledValue.getRole(), roledValue.getValue());
             }
+
+            if (roledValue.hasSecondaryValues()) {
+                for (RoledValue secondary : roledValue.getSecondaryValues()) {
+                    mergeTree.setValueByRole(secondary.getRole(), secondary.getValue());
+                }
+            }
         }
 
         /**

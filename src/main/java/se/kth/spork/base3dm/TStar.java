@@ -16,8 +16,11 @@ public class TStar<T extends ListNode,V> {
     private Set<Pcs<T>> star;
     private Map<Pcs<T>, Set<Pcs<T>>> structuralConflicts;
 
-    // never add anything to this set!
-    private final Set<Pcs<T>> EMPTY_PCS_SET = new HashSet<>();
+    @SuppressWarnings("unchecked")
+    private final Set<Pcs<T>> EMPTY_PCS_SET = Collections.EMPTY_SET;
+
+    @SuppressWarnings("unchecked")
+    private final Set<Content<T,V>> EMPTY_CONTENT_SET = Collections.EMPTY_SET;
 
     /**
      * Create a T* from the provided trees, using the class representatives map to map each node to its class
@@ -86,11 +89,11 @@ public class TStar<T extends ListNode,V> {
     }
 
     /**
-     * @param pcs A PCS triple.
-     * @return The content associated with the argument's predecessor node.
+     * @param node A node..
+     * @return The content associated with the argument node, or an empty set if no content was associated.
      */
-    public Set<Content<T,V>> getContent(Pcs<T> pcs) {
-        return content.get(pcs.getPredecessor());
+    public Set<Content<T,V>> getContent(T node) {
+        return Collections.unmodifiableSet(content.getOrDefault(node, EMPTY_CONTENT_SET));
     }
 
     /**
@@ -108,6 +111,16 @@ public class TStar<T extends ListNode,V> {
      */
     public boolean contains(Content<T,V> cont) {
         return content.getOrDefault(cont.getContext().getPredecessor(), new HashSet<>()).contains(cont);
+    }
+
+    /**
+     * Set the content for some pcs triple, overwriting anything that was there previously.
+     *
+     * @param node A node to associate the content with. This is the key in the backing map.
+     * @param nodeContents A set of content values to associate with the node.
+     */
+    public void setContent(T node, Set<Content<T, V>> nodeContents) {
+        content.put(node, nodeContents);
     }
 
     /**
@@ -179,7 +192,7 @@ public class TStar<T extends ListNode,V> {
                 addToLookupTable(classRepPred, classRepPcs, predecessors);
                 addToLookupTable(classRepSucc, classRepPcs, successors);
             }
-            if (pred != null) {
+            if (!pred.isListEdge()) {
                 Content<T,V> c = new Content<T,V>(pcs, getContent.apply(pred));
                 addToLookupTable(classRepPred, c, content);
             }
