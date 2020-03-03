@@ -61,7 +61,7 @@ public class Cli {
      * @param spoonRoot Root of a merged Spoon tree.
      * @return A pretty-printed string representing the merged output.
      */
-    static String prettyPrint(CtModule spoonRoot) {
+    public static String prettyPrint(CtModule spoonRoot) {
         CtPackage activePackage = spoonRoot.getRootPackage();
         while (!activePackage.getPackages().isEmpty()) {
             assert activePackage.getPackages().size() == 1;

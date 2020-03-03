@@ -14,13 +14,10 @@ import spoon.reflect.code.CtBinaryOperator;
 import spoon.reflect.code.CtLiteral;
 import spoon.reflect.code.CtOperatorAssignment;
 import spoon.reflect.code.CtUnaryOperator;
-import spoon.reflect.declaration.CtElement;
-import spoon.reflect.declaration.CtImport;
-import spoon.reflect.declaration.CtNamedElement;
+import spoon.reflect.declaration.*;
 import spoon.reflect.path.CtRole;
 import spoon.reflect.reference.CtReference;
 
-import javax.management.relation.Role;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.function.Function;
@@ -166,6 +163,13 @@ public class Spoon3dmMerge {
                 return null;
 
             CtElement elem = wrapper.getElement();
+            RoledValue rv = extractPrimaryValue(elem);
+            attachSecondaryValues(elem, rv);
+
+            return rv;
+        }
+
+        private static RoledValue extractPrimaryValue(CtElement elem) {
             if (elem instanceof CtLiteral) {
                 CtLiteral<?> lit = (CtLiteral<?>) elem;
                 return new RoledValue(lit.getValue(), CtRole.VALUE);
@@ -185,7 +189,16 @@ public class Spoon3dmMerge {
                 CtUnaryOperator<?> op = (CtUnaryOperator<?>) elem;
                 return new RoledValue(op.getKind(), CtRole.OPERATOR_KIND);
             }
+
             return new RoledValue(elem.getShortRepresentation(), null);
+        }
+
+        private static void attachSecondaryValues(CtElement elem, RoledValue rv) {
+            if (elem instanceof CtModifiable) {
+                CtModifiable mod = (CtModifiable) elem;
+                Set<ModifierKind> modifiers = new HashSet<>(mod.getModifiers());
+                rv.addSecondaryValue(modifiers, CtRole.MODIFIER);
+            }
         }
     }
 

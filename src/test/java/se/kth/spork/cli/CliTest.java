@@ -39,6 +39,8 @@ class CliTest {
             "edit_annotations",
             "change_package_statement",
             "generify_method",
+            "add_class_visibility",
+            "change_field_modifiers",
     })
     void mergeTreeShouldEqualReParsedPrettyPrint_whenLeftIsModified(
             String testName, @TempDir Path tempDir) throws IOException {
@@ -66,6 +68,8 @@ class CliTest {
             "edit_annotations",
             "change_package_statement",
             "generify_method",
+            "add_class_visibility",
+            "change_field_modifiers",
     })
     void mergeTreeShouldEqualReParsedPrettyPrint_whenRightIsModified(
             String testName, @TempDir Path tempDir) throws IOException {
