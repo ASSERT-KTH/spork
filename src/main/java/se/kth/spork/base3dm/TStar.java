@@ -90,7 +90,7 @@ public class TStar<T extends ListNode,V> {
      * @return The content associated with the argument's predecessor node.
      */
     public Set<Content<T,V>> getContent(Pcs<T> pcs) {
-        return content.get(pcs.getPredecessor());
+        return Collections.unmodifiableSet(content.get(pcs.getPredecessor()));
     }
 
     /**
@@ -108,6 +108,16 @@ public class TStar<T extends ListNode,V> {
      */
     public boolean contains(Content<T,V> cont) {
         return content.getOrDefault(cont.getContext().getPredecessor(), new HashSet<>()).contains(cont);
+    }
+
+    /**
+     * Set the content for some pcs triple, overwriting anything that was there previously.
+     *
+     * @param pcs A PCS triple.
+     * @param nodeContents A set of content values to associate with the node.
+     */
+    public void setContent(Pcs<T> pcs, Set<Content<T, V>> nodeContents) {
+        content.put(pcs.getPredecessor(), nodeContents);
     }
 
     /**
