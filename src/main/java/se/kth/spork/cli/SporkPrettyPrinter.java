@@ -19,6 +19,7 @@ public class SporkPrettyPrinter extends DefaultJavaPrettyPrinter {
      */
     public SporkPrettyPrinter(Environment env) {
         super(env);
+        setIgnoreImplicit(false);
     }
 
     @Override
