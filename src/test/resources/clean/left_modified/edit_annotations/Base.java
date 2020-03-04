@@ -51,7 +51,7 @@ public class ArrayStack<T> implements Stack<T> {
      * Checked fetching of the top element, throws an EmptyStackException if
      * the stack is empty.
      */
-    @SuppressWarnings(value="unchecked")
+    @SuppressWarnings("unchecked")
     private T checkedTop() {
         if (size == 0) {
             throw new EmptyStackException();
