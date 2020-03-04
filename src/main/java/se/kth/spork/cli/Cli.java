@@ -11,6 +11,10 @@ import se.kth.spork.spoon.Spoon3dmMerge;
 import spoon.reflect.declaration.*;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.charset.Charset;
+import java.nio.file.Files;
+import java.nio.file.StandardOpenOption;
 import java.util.Collection;
 import java.util.Optional;
 import java.util.Set;
@@ -123,8 +127,13 @@ public class Cli {
         @CommandLine.Parameters(index = "2", paramLabel = "RIGHT", description = "Path to the right revision")
         File right;
 
+        @CommandLine.Option(
+                names = {"-o", "--output"},
+                description = "Path to the output file. Existing files are overwritten")
+        File out;
+
         @Override
-        public Integer call() {
+        public Integer call() throws IOException {
             long start = System.nanoTime();
 
             LOGGER.info("Parsing input files");
@@ -135,7 +144,15 @@ public class Cli {
             LOGGER.info("Initiating merge");
             CtModule merge = (CtModule) Spoon3dmMerge.merge(baseModule, leftModule, rightModule);
 
-            System.out.println(prettyPrint(merge));
+            LOGGER.info("Pretty-printing");
+            String pretty = prettyPrint(merge);
+            if (out != null) {
+                LOGGER.info("Writing merge to " + out);
+                Files.write(out.toPath(), pretty.getBytes(Charset.defaultCharset()),
+                        StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING);
+            } else {
+                System.out.println(pretty);
+            }
 
             LOGGER.info("Total time elapsed: " + (double) (System.nanoTime() - start) / 1e9 + " seconds");
             return 0;
