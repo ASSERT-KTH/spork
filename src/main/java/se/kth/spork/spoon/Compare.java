@@ -41,6 +41,20 @@ public class Compare {
     }
 
     /**
+     * Sort the unordered elements of the provided module.
+     *
+     * @param mod A Spoon unnamed module.
+     */
+    public static void sortUnorderedElements(CtModule mod) {
+        sortUnorderedElements(mod.getRootPackage());
+    }
+
+    private static void sortUnorderedElements(CtPackage pkg) {
+        pkg.getTypes().forEach(Compare::sortTypeMembers);
+        pkg.getPackages().forEach(Compare::sortUnorderedElements);
+    }
+
+    /**
      * Compare the left package with the right package, without regard to the order of unordered type
      * members.
      *

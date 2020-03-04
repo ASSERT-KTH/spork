@@ -1,5 +1,7 @@
 package se.kth.spork.cli;
 
+import gumtree.spoon.AstComparator;
+import gumtree.spoon.diff.Diff;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import picocli.CommandLine;
@@ -69,7 +71,7 @@ public class Cli {
     }
 
     @CommandLine.Command(name = "compare", mixinStandardHelpOptions = true,
-            description = "Compare the ASTs of two Java files, disregarding the order of unordered elements")
+            description = "Compare the ASTs of two Java files, disregarding comments and the order of unordered elements")
     private static class CompareCommand implements Callable<Integer> {
         @CommandLine.Parameters(index = "0", paramLabel = "LEFT", description = "Path to a Java file")
         File left;
@@ -79,16 +81,26 @@ public class Cli {
 
         @Override
         public Integer call() {
-            CtModule leftModule = Parser.parse(left.toPath());
-            CtModule rightModule = Parser.parse(right.toPath());
+            CtModule leftModule = Parser.parseWithoutComments(left.toPath());
+            CtModule rightModule = Parser.parseWithoutComments(right.toPath());
 
-            if (Compare.compare(leftModule, rightModule)) {
-                LOGGER.info("The ASTs are equal");
-                return 0;
+            Compare.sortUnorderedElements(leftModule);
+            Compare.sortUnorderedElements(rightModule);
+
+            Object leftImports = leftModule.getMetadata(Parser.IMPORT_STATEMENTS);
+            Object rightImports = rightModule.getMetadata(Parser.IMPORT_STATEMENTS);
+
+            Diff diff = new AstComparator().compare(leftModule, rightModule);
+            System.out.println(diff);
+
+            boolean importsEqual = leftImports.equals(rightImports);
+            if (!importsEqual) {
+                LOGGER.warn("Import statements differ");
+                LOGGER.info("Left: " + leftImports);
+                LOGGER.info("Right: " + rightImports);
             }
 
-            LOGGER.info("The ASTs differ");
-            return 1;
+            return diff.getRootOperations().isEmpty() && importsEqual ? 0 : 1;
         }
     }
 

@@ -44,6 +44,23 @@ public class Parser {
         return parse(launcher -> launcher.addInputResource(new VirtualFile(javaFileContents)));
     }
 
+    /**
+     * Parse a Java file to a Spoon tree. Any import statements in the file are attached to the returned module's
+     * metadata with the {@link Parser#IMPORT_STATEMENTS} key. The imports are sorted in ascending lexicographical
+     * order.
+     *
+     * Comments are ignored
+     *
+     * @param javaFile Path to a Java file.
+     * @return The root module of the Spoon tree.
+     */
+    public static CtModule parseWithoutComments(Path javaFile) {
+        return parse(launcher -> {
+            launcher.getEnvironment().setCommentEnabled(false);
+            launcher.addInputResource(new VirtualFile(read(javaFile)));
+        });
+    }
+
     private static CtModule parse(Consumer<Launcher> addResource) {
         Launcher launcher = new Launcher();
         launcher.getEnvironment().setPrettyPrinterCreator(
