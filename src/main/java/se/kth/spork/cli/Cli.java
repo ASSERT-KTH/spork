@@ -8,12 +8,12 @@ import picocli.CommandLine;
 import se.kth.spork.spoon.Compare;
 import se.kth.spork.spoon.Parser;
 import se.kth.spork.spoon.Spoon3dmMerge;
-import spoon.reflect.declaration.CtModule;
-import spoon.reflect.declaration.CtPackage;
-import spoon.reflect.declaration.CtType;
+import spoon.reflect.declaration.*;
 
 import java.io.File;
 import java.util.Collection;
+import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.Callable;
 
 /**
@@ -38,8 +38,15 @@ public class Cli {
     public static String prettyPrint(CtModule spoonRoot) {
         CtPackage activePackage = spoonRoot.getRootPackage();
         while (!activePackage.getPackages().isEmpty()) {
-            assert activePackage.getPackages().size() == 1;
-            activePackage = activePackage.getPackages().iterator().next();
+            Set<CtPackage> subPkgs = activePackage.getPackages();
+            Optional<CtPackage> pkgOpt = subPkgs.stream()
+                    .filter(pkg -> !pkg.getTypes().isEmpty() || !pkg.getPackages().isEmpty())
+                    .findFirst();
+
+            if (!pkgOpt.isPresent())
+                throw new RuntimeException("could not find the active package");
+
+            activePackage = pkgOpt.get();
         }
 
         StringBuilder sb = new StringBuilder();
@@ -49,11 +56,11 @@ public class Cli {
 
         Collection<?> imports = (Collection<?>) spoonRoot.getMetadata(Parser.IMPORT_STATEMENTS);
         for (Object imp : imports) {
-            sb.append(imp.toString()).append("\n");
+            sb.append(imp).append("\n");
         }
 
         for (CtType<?> type : activePackage.getTypes()) {
-            sb.append(type.toString()).append("\n\n");
+            sb.append("\n\n").append(type);
         }
 
         return sb.toString();
