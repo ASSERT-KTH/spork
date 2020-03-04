@@ -4,6 +4,7 @@ import se.kth.spork.cli.SporkPrettyPrinter;
 import spoon.Launcher;
 import spoon.reflect.CtModel;
 import spoon.reflect.declaration.*;
+import spoon.support.compiler.FileSystemFile;
 import spoon.support.compiler.VirtualFile;
 
 import java.io.IOException;
@@ -31,7 +32,7 @@ public class Parser {
     public static CtModule parse(Path javaFile) {
         // Reading from a virtual file is a workaround to a bug in Spoon
         // Sometimes, the class comment is dropped when reading from the file system
-        return parse(launcher -> launcher.addInputResource(new VirtualFile(read(javaFile))));
+        return parse(launcher -> launcher.addInputResource(new FileSystemFile(javaFile.toFile())));
     }
 
     /**
@@ -57,7 +58,7 @@ public class Parser {
     public static CtModule parseWithoutComments(Path javaFile) {
         return parse(launcher -> {
             launcher.getEnvironment().setCommentEnabled(false);
-            launcher.addInputResource(new VirtualFile(read(javaFile)));
+            launcher.addInputResource(new FileSystemFile(javaFile.toFile()));
         });
     }
 
@@ -66,9 +67,8 @@ public class Parser {
         launcher.getEnvironment().setPrettyPrinterCreator(
                 () -> new SporkPrettyPrinter(launcher.getEnvironment()));
         addResource.accept(launcher);
-        launcher.buildModel();
+        CtModel model = launcher.buildModel();
 
-        CtModel model = launcher.getModel();
         CtModule module = model.getUnnamedModule();
 
         // TODO preserve order of import statements
