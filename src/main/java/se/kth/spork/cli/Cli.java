@@ -2,13 +2,17 @@ package se.kth.spork.cli;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import picocli.CommandLine;
 import se.kth.spork.spoon.Compare;
 import se.kth.spork.spoon.Parser;
 import se.kth.spork.spoon.Spoon3dmMerge;
-import spoon.reflect.declaration.*;
+import spoon.reflect.declaration.CtModule;
+import spoon.reflect.declaration.CtPackage;
+import spoon.reflect.declaration.CtType;
 
-import java.nio.file.Paths;
+import java.io.File;
 import java.util.Collection;
+import java.util.concurrent.Callable;
 
 /**
  * Command line interface for Spork.
@@ -19,40 +23,8 @@ public class Cli {
     private static final Logger LOGGER = LoggerFactory.getLogger(Spoon3dmMerge.class);
 
     public static void main(String[] args) {
-        long start = System.nanoTime();
-
-        if (args.length < 3 || args.length > 4) {
-            usage();
-            System.exit(1);
-        }
-
-
-        LOGGER.info("Parsing input files");
-        CtModule left = Parser.parse(Paths.get(args[0]));
-        CtModule base = Parser.parse(Paths.get(args[1]));
-        CtModule right = Parser.parse(Paths.get(args[2]));
-        CtModule expected = args.length == 4 ? Parser.parse(Paths.get(args[3])) : null;
-
-        LOGGER.info("Starting merge");
-        CtModule merged = (CtModule) Spoon3dmMerge.merge(base, left, right);
-
-        if (expected != null) {
-            boolean preciselyEqual = expected.equals(merged);
-            boolean equalDownToOrdering = Compare.compare(merged, expected);
-
-            if (preciselyEqual && equalDownToOrdering) {
-                System.out.println("Merged tree precisely matches expected tree");
-            } else if (equalDownToOrdering) {
-                System.out.println("Merged tree matches expected tree down to the order of unordered elements");
-            } else {
-                System.out.println("Merge tree does not match expected tree");
-                System.exit(1);
-            }
-        } else {
-            System.out.println(prettyPrint(merged));
-        }
-
-        LOGGER.info("Total time elapsed: " + (double) (System.nanoTime() - start) / 1e9 + " seconds");
+        int exitCode = new CommandLine(new TopCmd()).execute(args);
+        System.exit(exitCode);
     }
 
     /**
@@ -85,7 +57,70 @@ public class Cli {
         return sb.toString();
     }
 
-    private static void usage() {
-        System.out.println("usage: spork <left> <base> <right> [expected]");
+    @CommandLine.Command(mixinStandardHelpOptions = true, subcommands = {CompareCommand.class, MergeCommand.class},
+            description = "The Spork command line app.", synopsisSubcommandLabel = "<COMMAND>")
+    private static class TopCmd implements Callable<Integer> {
+
+        @Override
+        public Integer call() {
+            new CommandLine(this).usage(System.out);
+            return 1;
+        }
+    }
+
+    @CommandLine.Command(name = "compare", mixinStandardHelpOptions = true,
+            description = "Compare the ASTs of two Java files, disregarding the order of unordered elements")
+    private static class CompareCommand implements Callable<Integer> {
+        @CommandLine.Parameters(index = "0", paramLabel = "LEFT", description = "Path to a Java file")
+        File left;
+
+        @CommandLine.Parameters(index = "1", paramLabel = "RIGHT", description = "Path to a Java file")
+        File right;
+
+        @Override
+        public Integer call() {
+            CtModule leftModule = Parser.parse(left.toPath());
+            CtModule rightModule = Parser.parse(right.toPath());
+
+            if (Compare.compare(leftModule, rightModule)) {
+                LOGGER.info("The ASTs are equal");
+                return 0;
+            }
+
+            LOGGER.info("The ASTs differ");
+            return 1;
+        }
+    }
+
+    @CommandLine.Command(name = "merge", mixinStandardHelpOptions = true,
+            description = "Perform a structured three-way merge")
+    private static class MergeCommand implements Callable<Integer> {
+        @CommandLine.Parameters(index = "0", paramLabel = "LEFT", description = "Path to the left revision")
+        File left;
+
+        @CommandLine.Parameters(index = "1", paramLabel = "BASE", description = "Path to the base revision")
+        File base;
+
+        @CommandLine.Parameters(index = "2", paramLabel = "RIGHT", description = "Path to the right revision")
+        File right;
+
+        @Override
+        public Integer call() {
+            long start = System.nanoTime();
+
+            LOGGER.info("Parsing input files");
+            CtModule baseModule = Parser.parse(base.toPath());
+            CtModule leftModule = Parser.parse(left.toPath());
+            CtModule rightModule = Parser.parse(right.toPath());
+
+            LOGGER.info("Initiating merge");
+            CtModule merge = (CtModule) Spoon3dmMerge.merge(baseModule, leftModule, rightModule);
+
+            System.out.println(prettyPrint(merge));
+
+            LOGGER.info("Total time elapsed: " + (double) (System.nanoTime() - start) / 1e9 + " seconds");
+            return 0;
+        }
     }
 }
+
