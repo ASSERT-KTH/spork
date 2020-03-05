@@ -2,6 +2,9 @@ package se.kth.spork;
 
 import com.github.gumtreediff.tree.ITree;
 import gumtree.spoon.builder.SpoonGumTreeBuilder;
+import org.junit.jupiter.api.extension.ExtensionContext;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.ArgumentsProvider;
 import se.kth.spork.cli.SporkPrettyPrinter;
 import spoon.Launcher;
 import spoon.reflect.declaration.CtClass;
@@ -12,12 +15,10 @@ import java.lang.reflect.Array;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 
 /**
  * Utility methods for the test suite.
@@ -29,6 +30,63 @@ public class Util {
     public static final Path BOTH_MODIFIED_DIRPATH = CLEAN_MERGE_DIRPATH.resolve("both_modified");
     public static final Path LEFT_MODIFIED_DIRPATH = CLEAN_MERGE_DIRPATH.resolve("left_modified");
     public static final Path CONFLICT_DIRPATH = Paths.get("src/test/resources/conflict");
+
+    /**
+     * Provides test sources for scenarios where both left and right revisions are modified.
+     */
+    public static class BothModifiedSourceProvider implements ArgumentsProvider {
+        @Override
+        public Stream<? extends Arguments> provideArguments(ExtensionContext extensionContext) throws Exception {
+            return getArgumentSourcesStream(BOTH_MODIFIED_DIRPATH.toFile());
+        }
+    }
+
+    /**
+     * Provides test sources for scenarios where left is modified.
+     */
+    public static class LeftModifiedSourceProvider implements ArgumentsProvider {
+        @Override
+        public Stream<? extends Arguments> provideArguments(ExtensionContext extensionContext) throws Exception {
+            return getArgumentSourcesStream(LEFT_MODIFIED_DIRPATH.toFile());
+        }
+    }
+
+    /**
+     * Provides test sources for scenarios where right is modified.
+     */
+    public static class RightModifiedSourceProvider implements ArgumentsProvider {
+        @Override
+        public Stream<? extends Arguments> provideArguments(ExtensionContext extensionContext) throws Exception {
+            return getArgumentSourcesStream(LEFT_MODIFIED_DIRPATH.toFile()).map(
+                    arg -> {
+                        TestSources sources = (TestSources) arg.get()[0];
+                        // swap left and right around to make this a "right modified" test case
+                        Path left = sources.left;
+                        sources.left = sources.right;
+                        sources.right = left;
+                        return Arguments.of(sources);
+                    }
+            );
+        }
+    }
+
+    /**
+     * Provides test sources for scenarios where there are conflicts.
+     */
+    public static class ConflictSourceProvider implements ArgumentsProvider {
+        @Override
+        public Stream<? extends Arguments> provideArguments(ExtensionContext extensionContext) throws Exception {
+            return getArgumentSourcesStream(CONFLICT_DIRPATH.toFile());
+        }
+    }
+
+    private static Stream<? extends Arguments> getArgumentSourcesStream(File testDir) {
+        return Arrays.stream(testDir.listFiles())
+                .filter(File::isDirectory)
+                .filter(f -> !f.getName().startsWith("IGNORE"))
+                .map(TestSources::fromTestDirectory)
+                .map(Arguments::of);
+    }
 
     public static String read(Path path) throws IOException {
         return String.join("\n", Files.readAllLines(path));
@@ -134,6 +192,11 @@ public class Util {
                     path.resolve("Right.java"),
                     path.resolve("Expected.java")
             );
+        }
+
+        @Override
+        public String toString() {
+            return base.getParent().getFileName().toString();
         }
     }
 }
