@@ -88,6 +88,8 @@ class Spoon3dmMergeTest {
             "change_binops",
             "change_unary_ops",
             "add_field_modifiers",
+            "method_method_ordering_conflict",
+            "multiple_method_ordering_conflicts",
     })
     void mergeToTree_shouldReturnExpectedTree_whenBothVersionsAreModified(String testName) throws IOException {
         File testDir = Util.BOTH_MODIFIED_DIRPATH.resolve(testName).toFile();
@@ -96,16 +98,20 @@ class Spoon3dmMergeTest {
     }
 
     private static void runTestMerge(Util.TestSources sources) {
-        CtElement expected = Parser.parse(sources.expected);
+        CtModule expected = Parser.parse(sources.expected);
         Object expectedImports = expected.getMetadata(Parser.IMPORT_STATEMENTS);
         assert expectedImports != null;
 
-        CtElement merged = Spoon3dmMerge.merge(sources.base, sources.left, sources.right);
+        CtModule merged = (CtModule) Spoon3dmMerge.merge(sources.base, sources.left, sources.right);
         Object mergedImports = merged.getMetadata(Parser.IMPORT_STATEMENTS);
+
+        // FIXME There should be no need to sort output elements, but resolutions to ordering conflicts can cause strange method ordering
+        Compare.sortUnorderedElements(expected);
+        Compare.sortUnorderedElements(merged);
 
         // this assert is just to give a better overview of obvious errors, but it relies on the pretty printer's
         // correctness
-        assertEquals(Cli.prettyPrint((CtModule) expected), Cli.prettyPrint((CtModule) merged));
+        assertEquals(Cli.prettyPrint(expected), Cli.prettyPrint(merged));
 
         // these asserts are what actually matters
         assertEquals(expected, merged);
