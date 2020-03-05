@@ -5,9 +5,12 @@ import se.kth.spork.util.Pair;
 import spoon.reflect.code.CtExpression;
 import spoon.reflect.declaration.CtAnnotation;
 import spoon.reflect.declaration.CtElement;
+import spoon.reflect.declaration.CtType;
 import spoon.reflect.path.CtRole;
 
 import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Class for interpreting a merged PCS structure into a Spoon tree.
@@ -143,14 +146,22 @@ public class PcsInterpreter {
         leftNodes = leftNodes.subList(0, cutoffs.first);
         rightNodes = rightNodes.subList(0, cutoffs.second);
 
-        visitor.visitConflicting(currentRoot, leftNodes, rightNodes);
-        for (SpoonNode node : leftNodes) {
-            traversePcs(node);
+        Optional<List<SpoonNode>> resolved = tryResolveConflict(leftNodes, rightNodes);
+        if (resolved.isPresent()) {
+            for (SpoonNode node : resolved.get()) {
+                visitor.visit(currentRoot, node);
+                traversePcs(node);
+            }
+        } else {
+            visitor.visitConflicting(currentRoot, leftNodes, rightNodes);
+            for (SpoonNode node : leftNodes) {
+                traversePcs(node);
+            }
+            for (SpoonNode node : rightNodes) {
+                traversePcs(node);
+            }
+            visitor.endConflict();
         }
-        for (SpoonNode node : rightNodes) {
-            traversePcs(node);
-        }
-        visitor.endConflict();
 
         return leftNodes.isEmpty() ? next : leftNodes.get(leftNodes.size() - 1);
     }
@@ -168,6 +179,25 @@ public class PcsInterpreter {
             cur = siblings.get(cur).getSuccessor();
         }
         return nodes;
+    }
+
+    /**
+     * Try to resolve a structural conflict automatically.
+     */
+    private static Optional<List<SpoonNode>> tryResolveConflict(List<SpoonNode> leftNodes, List<SpoonNode> rightNodes) {
+        assert leftNodes.size() > 0;
+        assert rightNodes.size() > 0;
+
+        SpoonNode firstLeft = leftNodes.get(0);
+        if (!(firstLeft.getElement().getRoleInParent() == CtRole.TYPE_MEMBER))
+            return Optional.empty();
+
+        assert leftNodes.stream().allMatch(node -> node.getElement().getRoleInParent() == CtRole.TYPE_MEMBER);
+        assert rightNodes.stream().allMatch(node -> node.getElement().getRoleInParent() == CtRole.TYPE_MEMBER);
+
+        // FIXME this is too liberal. Fields are not unordered, and this approach makes the merge non-commutative.
+        List<SpoonNode> result = Stream.of(leftNodes, rightNodes).flatMap(List::stream).collect(Collectors.toList());
+        return Optional.of(result);
     }
 
     /**
