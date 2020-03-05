@@ -98,6 +98,10 @@ public class Cli {
             Compare.sortUnorderedElements(leftModule);
             Compare.sortUnorderedElements(rightModule);
 
+            // reparse to avoid formatting inconsistencies
+            leftModule = Parser.parse(prettyPrint(leftModule));
+            rightModule = Parser.parse(prettyPrint(rightModule));
+
             Object leftImports = leftModule.getMetadata(Parser.IMPORT_STATEMENTS);
             Object rightImports = rightModule.getMetadata(Parser.IMPORT_STATEMENTS);
 
