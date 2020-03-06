@@ -15,6 +15,8 @@ import spoon.reflect.code.CtUnaryOperator;
 import spoon.reflect.declaration.*;
 import spoon.reflect.path.CtRole;
 import spoon.reflect.reference.CtReference;
+import spoon.reflect.reference.CtTypeReference;
+import spoon.reflect.reference.CtWildcardReference;
 
 import java.nio.file.Path;
 import java.util.*;
@@ -196,9 +198,10 @@ public class Spoon3dmMerge {
 
         private static void attachSecondaryValues(CtElement elem, RoledValue rv) {
             if (elem instanceof CtModifiable) {
-                CtModifiable mod = (CtModifiable) elem;
-                Set<ModifierKind> modifiers = new HashSet<>(mod.getModifiers());
+                Set<ModifierKind> modifiers = new HashSet<>(elem.getValueByRole(CtRole.MODIFIER));
                 rv.addSecondaryValue(modifiers, CtRole.MODIFIER);
+            } else if (elem instanceof CtWildcardReference) {
+                rv.addSecondaryValue(elem.getValueByRole(CtRole.IS_UPPER), CtRole.IS_UPPER);
             }
         }
     }
