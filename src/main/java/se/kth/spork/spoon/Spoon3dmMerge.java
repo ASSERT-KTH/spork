@@ -15,7 +15,6 @@ import spoon.reflect.code.CtUnaryOperator;
 import spoon.reflect.declaration.*;
 import spoon.reflect.path.CtRole;
 import spoon.reflect.reference.CtReference;
-import spoon.reflect.reference.CtTypeReference;
 import spoon.reflect.reference.CtWildcardReference;
 
 import java.nio.file.Path;

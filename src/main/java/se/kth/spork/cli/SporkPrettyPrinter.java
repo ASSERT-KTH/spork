@@ -1,11 +1,17 @@
 package se.kth.spork.cli;
 
-import se.kth.spork.spoon.ConflictInfo;
+import se.kth.spork.spoon.StructuralConflict;
 import spoon.compiler.Environment;
+import spoon.reflect.cu.SourcePosition;
 import spoon.reflect.declaration.CtElement;
 import spoon.reflect.visitor.DefaultJavaPrettyPrinter;
 import spoon.reflect.visitor.PrinterHelper;
 import spoon.reflect.visitor.TokenWriter;
+
+import java.io.IOException;
+import java.io.RandomAccessFile;
+import java.nio.charset.Charset;
+import java.util.List;
 
 public class SporkPrettyPrinter extends DefaultJavaPrettyPrinter {
     public static final String START_CONFLICT = "<<<<<<< LEFT";
@@ -24,58 +30,121 @@ public class SporkPrettyPrinter extends DefaultJavaPrettyPrinter {
 
     @Override
     public SporkPrettyPrinter scan(CtElement e) {
-        if (e == null || !e.getMetadataKeys().contains(ConflictInfo.CONFLICT_METADATA)) {
+        if (e == null || !e.getMetadataKeys().contains(StructuralConflict.STRUCTURAL_CONFLICT_METADATA_KEY)) {
             super.scan(e);
             return this;
         }
 
-        // relies on the fact that structural conflicts can only occur in ordered nodes
-        // in unordered nodes, there's no guarantee that a start marker comes before an end marker,
-        // for example
-        ConflictInfo conflictInfo = (ConflictInfo) e.getMetadata("SPORK_CONFLICT");
-        switch (conflictInfo.marker) {
-            case LEFT_START:
-                writeConflictMarker(START_CONFLICT);
-                super.scan(e);
-                if (conflictInfo.rightSize == 0) {
-                    getPrinterTokenWriter().writeln();
-                    writeConflictMarker(MID_CONFLICT);
-                    writeConflictMarker(END_CONFLICT);
-                }
-                break;
-            case RIGHT_START:
-                if (conflictInfo.leftSize == 0) {
-                    writeConflictMarker(START_CONFLICT);
-                }
-                writeConflictMarker(MID_CONFLICT);
-                super.scan(e);
-                if (conflictInfo.rightSize == 1) {
-                    getPrinterTokenWriter().writeln();
-                    writeConflictMarker(END_CONFLICT);
-                }
-                break;
-            case RIGHT_END:
-                assert conflictInfo.rightSize > 1;
-                super.scan(e);
-                getPrinterTokenWriter().writeln();
-                writeConflictMarker(END_CONFLICT);
-                break;
-            default:
-                throw new RuntimeException("Internal error, couldn't finish writing conflict");
-        }
+        StructuralConflict structuralConflict =
+                (StructuralConflict) e.getMetadata( StructuralConflict.STRUCTURAL_CONFLICT_METADATA_KEY);
+        writeStructuralConflict(structuralConflict);
 
         return this;
     }
 
-    private void writeConflictMarker(String conflictMarker) {
-        TokenWriter printer = getPrinterTokenWriter();
-        PrinterHelper helper = printer.getPrinterHelper();
-        int tabCount = helper.getTabCount();
+    /**
+     * Write both pats of a structural conflict.
+     */
+    private void writeStructuralConflict(StructuralConflict structuralConflict) {
+        String leftSource = getOriginalSource(structuralConflict.left);
+        String rightSource = getOriginalSource(structuralConflict.right);
+
+        PrinterHelper helper = getPrinterTokenWriter().getPrinterHelper();
+        int tabBefore = helper.getTabCount();
         helper.setTabCount(0);
 
+        helper.writeln();
+        writeConflictMarker(START_CONFLICT);
+        writelnNonEmpty(leftSource);
+        writeConflictMarker(MID_CONFLICT);
+        writelnNonEmpty(rightSource);
+        writeConflictMarker(END_CONFLICT);
+
+        helper.setTabCount(tabBefore);
+    }
+
+    private void writeConflictMarker(String conflictMarker) {
+        TokenWriter printer = getPrinterTokenWriter();
         printer.writeLiteral(conflictMarker);
         printer.writeln();
+    }
 
-        helper.setTabCount(tabCount);
+    /**
+     * Write the provided string plus a line ending only if the string is non-empty.
+     */
+    private void writelnNonEmpty(String s) {
+        if (s.isEmpty())
+            return;
+
+        PrinterHelper helper = getPrinterTokenWriter().getPrinterHelper();
+
+        helper.write(s);
+        helper.writeln();
+    }
+
+    /**
+     * Get the original source fragment corresponding to the nodes provided, or an empty string if the list is
+     * empty. Note that the nodes must be adjacent in the source file, and in the same order as in the source.
+     *
+     * @param nodes A possibly empty list of adjacent nodes.
+     * @return The original source code fragment, including any leading indentation on the first line.
+     */
+    private static String getOriginalSource(List<CtElement> nodes) {
+        if (nodes.isEmpty())
+            return "";
+
+        SourcePosition firstElemPos = nodes.get(0).getPosition();
+        SourcePosition lastElemPos = nodes.get(nodes.size() - 1).getPosition();
+        try (RandomAccessFile file = new RandomAccessFile(firstElemPos.getFile(), "r")) {
+            return getOriginalSource(firstElemPos, lastElemPos, file);
+        } catch (IOException e) {
+            e.printStackTrace();
+            throw new RuntimeException("failed to read original source fragments");
+        }
+    }
+
+    /**
+     * Get the original source code fragment starting at start and ending at end, including indentation if start is
+     * the first element on its source code line.
+     *
+     * @param start The source position of the first element.
+     * @param end The source position of the last element.
+     * @param randomAccessFile A random access file pointing to the common source of the start and end elements.
+     * @return The source code fragment starting at start and ending at end, including leading indentation.
+     * @throws IOException
+     */
+    private static String getOriginalSource(SourcePosition start, SourcePosition end, RandomAccessFile randomAccessFile) throws IOException {
+        int startByte = precededByIndentation(randomAccessFile, start) ?
+                getLineStartByte(start) : start.getSourceStart();
+        int endByte = end.getSourceEnd();
+
+        byte[] content = new byte[endByte - startByte + 1];
+
+        randomAccessFile.seek(startByte);
+        randomAccessFile.read(content);
+
+        return new String(content, Charset.defaultCharset());
+    }
+
+    private static boolean precededByIndentation(RandomAccessFile file, SourcePosition pos) throws IOException {
+        int lineStartByte = getLineStartByte(pos);
+        byte[] before = new byte[pos.getSourceStart() - lineStartByte];
+
+        file.seek(lineStartByte);
+        file.read(before);
+
+        String s = new String(before, Charset.defaultCharset());
+        return s.matches("\\s+");
+    }
+
+    private static int getLineStartByte(SourcePosition pos) {
+        if (pos.getLine() == 1)
+            return 0;
+
+        // the index is offset by 2 because:
+        // 1. zero-indexing means -1
+        // 2. line separator indexing means that the 0th line separator corresponds to the _end_ of the first line
+        int prevLineEnd = pos.getLine() - 2;
+        return pos.getCompilationUnit().getLineSeparatorPositions()[prevLineEnd] + 1; // +1 to get the next line start
     }
 }
