@@ -5,7 +5,6 @@ import se.kth.spork.util.Pair;
 import spoon.reflect.code.CtExpression;
 import spoon.reflect.declaration.CtAnnotation;
 import spoon.reflect.declaration.CtElement;
-import spoon.reflect.declaration.CtType;
 import spoon.reflect.path.CtRole;
 
 import java.util.*;
@@ -25,8 +24,8 @@ public class PcsInterpreter {
     /**
      * Convert a merged PCS structure into a Spoon tree.
      *
-     * @param baseLeft            A tree matching between the base revision and the left revision.
-     * @param baseRight           A tree matching between the base revision and the right revision.
+     * @param baseLeft  A tree matching between the base revision and the left revision.
+     * @param baseRight A tree matching between the base revision and the right revision.
      * @return A Spoon tree representing the merged PCS structure.
      */
     public static CtElement fromMergedPcs(
@@ -121,11 +120,11 @@ public class PcsInterpreter {
     /**
      * Traverse all nodes in the conflict.
      *
-     * @param nextPcs The PCS triple currently being processed.
+     * @param nextPcs     The PCS triple currently being processed.
      * @param conflicting A PCS triple conflicting with the one currently being processed. This is assumed
      *                    to be a successor conflict (i.e. on the form Pcs(a, b, c), Pcs(a, b, c')).
      * @param currentRoot The current root node.
-     * @param children The children of the current root node.
+     * @param children    The children of the current root node.
      * @return The first node in the left tree that immediately follows the conflict. This is the
      * next node to process.
      */
@@ -154,12 +153,6 @@ public class PcsInterpreter {
             }
         } else {
             visitor.visitConflicting(currentRoot, leftNodes, rightNodes);
-            for (SpoonNode node : leftNodes) {
-                traversePcs(node);
-            }
-            for (SpoonNode node : rightNodes) {
-                traversePcs(node);
-            }
             visitor.endConflict();
         }
 
@@ -185,11 +178,8 @@ public class PcsInterpreter {
      * Try to resolve a structural conflict automatically.
      */
     private static Optional<List<SpoonNode>> tryResolveConflict(List<SpoonNode> leftNodes, List<SpoonNode> rightNodes) {
-        assert leftNodes.size() > 0;
-        assert rightNodes.size() > 0;
-
-        SpoonNode firstLeft = leftNodes.get(0);
-        if (!(firstLeft.getElement().getRoleInParent() == CtRole.TYPE_MEMBER))
+        SpoonNode firstNode = leftNodes.size() > 0 ? leftNodes.get(0) : rightNodes.get(0);
+        if (!(firstNode.getElement().getRoleInParent() == CtRole.TYPE_MEMBER))
             return Optional.empty();
 
         assert leftNodes.stream().allMatch(node -> node.getElement().getRoleInParent() == CtRole.TYPE_MEMBER);
@@ -243,6 +233,7 @@ public class PcsInterpreter {
             CtElement mergeParent = origRootWrapper == NodeFactory.ROOT ? null : nodes.get(origRootWrapper).getElement();
 
             CtElement originalTree = origTreeWrapper.getElement();
+            CtElement originalRoot = origRootWrapper.getElement();
 
             CtElement mergeTree = shallowCopyTree(originalTree);
             if (!inConflict) {
@@ -252,29 +243,9 @@ public class PcsInterpreter {
             }
 
             if (mergeParent != null) {
-                CtRole childRole = resolveRole(origTreeWrapper);
-
-                Object siblings = mergeParent.getValueByRole(childRole);
-                Object toSet;
-
-                if (siblings instanceof Collection) {
-                    Collection<CtElement> mutableCurrent;
-                    if (siblings instanceof Set) {
-                        mutableCurrent = new HashSet<>((Collection) siblings);
-                    } else if (siblings instanceof List) {
-                        mutableCurrent = new ArrayList<>((Collection) siblings);
-                    } else {
-                        throw new IllegalStateException("unexpected value by role: " + siblings.getClass());
-                    }
-                    mutableCurrent.add(mergeTree);
-                    toSet = mutableCurrent;
-                } else if (siblings instanceof Map) {
-                    toSet = resolveAnnotationMap(mergeTree, (Map<?, ?>) siblings, origRootWrapper, originalTree);
-                } else {
-                    toSet = mergeTree;
-                }
-
-                mergeParent.setValueByRole(childRole, toSet);
+                CtRole mergeTreeRole = resolveRole(origTreeWrapper);
+                Object inserted = withSiblings(originalRoot, originalTree, mergeParent, mergeTree, mergeTreeRole);
+                mergeParent.setValueByRole(mergeTreeRole, inserted);
             }
 
             assert !nodes.containsKey(origTreeWrapper); // if this happens, then there is a duplicate node in the tree
@@ -284,43 +255,59 @@ public class PcsInterpreter {
                 actualRoot = mergeParent;
         }
 
+        private Object withSiblings(
+                CtElement originalRoot,
+                CtElement originalTree,
+                CtElement mergeParent,
+                CtElement mergeTree,
+                CtRole mergeTreeRole) {
+            Object siblings = mergeParent.getValueByRole(mergeTreeRole);
+            Object toSet;
+
+            if (siblings instanceof Collection) {
+                Collection<CtElement> mutableCurrent;
+                if (siblings instanceof Set) {
+                    mutableCurrent = new HashSet<>((Collection) siblings);
+                } else if (siblings instanceof List) {
+                    mutableCurrent = new ArrayList<>((Collection) siblings);
+                } else {
+                    throw new IllegalStateException("unexpected value by role: " + siblings.getClass());
+                }
+                mutableCurrent.add(mergeTree);
+                toSet = mutableCurrent;
+            } else if (siblings instanceof Map) {
+                toSet = resolveAnnotationMap(mergeTree, (Map<?, ?>) siblings, originalRoot, originalTree);
+            } else {
+                toSet = mergeTree;
+            }
+
+            return toSet;
+        }
+
         /**
          * Visit the root nodes of a conflict. Note that the children of these nodes are not visited
          * by this method, it is the responsibility of the caller to visit the children, and then call
          * the {@link Builder#endConflict()} once the conflict has been concluded.
          *
          * @param parent The parent node of the conflict.
-         * @param left Ordered root nodes from the left part of the conflict.
-         * @param right Ordered root nodes from the right part of the conflict.
+         * @param left   Ordered root nodes from the left part of the conflict.
+         * @param right  Ordered root nodes from the right part of the conflict.
          */
         public void visitConflicting(SpoonNode parent, List<SpoonNode> left, List<SpoonNode> right) {
             inConflict = true;
-            if (left.size() > 0) {
-                // if the left part is empty, the start marker will be missing in the conflict
-                // this is handled in the pretty printer
-                SpoonNode firstLeft = left.get(0);
-                firstLeft.getElement().putMetadata(ConflictInfo.CONFLICT_METADATA,
-                        new ConflictInfo(left.size(), right.size(), ConflictInfo.ConflictMarker.LEFT_START));
-            }
-            if (right.size() > 0) {
-                // if the right part is empty, this marker will be missing in the conflict
-                SpoonNode firstRight = right.get(0);
-                firstRight.getElement().putMetadata(ConflictInfo.CONFLICT_METADATA,
-                        new ConflictInfo(left.size(), right.size(), ConflictInfo.ConflictMarker.RIGHT_START));
-            }
-            if (right.size() > 1) {
-                SpoonNode lastRight = right.get(right.size() - 1);
-                lastRight.getElement().putMetadata(ConflictInfo.CONFLICT_METADATA,
-                        new ConflictInfo(left.size(), right.size(), ConflictInfo.ConflictMarker.RIGHT_END));
-            }
 
-            for (SpoonNode leftNode : left) {
-                visit(parent, leftNode);
-            }
+            CtElement mergeParent = nodes.get(parent).getElement();
+            CtElement dummy = (left.size() > 0 ? left.get(0) : right.get(0)).getElement();
 
-            for (SpoonNode rightNode : right) {
-                visit(parent, rightNode);
-            }
+            dummy.putMetadata(StructuralConflict.STRUCTURAL_CONFLICT_METADATA_KEY, new StructuralConflict(
+                    left.stream().map(SpoonNode::getElement).collect(Collectors.toList()),
+                    right.stream().map(SpoonNode::getElement).collect(Collectors.toList())));
+            SpoonNode dummyNode = NodeFactory.wrap(dummy);
+            CtRole role = resolveRole(dummyNode);
+
+            Object inserted = withSiblings(parent.getElement(), dummy, mergeParent, dummy, role);
+            dummy.delete();
+            mergeParent.setValueByRole(role, inserted);
         }
 
         /**
@@ -416,12 +403,12 @@ public class PcsInterpreter {
          * @param mergeTree         The tree node currently being merged, to be inserted as a value among siblings.
          * @param siblings          A potentially empty map of annotation keys->values currently in the merge tree's parent's
          *                          children, i.e. the siblings of the current mergeTree.
-         * @param origParentWrapper Wrapped tree from which the merge tree's parent was originally copied.
+         * @param originalRoot      The root from which the mergeParent was copied.
          * @param originalTree      The tree from which mergeTree was copied.
          * @return A map representing the key/value pairs of an annotation, wich mergeTree inserted among its siblings.
          */
         private Map<?, ?> resolveAnnotationMap(
-                CtElement mergeTree, Map<?, ?> siblings, SpoonNode origParentWrapper, CtElement originalTree) {
+                CtElement mergeTree, Map<?, ?> siblings, CtElement originalRoot, CtElement originalTree) {
 
             Map<Object, Object> mutableCurrent = new TreeMap<>(siblings);
 
@@ -429,7 +416,7 @@ public class PcsInterpreter {
             // in the original annotation. This intuitively seems like it should work,
             // but complex modifications to annotations may cause this to crash and burn.
             // TODO review if this approach is feasible
-            CtAnnotation<?> annotation = (CtAnnotation<?>) origParentWrapper.getElement();
+            CtAnnotation<?> annotation = (CtAnnotation<?>) originalRoot;
             Optional<Map.Entry<String, CtExpression>> originalEntry = annotation
                     .getValues().entrySet().stream().filter(
                             entry -> entry.getValue().equals(originalTree)).findFirst();
@@ -528,4 +515,6 @@ public class PcsInterpreter {
             return new RoledValue(conflict, role);
         }
     }
+
+
 }
