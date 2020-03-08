@@ -29,7 +29,7 @@ public class PcsInterpreter {
      * @return A Spoon tree representing the merged PCS structure.
      */
     public static CtElement fromMergedPcs(
-            TStar<SpoonNode, RoledValue> delta,
+            TStar<SpoonNode, RoledValues> delta,
             SpoonMapping baseLeft,
             SpoonMapping baseRight) {
         PcsInterpreter pcsInterpreter = new PcsInterpreter(delta, baseLeft, baseRight);
@@ -37,7 +37,7 @@ public class PcsInterpreter {
         return pcsInterpreter.visitor.actualRoot;
     }
 
-    private PcsInterpreter(TStar<SpoonNode, RoledValue> delta, SpoonMapping baseLeft, SpoonMapping baseRight) {
+    private PcsInterpreter(TStar<SpoonNode, RoledValues> delta, SpoonMapping baseLeft, SpoonMapping baseRight) {
         rootToChildren = buildRootToChildren(delta.getStar());
         visitor = new Builder(delta.getContents(), baseLeft, baseRight);
         this.structuralConflicts = delta.getStructuralConflicts();
@@ -206,7 +206,7 @@ public class PcsInterpreter {
 
     private static class Builder {
         private CtElement actualRoot;
-        private Map<SpoonNode, Set<Content<SpoonNode, RoledValue>>> contents;
+        private Map<SpoonNode, Set<Content<SpoonNode, RoledValues>>> contents;
         private SpoonMapping baseLeft;
         private SpoonMapping baseRight;
         private boolean inConflict = false;
@@ -215,7 +215,7 @@ public class PcsInterpreter {
         // A mapping from a node in the input PCS structure to its copy in the merged tree
         private Map<SpoonNode, SpoonNode> nodes;
 
-        private Builder(Map<SpoonNode, Set<Content<SpoonNode, RoledValue>>> contents, SpoonMapping baseLeft, SpoonMapping baseRight) {
+        private Builder(Map<SpoonNode, Set<Content<SpoonNode, RoledValues>>> contents, SpoonMapping baseLeft, SpoonMapping baseRight) {
             nodes = new HashMap<>();
             this.contents = contents;
             this.baseLeft = baseLeft;
@@ -430,28 +430,6 @@ public class PcsInterpreter {
 
             return mutableCurrent;
         }
-
-        /**
-         * Create a shallow copy of a tree.
-         *
-         * @param tree A tree to copy.
-         * @return A shallow copy of the input tree.
-         */
-        private CtElement shallowCopyTree(CtElement tree) {
-            // FIXME This is super inefficient, cloning the whole tree just to delete all its children
-            CtElement treeCopy = tree.clone();
-            for (CtElement child : treeCopy.getDirectChildren()) {
-                child.delete();
-            }
-
-            // remove the wrapper metadata
-            Map<String, Object> metadata = new HashMap<>(treeCopy.getAllMetadata());
-            metadata.remove(NodeFactory.WRAPPER_METADATA);
-            treeCopy.setAllMetadata(metadata);
-
-            return treeCopy;
-        }
-
         /**
          * Set the content of a tree that is being/has been merged to the merged content of the original tree.
          *
@@ -459,62 +437,42 @@ public class PcsInterpreter {
          * @param originalTree A wrapper around the tree from which mergeTree was copied.
          */
         private void setContent(CtElement mergeTree, SpoonNode originalTree) {
-            Set<Content<SpoonNode, RoledValue>> nodeContents = contents.get(originalTree);
+            Set<Content<SpoonNode, RoledValues>> nodeContents = contents.get(originalTree);
 
-            RoledValue roledValue = nodeContents.size() == 1 ?
-                    nodeContents.iterator().next().getValue() : handleContentConflict(nodeContents);
-            if (roledValue.getRole() != null) {
-                mergeTree.setValueByRole(roledValue.getRole(), roledValue.getValue());
-            }
+            if (nodeContents.size() != 1) {
+                throw new IllegalStateException("Internal error, unhandled conflict: " + nodeContents);
+            } else {
+                RoledValues rvs = nodeContents.iterator().next().getValue();
 
-            if (roledValue.hasSecondaryValues()) {
-                for (RoledValue secondary : roledValue.getSecondaryValues()) {
-                    mergeTree.setValueByRole(secondary.getRole(), secondary.getValue());
+                for (Pair<CtRole, Object> roledValue : rvs) {
+                    mergeTree.setValueByRole(roledValue.first, roledValue.second);
                 }
             }
         }
 
-        /**
-         * Prototype handling of a content conflict. Essentially, it just resolves the left and right values,
-         * and concatenates them with conflict delimiters. Very crude, but seems to work.
-         * <p>
-         * TODO This is a severely limited approach as adjacent conflicts cannot be joined together, find a better way!
-         * <p>
-         * One solution would be to do text-processing afterwards and just find adjacent conflicts, they will be
-         * very easy to find due to a ">>>>>>> RIGHT" line immediately preceeding a "<<<<<<< LEFT" line (possibly
-         * with a blank line in between).
-         *
-         * @param nodeContents A set of contents for the node, containing at least left and right revisions.
-         * @return A "conflict" value for the node.
-         */
-        private RoledValue handleContentConflict(Set<Content<SpoonNode, RoledValue>> nodeContents) {
-            String leftContent = null;
-            String rightContent = null;
-            CtRole role = null;
-
-            for (Content<SpoonNode, RoledValue> content : nodeContents) {
-                if (role == null)
-                    role = content.getValue().getRole();
-
-                switch (content.getContext().getRevision()) {
-                    case LEFT:
-                        leftContent = content.getValue().getValue().toString();
-                        break;
-                    case RIGHT:
-                        rightContent = content.getValue().getValue().toString();
-                        break;
-                    default:
-                        // skip base revision for now
-                }
-            }
-            assert leftContent != null;
-            assert rightContent != null;
-            assert role != null;
-
-            String conflict = "\n<<<<<<< LEFT\n" + leftContent + "\n=======\n" + rightContent + "\n>>>>>>> RIGHT\n";
-            return new RoledValue(conflict, role);
-        }
     }
 
+
+
+    /**
+     * Create a shallow copy of a tree.
+     *
+     * @param tree A tree to copy.
+     * @return A shallow copy of the input tree.
+     */
+    public static CtElement shallowCopyTree(CtElement tree) {
+        // FIXME This is super inefficient, cloning the whole tree just to delete all its children
+        CtElement treeCopy = tree.clone();
+        for (CtElement child : treeCopy.getDirectChildren()) {
+            child.delete();
+        }
+
+        // remove the wrapper metadata
+        Map<String, Object> metadata = new HashMap<>(treeCopy.getAllMetadata());
+        metadata.remove(NodeFactory.WRAPPER_METADATA);
+        treeCopy.setAllMetadata(metadata);
+
+        return treeCopy;
+    }
 
 }
