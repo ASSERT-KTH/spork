@@ -42,7 +42,6 @@ public class PcsInterpreter {
         visitor = new Builder(delta.getContents(), baseLeft, baseRight);
         this.structuralConflicts = delta.getStructuralConflicts();
         // TODO what to do about root conflicts?
-        removePredecessorConflicts(structuralConflicts);
     }
 
     private static <T extends ListNode> Map<T, Map<T, Pcs<T>>> buildRootToChildren(Set<Pcs<T>> pcses) {
@@ -57,35 +56,22 @@ public class PcsInterpreter {
         return rootToChildren;
     }
 
-    /**
-     * Remove any predecessor conflicts (i.e. conflicts on the form Pcs(a, b, c), Pcs(a, b', c)) from the
-     * structural conflicts. Predecessor conflicts mark the _end_ of conflicting segments, but we only
-     * want the starts.
-     *
-     * @param structuralConflicts A mapping of structural conflicts.
-     */
-    private static void removePredecessorConflicts(Map<Pcs<SpoonNode>, Set<Pcs<SpoonNode>>> structuralConflicts) {
-        for (Pcs<SpoonNode> pcs : new ArrayList<>(structuralConflicts.keySet())) {
-            Iterator<Pcs<SpoonNode>> it = structuralConflicts.get(pcs).iterator();
-            while (it.hasNext()) {
-                Pcs<SpoonNode> other = it.next();
-
-                if (isPredecessorConflict(pcs, other)) {
-                    it.remove();
-                    structuralConflicts.get(other).remove(pcs);
-                } else if (isRootConflict(pcs, other)) {
-                    throw new RuntimeException("Can't handle root conflict: " + pcs + ", " + other);
-                }
-            }
-        }
-    }
-
     private static boolean isRootConflict(Pcs<?> left, Pcs<?> right) {
-        return !Objects.equals(left.getRoot(), right.getRoot());
+        return !Objects.equals(left.getRoot(), right.getRoot()) &&
+                Objects.equals(left.getPredecessor(), right.getPredecessor()) ||
+                Objects.equals(left.getSuccessor(), right.getSuccessor());
     }
 
     private static boolean isPredecessorConflict(Pcs<?> left, Pcs<?> right) {
-        return !Objects.equals(left.getPredecessor(), right.getPredecessor());
+        return !Objects.equals(left.getPredecessor(), right.getPredecessor()) &&
+                Objects.equals(left.getSuccessor(), right.getSuccessor()) &&
+                Objects.equals(left.getRoot(), right.getRoot());
+    }
+
+    private static boolean isSuccessorConflict(Pcs<?> left, Pcs<?> right) {
+        return !Objects.equals(left.getSuccessor(), right.getSuccessor()) &&
+                Objects.equals(left.getPredecessor(), right.getPredecessor()) &&
+                Objects.equals(left.getRoot(), right.getRoot());
     }
 
     private void traversePcs(SpoonNode currentRoot) {
@@ -104,10 +90,12 @@ public class PcsInterpreter {
             }
 
             Set<Pcs<SpoonNode>> conflicts = structuralConflicts.get(nextPcs);
-            if (conflicts != null && conflicts.size() > 0) {
-                assert conflicts.size() == 1; // this should have been seen to in pre-processing of conflicts
-                Pcs<SpoonNode> conflictingPcs = conflicts.iterator().next();
-                next = traverseConflict(nextPcs, conflictingPcs, currentRoot, children);
+            Optional<Pcs<SpoonNode>> successorConflict = conflicts == null ? Optional.empty() :
+                    conflicts.stream().filter(confPcs -> isSuccessorConflict(nextPcs, confPcs)).findFirst();
+
+            // successor conflicts mark the start of a conflict, any other conflict is to be ignored
+            if (successorConflict.isPresent()) {
+                next = traverseConflict(nextPcs, successorConflict.get(), currentRoot, children);
             } else {
                 visitor.visit(currentRoot, next);
                 sortedChildren.add(next);
@@ -136,14 +124,11 @@ public class PcsInterpreter {
         SpoonNode next = nextPcs.getSuccessor();
         SpoonNode conflictingNode = conflicting.getSuccessor();
 
-        SpoonNode left = conflicting.getRevision() == Revision.RIGHT ? next : conflictingNode;
-        SpoonNode right = left == next ? conflictingNode : next;
+        Pcs<SpoonNode> leftPcs = nextPcs.getRevision() == Revision.LEFT ? nextPcs : conflicting;
+        Pcs<SpoonNode> rightPcs = leftPcs == nextPcs ? conflicting : nextPcs;
 
-        List<SpoonNode> leftNodes = extractConflictList(left, children);
-        List<SpoonNode> rightNodes = extractConflictList(right, children);
-        Pair<Integer, Integer> cutoffs = findConflictListCutoffs(leftNodes, rightNodes);
-        leftNodes = leftNodes.subList(0, cutoffs.first);
-        rightNodes = rightNodes.subList(0, cutoffs.second);
+        List<SpoonNode> leftNodes = extractConflictList(leftPcs, children);
+        List<SpoonNode> rightNodes = extractConflictList(rightPcs, children);
 
         Optional<List<SpoonNode>> resolved = tryResolveConflict(leftNodes, rightNodes);
         if (resolved.isPresent()) {
@@ -160,18 +145,34 @@ public class PcsInterpreter {
     }
 
     /**
-     * Scan ahead in the PCS structure to resolve the conflicting children. The start node is assumed to
-     * be the first conflicting node, and the end of the conflict is taken as the first node that is
-     * mapped to the base revision.
+     * Scan ahead in the PCS structure to resolve the conflicting children. The conflict must end with a
+     * predecessor conflict, or an exception is thrown.
      */
-    private static <V extends SpoonNode> List<V> extractConflictList(V start, Map<V, Pcs<V>> siblings) {
-        List<V> nodes = new ArrayList<V>();
-        V cur = start;
-        while (!cur.isEndOfList() && cur.getElement().getMetadata(TdmMerge.REV) != Revision.BASE) {
-            nodes.add(cur);
-            cur = siblings.get(cur).getSuccessor();
+    private List<SpoonNode> extractConflictList(Pcs<SpoonNode> pcs, Map<SpoonNode, Pcs<SpoonNode>> siblings) {
+        List<SpoonNode> nodes = new ArrayList<>();
+
+        while (true) {
+            Set<Pcs<SpoonNode>> conflicts = structuralConflicts.get(pcs);
+
+            if (conflicts != null && !conflicts.isEmpty()) {
+                Pcs<SpoonNode> finalPcs = pcs;
+                Optional<Pcs<SpoonNode>> predConflict = conflicts.stream()
+                        .filter(confPcs -> isPredecessorConflict(finalPcs, confPcs)).findFirst();
+
+                if (predConflict.isPresent()) {
+                    return nodes;
+                }
+            }
+
+            SpoonNode nextNode = pcs.getSuccessor();
+
+            if (nextNode.isEndOfList())
+                throw new IllegalStateException(
+                        "Reached the end of the child list without finding a predecessor conflict");
+
+            nodes.add(nextNode);
+            pcs = siblings.get(nextNode);
         }
-        return nodes;
     }
 
     /**
@@ -188,20 +189,6 @@ public class PcsInterpreter {
         // FIXME this is too liberal. Fields are not unordered, and this approach makes the merge non-commutative.
         List<SpoonNode> result = Stream.of(leftNodes, rightNodes).flatMap(List::stream).collect(Collectors.toList());
         return Optional.of(result);
-    }
-
-    /**
-     * Find the cutoff points in the left and right conflict lists, where they have elements in common.
-     */
-    private static <V extends SpoonNode> Pair<Integer, Integer> findConflictListCutoffs(List<V> left, List<V> right) {
-        // this algorithm is O(n^2), but conflict lists are typically short so it shouldn't matter in practice
-        for (int i = 0; i < left.size(); i++) {
-            for (int j = 0; j < right.size(); j++) {
-                if (left.get(i) == right.get(j))
-                    return new Pair<>(i, j);
-            }
-        }
-        return new Pair<>(left.size(), right.size());
     }
 
     private static class Builder {
