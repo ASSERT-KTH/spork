@@ -10,10 +10,8 @@ import se.kth.spork.base3dm.*;
 import se.kth.spork.cli.SporkPrettyPrinter;
 import se.kth.spork.util.Pair;
 import se.kth.spork.util.Triple;
-import spoon.reflect.code.CtBinaryOperator;
-import spoon.reflect.code.CtLiteral;
-import spoon.reflect.code.CtOperatorAssignment;
-import spoon.reflect.code.CtUnaryOperator;
+import spoon.reflect.code.*;
+import spoon.reflect.cu.SourcePosition;
 import spoon.reflect.declaration.*;
 import spoon.reflect.path.CtRole;
 import spoon.reflect.reference.CtReference;
@@ -180,13 +178,18 @@ public class Spoon3dmMerge {
 
             if (elem instanceof CtModifiable) {
                 rvs.add(CtRole.MODIFIER, elem.getValueByRole(CtRole.MODIFIER));
-            } else if (elem instanceof CtWildcardReference) {
+            }
+            if (elem instanceof CtWildcardReference) {
                 rvs.add(CtRole.IS_UPPER, elem.getValueByRole(CtRole.IS_UPPER));
+            }
+            if (elem instanceof CtComment) {
+                elem.setValueByRole(CtRole.POSITION, SourcePosition.NOPOSITION);
+                rvs.add(CtRole.COMMENT_TYPE, elem.getValueByRole(CtRole.COMMENT_TYPE));
+                rvs.add(CtRole.COMMENT_CONTENT, elem.getValueByRole(CtRole.COMMENT_CONTENT));
             }
 
             return rvs;
         }
-
     }
 
     @SuppressWarnings("unchecked")
