@@ -50,6 +50,8 @@ class CliTest {
 
         List<Util.Conflict> actualConflicts = Util.parseConflicts(prettyPrint);
 
+        System.out.println(prettyPrint);
+
         assertEquals(expectedConflicts, actualConflicts);
     }
 

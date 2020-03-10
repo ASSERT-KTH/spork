@@ -286,7 +286,7 @@ public class PcsInterpreter {
             CtElement mergeParent = nodes.get(parent).getElement();
             CtElement dummy = (left.size() > 0 ? left.get(0) : right.get(0)).getElement();
 
-            dummy.putMetadata(StructuralConflict.STRUCTURAL_CONFLICT_METADATA_KEY, new StructuralConflict(
+            dummy.putMetadata(StructuralConflict.METADATA_KEY, new StructuralConflict(
                     left.stream().map(SpoonNode::getElement).collect(Collectors.toList()),
                     right.stream().map(SpoonNode::getElement).collect(Collectors.toList())));
             SpoonNode dummyNode = NodeFactory.wrap(dummy);
@@ -431,15 +431,13 @@ public class PcsInterpreter {
             } else {
                 RoledValues rvs = nodeContents.iterator().next().getValue();
 
-                for (Pair<CtRole, Object> roledValue : rvs) {
-                    mergeTree.setValueByRole(roledValue.first, roledValue.second);
+                for (RoledValue roledValue : rvs) {
+                    mergeTree.setValueByRole(roledValue.getRole(), roledValue.getValue());
                 }
             }
         }
 
     }
-
-
 
     /**
      * Create a shallow copy of a tree.

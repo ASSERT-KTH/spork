@@ -6,12 +6,12 @@ import java.util.List;
 
 /**
  * A simple class that provides some information on a structural conflict. Meant to be put as metadata on a conflict
- * "dummy node" using {@link StructuralConflict#STRUCTURAL_CONFLICT_METADATA_KEY} as the key.
+ * "dummy node" using {@link StructuralConflict#METADATA_KEY} as the key.
  *
  * @author Simon Larsén
  */
 public class StructuralConflict {
-    public static final String STRUCTURAL_CONFLICT_METADATA_KEY = "SPORK_STRUCTURAL_CONFLICT";
+    public static final String METADATA_KEY = "SPORK_STRUCTURAL_CONFLICT";
     public final List<CtElement> left;
     public final List<CtElement> right;
 

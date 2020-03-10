@@ -8,7 +8,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import se.kth.spork.base3dm.*;
 import se.kth.spork.cli.SporkPrettyPrinter;
-import se.kth.spork.util.Pair;
 import se.kth.spork.util.Triple;
 import spoon.reflect.code.*;
 import spoon.reflect.cu.SourcePosition;
@@ -183,9 +182,18 @@ public class Spoon3dmMerge {
                 rvs.add(CtRole.IS_UPPER, elem.getValueByRole(CtRole.IS_UPPER));
             }
             if (elem instanceof CtComment) {
-                elem.setValueByRole(CtRole.POSITION, SourcePosition.NOPOSITION);
+                String rawContent = ((CtComment) elem).getRawContent();
+                RoledValue content = new RoledValue(CtRole.COMMENT_CONTENT, elem.getValueByRole(CtRole.COMMENT_CONTENT));
+                content.putMetadata(RoledValue.Key.RAW_CONTENT, rawContent);
+
+                rvs.add(content);
                 rvs.add(CtRole.COMMENT_TYPE, elem.getValueByRole(CtRole.COMMENT_TYPE));
-                rvs.add(CtRole.COMMENT_CONTENT, elem.getValueByRole(CtRole.COMMENT_CONTENT));
+
+                // due to comments relying on the position in the file ElementPrinterHelper.getComments, the position must be
+                // stored in metadata instead of in the actual comment. Otherwise, the mixing and matching of
+                // sources will cause many comments not to be printed.
+                elem.putMetadata("position", elem.getPosition());
+                elem.setPosition(SourcePosition.NOPOSITION);
             }
 
             return rvs;
@@ -214,16 +222,16 @@ public class Spoon3dmMerge {
 
                 for (int i = 0; i < leftRoledValues.size(); i++) {
                     int finalI = i;
-                    Pair<CtRole, Object> leftPair = leftRoledValues.get(i);
-                    Pair<CtRole, Object> rightPair = rightRoledValues.get(i);
-                    assert leftPair.first == rightPair.first;
+                    RoledValue leftPair = leftRoledValues.get(i);
+                    RoledValue rightPair = rightRoledValues.get(i);
+                    assert leftPair.getRole() == rightPair.getRole();
 
                     Optional<Object> baseValOpt = baseOpt.map(Content::getValue).map(rv -> rv.get(finalI))
-                            .map(p -> p.second);
+                            .map(RoledValue::getValue);
 
-                    CtRole role = leftPair.first;
-                    Object leftVal = leftPair.second;
-                    Object rightVal = rightPair.second;
+                    CtRole role = leftPair.getRole();
+                    Object leftVal = leftPair.getValue();
+                    Object rightVal = rightPair.getValue();
 
                     if (leftPair.equals(rightPair)) {
                         // this pair cannot possibly conflict
@@ -232,9 +240,11 @@ public class Spoon3dmMerge {
 
                     // left and right pairs differ and are so conflicting
                     // we add them as a conflict, but will later remove it if the conflict can be resolved
-                    unresolvedConflicts.push(
-                            new ContentConflict(role, baseValOpt, leftVal, rightVal)
-                    );
+                    unresolvedConflicts.push(new ContentConflict(
+                                    role,
+                                    baseOpt.map(Content::getValue).map(rv -> rv.get(finalI)),
+                                    leftPair,
+                                    rightPair));
 
 
                     Optional<?> merged = Optional.empty();

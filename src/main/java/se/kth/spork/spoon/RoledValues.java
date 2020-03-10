@@ -11,21 +11,21 @@ import java.util.*;
  *
  * @author Simon Larsén
  */
-class RoledValues extends ArrayList<Pair<CtRole, Object>> {
+class RoledValues extends ArrayList<RoledValue> {
 
     public RoledValues() {
         super();
     }
 
-    public RoledValues(Collection<? extends Pair<CtRole, Object>> collection) {
+    public RoledValues(Collection<? extends RoledValue> collection) {
         super(collection);
     }
 
     public void add(CtRole role, Object value) {
-        add(new Pair<>(role, value));
+        add(new RoledValue(role, value));
     }
 
-    public Pair<CtRole, Object> set(int i, CtRole role, Object value) {
-        return set(i, new Pair<>(role, value));
+    public RoledValue set(int i, CtRole role, Object value) {
+        return set(i, new RoledValue(role, value));
     }
 }
