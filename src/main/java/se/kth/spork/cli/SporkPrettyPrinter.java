@@ -1,12 +1,15 @@
 package se.kth.spork.cli;
 
+import se.kth.spork.spoon.ContentConflict;
+import se.kth.spork.spoon.RoledValue;
 import se.kth.spork.spoon.StructuralConflict;
+import se.kth.spork.util.LineBasedMerge;
 import spoon.compiler.Environment;
+import spoon.reflect.code.CtComment;
 import spoon.reflect.cu.SourcePosition;
 import spoon.reflect.declaration.CtElement;
-import spoon.reflect.visitor.DefaultJavaPrettyPrinter;
-import spoon.reflect.visitor.PrinterHelper;
-import spoon.reflect.visitor.TokenWriter;
+import spoon.reflect.path.CtRole;
+import spoon.reflect.visitor.*;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -18,28 +21,49 @@ public class SporkPrettyPrinter extends DefaultJavaPrettyPrinter {
     public static final String MID_CONFLICT = "=======";
     public static final String END_CONFLICT = ">>>>>>> RIGHT";
 
-    /**
-     * Creates a new code generator visitor.
-     *
-     * @param env
-     */
     public SporkPrettyPrinter(Environment env) {
         super(env);
+
+        // this line is SUPER important because without it implicit elements will be printed. For example,
+        // instead of just String, it will print java.lang.String. Which isn't great.
         setIgnoreImplicit(false);
     }
 
     @Override
     public SporkPrettyPrinter scan(CtElement e) {
-        if (e == null || !e.getMetadataKeys().contains(StructuralConflict.STRUCTURAL_CONFLICT_METADATA_KEY)) {
-            super.scan(e);
+        if (e == null)
             return this;
+
+        StructuralConflict structuralConflict = (StructuralConflict) e.getMetadata(StructuralConflict.METADATA_KEY);
+
+        if (structuralConflict != null) {
+            writeStructuralConflict(structuralConflict);
+        } else {
+            super.scan(e);
         }
 
-        StructuralConflict structuralConflict =
-                (StructuralConflict) e.getMetadata( StructuralConflict.STRUCTURAL_CONFLICT_METADATA_KEY);
-        writeStructuralConflict(structuralConflict);
-
         return this;
+    }
+
+    @Override
+    public void visitCtComment(CtComment comment) {
+        @SuppressWarnings("unchecked")
+        List<ContentConflict> contentConflicts = (List<ContentConflict>) comment.getMetadata(
+                ContentConflict.METADATA_KEY);
+        if (contentConflicts != null) {
+            ContentConflict contents = contentConflicts.stream().filter(c -> c.getRole() == CtRole.COMMENT_CONTENT)
+                    .findFirst().get();
+
+            String rawLeft = (String) contents.getLeft().getMetadata(RoledValue.Key.RAW_CONTENT);
+            String rawRight = (String) contents.getRight().getMetadata(RoledValue.Key.RAW_CONTENT);
+            String rawBase = contents.getBase().isPresent() ?
+                    (String) contents.getBase().get().getMetadata(RoledValue.Key.RAW_CONTENT) : "";
+
+            String merged = LineBasedMerge.merge(rawBase, rawLeft, rawRight);
+            writeAtLeftMargin(merged);
+        } else {
+            super.visitCtComment(comment);
+        }
     }
 
     /**
@@ -48,19 +72,30 @@ public class SporkPrettyPrinter extends DefaultJavaPrettyPrinter {
     private void writeStructuralConflict(StructuralConflict structuralConflict) {
         String leftSource = getOriginalSource(structuralConflict.left);
         String rightSource = getOriginalSource(structuralConflict.right);
+        writeConflict(leftSource, rightSource);
+    }
 
+    private void writeConflict(String left, String right) {
         PrinterHelper helper = getPrinterTokenWriter().getPrinterHelper();
         int tabBefore = helper.getTabCount();
         helper.setTabCount(0);
 
         helper.writeln();
         writeConflictMarker(START_CONFLICT);
-        writelnNonEmpty(leftSource);
+        writelnNonEmpty(left);
         writeConflictMarker(MID_CONFLICT);
-        writelnNonEmpty(rightSource);
+        writelnNonEmpty(right);
         writeConflictMarker(END_CONFLICT);
 
         helper.setTabCount(tabBefore);
+    }
+
+    private PrinterHelper writeAtLeftMargin(String s) {
+        PrinterHelper helper = getPrinterTokenWriter().getPrinterHelper();
+        int tabBefore = helper.getTabCount();
+        helper.setTabCount(0);
+        helper.write(s);
+        return helper.setTabCount(tabBefore);
     }
 
     private void writeConflictMarker(String conflictMarker) {
@@ -93,10 +128,28 @@ public class SporkPrettyPrinter extends DefaultJavaPrettyPrinter {
         if (nodes.isEmpty())
             return "";
 
-        SourcePosition firstElemPos = nodes.get(0).getPosition();
-        SourcePosition lastElemPos = nodes.get(nodes.size() - 1).getPosition();
-        try (RandomAccessFile file = new RandomAccessFile(firstElemPos.getFile(), "r")) {
-            return getOriginalSource(firstElemPos, lastElemPos, file);
+        SourcePosition firstElemPos = getSourcePos(nodes.get(0));
+        SourcePosition lastElemPos = getSourcePos(nodes.get(nodes.size() - 1));
+        return getOriginalSource(firstElemPos, lastElemPos);
+    }
+
+    /**
+     * Get the source file position from a CtElement, taking care that Spork sometimes stores position information as
+     * metadata to circumvent the pretty-printers reliance on positional information (e.g. when printing comments).
+     */
+    private static SourcePosition getSourcePos(CtElement elem) {
+        SourcePosition pos = (SourcePosition) elem.getMetadata("position");
+        if (pos == null) {
+            pos = elem.getPosition();
+        }
+        assert pos != null && pos != SourcePosition.NOPOSITION;
+
+        return pos;
+    }
+
+    private static String getOriginalSource(SourcePosition start, SourcePosition end) {
+        try (RandomAccessFile file = new RandomAccessFile(start.getFile(), "r")) {
+            return getOriginalSource(start, end, file);
         } catch (IOException e) {
             e.printStackTrace();
             throw new RuntimeException("failed to read original source fragments");

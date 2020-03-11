@@ -8,11 +8,11 @@ public class ContentConflict {
     public static final String METADATA_KEY = "SPORK_CONTENT_CONFLICT";
 
     private final CtRole role;
-    private final Optional<Object> base;
-    private final Object left;
-    private final Object right;
+    private final Optional<RoledValue> base;
+    private final RoledValue left;
+    private final RoledValue right;
 
-    public ContentConflict(CtRole role, Optional<Object> base, Object left, Object right) {
+    public ContentConflict(CtRole role, Optional<RoledValue> base, RoledValue left, RoledValue right) {
         this.role = role;
         this.base = base;
         this.left = left;
@@ -23,15 +23,15 @@ public class ContentConflict {
         return role;
     }
 
-    public Optional<Object> getBase() {
+    public Optional<RoledValue> getBase() {
         return base;
     }
 
-    public Object getLeft() {
+    public RoledValue getLeft() {
         return left;
     }
 
-    public Object getRight() {
+    public RoledValue getRight() {
         return right;
     }
 }
