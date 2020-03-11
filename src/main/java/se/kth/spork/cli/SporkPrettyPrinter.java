@@ -1,14 +1,10 @@
 package se.kth.spork.cli;
 
-import se.kth.spork.spoon.ContentConflict;
-import se.kth.spork.spoon.RoledValue;
 import se.kth.spork.spoon.StructuralConflict;
-import se.kth.spork.util.LineBasedMerge;
 import spoon.compiler.Environment;
 import spoon.reflect.code.CtComment;
 import spoon.reflect.cu.SourcePosition;
 import spoon.reflect.declaration.CtElement;
-import spoon.reflect.path.CtRole;
 import spoon.reflect.visitor.*;
 
 import java.io.IOException;
@@ -48,19 +44,9 @@ public class SporkPrettyPrinter extends DefaultJavaPrettyPrinter {
     @Override
     public void visitCtComment(CtComment comment) {
         @SuppressWarnings("unchecked")
-        List<ContentConflict> contentConflicts = (List<ContentConflict>) comment.getMetadata(
-                ContentConflict.METADATA_KEY);
-        if (contentConflicts != null) {
-            ContentConflict contents = contentConflicts.stream().filter(c -> c.getRole() == CtRole.COMMENT_CONTENT)
-                    .findFirst().get();
-
-            String rawLeft = (String) contents.getLeft().getMetadata(RoledValue.Key.RAW_CONTENT);
-            String rawRight = (String) contents.getRight().getMetadata(RoledValue.Key.RAW_CONTENT);
-            String rawBase = contents.getBase().isPresent() ?
-                    (String) contents.getBase().get().getMetadata(RoledValue.Key.RAW_CONTENT) : "";
-
-            String merged = LineBasedMerge.merge(rawBase, rawLeft, rawRight);
-            writeAtLeftMargin(merged);
+        Object rawConflict = comment.getMetadata(PrinterPreprocessor.RAW_COMMENT_CONFLICT_KEY);
+        if (rawConflict != null) {
+            writeAtLeftMargin(rawConflict.toString());
         } else {
             super.visitCtComment(comment);
         }
@@ -138,7 +124,7 @@ public class SporkPrettyPrinter extends DefaultJavaPrettyPrinter {
      * metadata to circumvent the pretty-printers reliance on positional information (e.g. when printing comments).
      */
     private static SourcePosition getSourcePos(CtElement elem) {
-        SourcePosition pos = (SourcePosition) elem.getMetadata("position");
+        SourcePosition pos = (SourcePosition) elem.getMetadata(PrinterPreprocessor.POSITION_KEY);
         if (pos == null) {
             pos = elem.getPosition();
         }
