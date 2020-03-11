@@ -10,15 +10,11 @@ import spoon.reflect.cu.SourcePosition;
 import spoon.reflect.declaration.CtElement;
 import spoon.reflect.path.CtRole;
 import spoon.reflect.visitor.*;
-import spoon.reflect.visitor.printer.CommentOffset;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
-import java.lang.reflect.Method;
 import java.nio.charset.Charset;
 import java.util.List;
-import java.util.Optional;
-import java.util.SortedMap;
 
 public class SporkPrettyPrinter extends DefaultJavaPrettyPrinter {
     public static final String START_CONFLICT = "<<<<<<< LEFT";
@@ -27,6 +23,10 @@ public class SporkPrettyPrinter extends DefaultJavaPrettyPrinter {
 
     public SporkPrettyPrinter(Environment env) {
         super(env);
+
+        // this line is SUPER important because without it implicit elements will be printed. For example,
+        // instead of just String, it will print java.lang.String. Which isn't great.
+        setIgnoreImplicit(false);
     }
 
     @Override
