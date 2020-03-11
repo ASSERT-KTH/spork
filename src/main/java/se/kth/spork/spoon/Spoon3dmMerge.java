@@ -7,7 +7,6 @@ import gumtree.spoon.builder.SpoonGumTreeBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import se.kth.spork.base3dm.*;
-import se.kth.spork.cli.SporkPrettyPrinter;
 import se.kth.spork.util.Triple;
 import spoon.reflect.code.*;
 import spoon.reflect.cu.SourcePosition;
@@ -262,13 +261,6 @@ public class Spoon3dmMerge {
                                         baseValOpt.map(o -> (Set<ModifierKind>) o),
                                         (Set<ModifierKind>) leftVal,
                                         (Set<ModifierKind>) rightVal);
-                                break;
-                            case NAME:
-                            case VALUE:
-                                // FIXME This is not a merge, but a conflict embedding which should be done later, FIX
-                                merged = Optional.of(SporkPrettyPrinter.START_CONFLICT + "\n"
-                                        + leftVal + "\n" + SporkPrettyPrinter.MID_CONFLICT + "\n"
-                                        + rightVal + "\n" + SporkPrettyPrinter.END_CONFLICT);
                                 break;
                             default:
                                 // pass

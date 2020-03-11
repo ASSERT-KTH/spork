@@ -40,6 +40,9 @@ public class Cli {
      * @return A pretty-printed string representing the merged output.
      */
     public static String prettyPrint(CtModule spoonRoot) {
+        LOGGER.info("Pre-processing tree for pretty-printing");
+        new PrinterPreprocessor().scan(spoonRoot);
+
         CtPackage activePackage = spoonRoot.getRootPackage();
         while (!activePackage.getPackages().isEmpty()) {
             Set<CtPackage> subPkgs = activePackage.getPackages();
