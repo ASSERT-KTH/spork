@@ -3,6 +3,7 @@ package se.kth.spork.cli;
 import se.kth.spork.spoon.ContentConflict;
 import se.kth.spork.spoon.RoledValue;
 import se.kth.spork.util.LineBasedMerge;
+import se.kth.spork.util.Pair;
 import spoon.reflect.code.CtComment;
 import spoon.reflect.cu.SourcePosition;
 import spoon.reflect.declaration.CtElement;
@@ -89,8 +90,10 @@ public class PrinterPreprocessor extends CtScanner {
                 String rawBase = conflict.getBase().isPresent() ?
                         (String) conflict.getBase().get().getMetadata(RoledValue.Key.RAW_CONTENT) : "";
 
-                String rawConflict = LineBasedMerge.merge(rawBase, rawLeft, rawRight);
-                element.putMetadata(RAW_COMMENT_CONFLICT_KEY, rawConflict);
+                Pair<String, Boolean> rawConflict = LineBasedMerge.merge(rawBase, rawLeft, rawRight);
+                assert rawConflict.second : "Comments without conflict should already have been merged";
+
+                element.putMetadata(RAW_COMMENT_CONFLICT_KEY, rawConflict.first);
                 break;
         }
 

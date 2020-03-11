@@ -43,7 +43,6 @@ public class SporkPrettyPrinter extends DefaultJavaPrettyPrinter {
 
     @Override
     public void visitCtComment(CtComment comment) {
-        @SuppressWarnings("unchecked")
         Object rawConflict = comment.getMetadata(PrinterPreprocessor.RAW_COMMENT_CONFLICT_KEY);
         if (rawConflict != null) {
             writeAtLeftMargin(rawConflict.toString());

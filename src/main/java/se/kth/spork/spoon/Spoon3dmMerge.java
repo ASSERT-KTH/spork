@@ -7,6 +7,8 @@ import gumtree.spoon.builder.SpoonGumTreeBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import se.kth.spork.base3dm.*;
+import se.kth.spork.util.LineBasedMerge;
+import se.kth.spork.util.Pair;
 import se.kth.spork.util.Triple;
 import spoon.reflect.code.*;
 import spoon.reflect.declaration.*;
@@ -253,6 +255,8 @@ public class Spoon3dmMerge {
                                         (Set<ModifierKind>) leftVal,
                                         (Set<ModifierKind>) rightVal);
                                 break;
+                            case COMMENT_CONTENT:
+                                merged = mergeComments(baseValOpt.orElse(""), leftVal, rightVal);
                             default:
                                 // pass
                         }
@@ -276,6 +280,15 @@ public class Spoon3dmMerge {
                 delta.setContent(pred, contents);
             }
         }
+    }
+
+    private static Optional<?> mergeComments(Object base, Object left, Object right) {
+        Pair<String, Boolean> merge = LineBasedMerge.merge(base.toString(), left.toString(), right.toString());
+
+        if (merge.second) {
+            return Optional.empty();
+        }
+        return Optional.of(merge.first);
     }
 
     private static Optional<Set<ModifierKind>> mergeModifierKinds(
