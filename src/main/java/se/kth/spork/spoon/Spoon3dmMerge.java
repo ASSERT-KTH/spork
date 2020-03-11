@@ -30,6 +30,12 @@ import java.util.stream.Stream;
 public class Spoon3dmMerge {
     private static final Logger LOGGER = LoggerFactory.getLogger(Spoon3dmMerge.class);
 
+    static {
+        // This is a dark magic solution to an apparent caching issue that sometimes occurs when testing.
+        // See https://github.com/KTH/spork/issues/65 for details.
+        System.identityHashCode(1);
+    }
+
     /**
      * Merge the left and right revisions with an AST-based merge.
      *
