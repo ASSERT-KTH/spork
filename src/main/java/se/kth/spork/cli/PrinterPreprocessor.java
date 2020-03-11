@@ -1,8 +1,14 @@
 package se.kth.spork.cli;
 
 import se.kth.spork.spoon.ContentConflict;
+import se.kth.spork.spoon.RoledValue;
+import se.kth.spork.util.LineBasedMerge;
+import spoon.reflect.code.CtComment;
+import spoon.reflect.cu.SourcePosition;
 import spoon.reflect.declaration.CtElement;
+import spoon.reflect.path.CtRole;
 import spoon.reflect.visitor.CtScanner;
+import spoon.reflect.visitor.printer.CommentOffset;
 
 import java.util.List;
 import java.util.Optional;
@@ -14,7 +20,12 @@ import java.util.Optional;
  * @author Simon Larsén
  */
 public class PrinterPreprocessor extends CtScanner {
-    public static final String RAW_COMMENT_CONFLICT = "spork_comment_conflict";
+    public static final String RAW_COMMENT_CONFLICT_KEY = "spork_comment_conflict";
+
+    // the position key is used to put the original source position of an element as metadata
+    // this is necessary e.g. for comments as their original source position may cause them not to be printed
+    // in a merged tree
+    public static final String POSITION_KEY = "spork_position";
 
     @Override
     public void scan(CtElement element) {
@@ -31,6 +42,26 @@ public class PrinterPreprocessor extends CtScanner {
         super.scan(element);
     }
 
+    @Override
+    public void visitCtComment(CtComment comment) {
+        unsetSourcePosition(comment);
+        super.visitCtComment(comment);
+    }
+
+    /**
+     * Comments that come from a different source file than the node they are attached to are unlikely to actually
+     * get printed, as the position relative to the associated node is taken into account by the pretty-printer.
+     * Setting the position to {@link SourcePosition#NOPOSITION} causes all comments to be printed before the
+     * associated node, but at least they get printed!
+     *
+     * The reason for this can be found in
+     * {@link spoon.reflect.visitor.ElementPrinterHelper#getComments(CtElement, CommentOffset)}.
+     */
+    private static void unsetSourcePosition(CtElement element) {
+        element.putMetadata(POSITION_KEY, element.getPosition());
+        element.setPosition(SourcePosition.NOPOSITION);
+    }
+
     /**
      * Process a conflict, and potentially mutate the element with the conflict. For example, values represented
      * as strings may have the conflict embedded directly into the literal.
@@ -42,18 +73,28 @@ public class PrinterPreprocessor extends CtScanner {
         Object leftVal = conflict.getLeft().getValue();
         Object rightVal = conflict.getRight().getValue();
 
-        Optional<Object> processed = Optional.empty();
 
         switch (conflict.getRole()) {
             case NAME:
             case VALUE:
                 // embed the conflict directly in the literal value
-                processed = Optional.of("\n" + SporkPrettyPrinter.START_CONFLICT + "\n"
+                String embedded = "\n" + SporkPrettyPrinter.START_CONFLICT + "\n"
                         + leftVal + "\n" + SporkPrettyPrinter.MID_CONFLICT + "\n"
-                        + rightVal + "\n" + SporkPrettyPrinter.END_CONFLICT + "\n");
+                        + rightVal + "\n" + SporkPrettyPrinter.END_CONFLICT + "\n";
+                element.setValueByRole(conflict.getRole(), embedded);
+                break;
+            case COMMENT_CONTENT:
+                String rawLeft = (String) conflict.getLeft().getMetadata(RoledValue.Key.RAW_CONTENT);
+                String rawRight = (String) conflict.getRight().getMetadata(RoledValue.Key.RAW_CONTENT);
+                String rawBase = conflict.getBase().isPresent() ?
+                        (String) conflict.getBase().get().getMetadata(RoledValue.Key.RAW_CONTENT) : "";
+
+                String rawConflict = LineBasedMerge.merge(rawBase, rawLeft, rawRight);
+                element.putMetadata(RAW_COMMENT_CONFLICT_KEY, rawConflict);
                 break;
         }
 
-        processed.ifPresent(o -> element.setValueByRole(conflict.getRole(), o));
     }
+
+
 }

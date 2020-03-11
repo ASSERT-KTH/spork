@@ -9,7 +9,6 @@ import org.slf4j.LoggerFactory;
 import se.kth.spork.base3dm.*;
 import se.kth.spork.util.Triple;
 import spoon.reflect.code.*;
-import spoon.reflect.cu.SourcePosition;
 import spoon.reflect.declaration.*;
 import spoon.reflect.path.CtRole;
 import spoon.reflect.reference.CtReference;
@@ -187,12 +186,6 @@ public class Spoon3dmMerge {
 
                 rvs.add(content);
                 rvs.add(CtRole.COMMENT_TYPE, elem.getValueByRole(CtRole.COMMENT_TYPE));
-
-                // due to comments relying on the position in the file ElementPrinterHelper.getComments, the position must be
-                // stored in metadata instead of in the actual comment. Otherwise, the mixing and matching of
-                // sources will cause many comments not to be printed.
-                elem.putMetadata("position", elem.getPosition());
-                elem.setPosition(SourcePosition.NOPOSITION);
             }
 
             return rvs;
@@ -208,8 +201,6 @@ public class Spoon3dmMerge {
             if (nodeContents.size() > 1) {
                 _ContentTriple revisions = getContentRevisions(nodeContents);
                 Optional<Content<SpoonNode, RoledValues>> baseOpt = revisions.first;
-                Content<SpoonNode, RoledValues> left = revisions.second;
-                Optional<RoledValues> baseRoledValues = baseOpt.map(Content::getValue);
                 RoledValues leftRoledValues = revisions.second.getValue();
                 RoledValues rightRoledValues = revisions.third.getValue();
 
