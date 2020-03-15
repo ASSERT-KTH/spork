@@ -5,20 +5,27 @@ import spoon.compiler.Environment;
 import spoon.reflect.code.CtComment;
 import spoon.reflect.cu.SourcePosition;
 import spoon.reflect.declaration.CtElement;
-import spoon.reflect.visitor.*;
+import spoon.reflect.visitor.DefaultJavaPrettyPrinter;
+import spoon.reflect.visitor.DefaultTokenWriter;
+import spoon.reflect.visitor.PrinterHelper;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.charset.Charset;
 import java.util.List;
 
-public class SporkPrettyPrinter extends DefaultJavaPrettyPrinter {
+public final class SporkPrettyPrinter extends DefaultJavaPrettyPrinter {
     public static final String START_CONFLICT = "<<<<<<< LEFT";
     public static final String MID_CONFLICT = "=======";
     public static final String END_CONFLICT = ">>>>>>> RIGHT";
 
+    private final SporkPrinterHelper printerHelper;
+    private final String lineSeparator = getLineSeparator();
+
     public SporkPrettyPrinter(Environment env) {
         super(env);
+        printerHelper = new SporkPrinterHelper(env);
+        setPrinterTokenWriter(new DefaultTokenWriter(printerHelper));
 
         // this line is SUPER important because without it implicit elements will be printed. For example,
         // instead of just String, it will print java.lang.String. Which isn't great.
@@ -45,7 +52,7 @@ public class SporkPrettyPrinter extends DefaultJavaPrettyPrinter {
     public void visitCtComment(CtComment comment) {
         Object rawConflict = comment.getMetadata(PrinterPreprocessor.RAW_COMMENT_CONFLICT_KEY);
         if (rawConflict != null) {
-            writeAtLeftMargin(rawConflict.toString());
+            printerHelper.writeRawConflict(rawConflict.toString());
         } else {
             super.visitCtComment(comment);
         }
@@ -57,36 +64,7 @@ public class SporkPrettyPrinter extends DefaultJavaPrettyPrinter {
     private void writeStructuralConflict(StructuralConflict structuralConflict) {
         String leftSource = getOriginalSource(structuralConflict.left);
         String rightSource = getOriginalSource(structuralConflict.right);
-        writeConflict(leftSource, rightSource);
-    }
-
-    private void writeConflict(String left, String right) {
-        PrinterHelper helper = getPrinterTokenWriter().getPrinterHelper();
-        int tabBefore = helper.getTabCount();
-        helper.setTabCount(0);
-
-        helper.writeln();
-        writeConflictMarker(START_CONFLICT);
-        writelnNonEmpty(left);
-        writeConflictMarker(MID_CONFLICT);
-        writelnNonEmpty(right);
-        writeConflictMarker(END_CONFLICT);
-
-        helper.setTabCount(tabBefore);
-    }
-
-    private PrinterHelper writeAtLeftMargin(String s) {
-        PrinterHelper helper = getPrinterTokenWriter().getPrinterHelper();
-        int tabBefore = helper.getTabCount();
-        helper.setTabCount(0);
-        helper.write(s);
-        return helper.setTabCount(tabBefore);
-    }
-
-    private void writeConflictMarker(String conflictMarker) {
-        TokenWriter printer = getPrinterTokenWriter();
-        printer.writeLiteral(conflictMarker);
-        printer.writeln();
+        printerHelper.writeConflict(leftSource, rightSource);
     }
 
     /**
@@ -145,8 +123,8 @@ public class SporkPrettyPrinter extends DefaultJavaPrettyPrinter {
      * Get the original source code fragment starting at start and ending at end, including indentation if start is
      * the first element on its source code line.
      *
-     * @param start The source position of the first element.
-     * @param end The source position of the last element.
+     * @param start            The source position of the first element.
+     * @param end              The source position of the last element.
      * @param randomAccessFile A random access file pointing to the common source of the start and end elements.
      * @return The source code fragment starting at start and ending at end, including leading indentation.
      * @throws IOException
@@ -185,4 +163,89 @@ public class SporkPrettyPrinter extends DefaultJavaPrettyPrinter {
         int prevLineEnd = pos.getLine() - 2;
         return pos.getCompilationUnit().getLineSeparatorPositions()[prevLineEnd] + 1; // +1 to get the next line start
     }
+
+    private class SporkPrinterHelper extends PrinterHelper {
+        private String lastWritten;
+
+        public SporkPrinterHelper(Environment env) {
+            super(env);
+            lastWritten = "";
+        }
+
+        @Override
+        public SporkPrinterHelper write(String s) {
+            String trimmed = s.trim();
+            lastWritten = s;
+            if (trimmed.startsWith(START_CONFLICT) && trimmed.endsWith(END_CONFLICT)) {
+                // this is an embedded conflict value, which is necessary for names sometimes as the
+                // DefaultJavaPrettyPrinter does not always visit the node (e.g. when printing the name of a variable
+                // in a variable access), and just uses getSimpleName(). This causes the conflict map for that node
+                // to not be present when its name is written.
+                //
+                // All we need to do here is the decrease tabs and enter some appropriate whitespace
+                writelnIfNotPresent().writeAtLeftMargin(s).writeln();
+            } else {
+                super.write(s);
+            }
+
+            return this;
+        }
+
+        public SporkPrinterHelper writeConflict(String left, String right) {
+            writelnIfNotPresent().writeAtLeftMargin(START_CONFLICT).writeln()
+                    .writeAtLeftMargin(left).writelnIfNotPresent()
+                    .writeAtLeftMargin(MID_CONFLICT).writeln()
+                    .writeAtLeftMargin(right).writelnIfNotPresent()
+                    .writeAtLeftMargin(END_CONFLICT).writeln();
+            return this;
+        }
+
+        @Override
+        public SporkPrinterHelper writeln() {
+            super.writeln();
+            return this;
+        }
+
+        /**
+         * Write a line separator only if the last written string did not end with a line separator.
+         */
+        private SporkPrinterHelper writelnIfNotPresent() {
+            if (lastWritten.endsWith(lineSeparator))
+                return this;
+            return writeln();
+        }
+
+        private SporkPrinterHelper writeAtLeftMargin(String s) {
+            if (s.isEmpty())
+                return this;
+
+            int tabBefore = getTabCount();
+            setTabCount(0);
+            super.write(s);
+            lastWritten = s;
+            setTabCount(tabBefore);
+            return this;
+        }
+
+        /**
+         * Write a raw conflict. Typically, this is used for writing out conflicts in comments.
+         */
+        public void writeRawConflict(String s) {
+            // When getting raw comments from Spoon, they don't include leading whitespace for the first line,
+            // so we check if that's needed
+            if (getTabCount() > 0 && !s.startsWith("\\s")) {
+                // not indented, so we write the first line normally
+                String[] lines = s.split(lineSeparator, 2);
+                write(lines[0]).writelnIfNotPresent();
+
+                if (lines.length > 1) {
+                    // we write the rest of the content with 0 indentation
+                    writeAtLeftMargin(lines[1]);
+                }
+            } else {
+                writeAtLeftMargin(s);
+            }
+        }
+    }
+
 }

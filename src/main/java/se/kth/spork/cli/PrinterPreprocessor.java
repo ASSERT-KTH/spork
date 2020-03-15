@@ -7,12 +7,10 @@ import se.kth.spork.util.Pair;
 import spoon.reflect.code.CtComment;
 import spoon.reflect.cu.SourcePosition;
 import spoon.reflect.declaration.CtElement;
-import spoon.reflect.path.CtRole;
 import spoon.reflect.visitor.CtScanner;
 import spoon.reflect.visitor.printer.CommentOffset;
 
 import java.util.List;
-import java.util.Optional;
 
 /**
  * A pre-processor that must run before pretty-printing a merged tree. It does things like embedding conflict values
@@ -74,14 +72,14 @@ public class PrinterPreprocessor extends CtScanner {
         Object leftVal = conflict.getLeft().getValue();
         Object rightVal = conflict.getRight().getValue();
 
-
+        String lineSep = System.getProperty("line.separator");
         switch (conflict.getRole()) {
             case NAME:
             case VALUE:
                 // embed the conflict directly in the literal value
-                String embedded = "\n" + SporkPrettyPrinter.START_CONFLICT + "\n"
-                        + leftVal + "\n" + SporkPrettyPrinter.MID_CONFLICT + "\n"
-                        + rightVal + "\n" + SporkPrettyPrinter.END_CONFLICT + "\n";
+                String embedded = SporkPrettyPrinter.START_CONFLICT + lineSep
+                        + leftVal + lineSep + SporkPrettyPrinter.MID_CONFLICT + lineSep
+                        + rightVal + lineSep + SporkPrettyPrinter.END_CONFLICT;
                 element.setValueByRole(conflict.getRole(), embedded);
                 break;
             case COMMENT_CONTENT:
