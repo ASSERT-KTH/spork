@@ -170,7 +170,7 @@ public class Spoon3dmMerge {
                 return null;
 
             CtElement elem = wrapper.getElement();
-            RoledValues rvs = new RoledValues();
+            RoledValues rvs = new RoledValues(elem);
 
             // general values
             rvs.add(CtRole.IS_IMPLICIT, elem.isImplicit());
@@ -216,6 +216,8 @@ public class Spoon3dmMerge {
                 RoledValues leftRoledValues = revisions.second.getValue();
                 RoledValues rightRoledValues = revisions.third.getValue();
 
+                // NOTE: It is important that the left values are copied,
+                // by convention the LEFT values should be put into the tree whenever a conflict cannot be resolved
                 RoledValues mergedRoledValues = new RoledValues(leftRoledValues);
 
                 assert leftRoledValues.size() == rightRoledValues.size();
@@ -259,6 +261,14 @@ public class Spoon3dmMerge {
                     } else {
                         // we need to actually work for this merge :(
                         switch (role) {
+                            case IS_IMPLICIT:
+                                if (baseValOpt.isPresent()) {
+                                    merged = Optional.of(!(Boolean) baseValOpt.get());
+                                } else {
+                                    // when in doubt, discard implicitness
+                                    merged = Optional.of(false);
+                                }
+                                break;
                             case MODIFIER:
                                 merged = mergeModifierKinds(
                                         baseValOpt.map(o -> (Set<ModifierKind>) o),
@@ -268,18 +278,17 @@ public class Spoon3dmMerge {
                             case COMMENT_CONTENT:
                                 merged = mergeComments(baseValOpt.orElse(""), leftVal, rightVal);
                                 break;
-                            case IS_IMPLICIT:
-                                if (baseValOpt.isPresent()) {
-                                    merged = Optional.of(!(Boolean) baseValOpt.get());
-                                } else {
-                                    // when in doubt, discard implicitness
-                                    merged = Optional.of(false);
-                                }
+                            case IS_UPPER:
+                                merged = mergeIsUpper(
+                                        baseOpt.map(c -> c.getValue().getElement()),
+                                        leftRoledValues.getElement(),
+                                        rightRoledValues.getElement()
+                                );
+                                break;
                             default:
                                 // pass
                         }
                     }
-
 
 
                     if (merged.isPresent()) {
@@ -298,6 +307,31 @@ public class Spoon3dmMerge {
                 delta.setContent(pred, contents);
             }
         }
+    }
+
+    private static Optional<?> mergeIsUpper(Optional<CtElement> baseElem, CtElement leftElem, CtElement rightElem) {
+        CtWildcardReference left = (CtWildcardReference) leftElem;
+        CtWildcardReference right = (CtWildcardReference) rightElem;
+
+        boolean leftBoundIsImplicit = left.getBoundingType().isImplicit();
+        boolean rightBoundIsImplicit = right.getBoundingType().isImplicit();
+
+        if (baseElem.isPresent()) {
+            CtWildcardReference base = (CtWildcardReference) baseElem.get();
+            boolean baseBoundIsImplicit = base.getBoundingType().isImplicit();
+
+            if (leftBoundIsImplicit != rightBoundIsImplicit) {
+                // one bound was removed, so we go with whatever is on the bound that is not equal to base
+                return Optional.of(baseBoundIsImplicit == leftBoundIsImplicit ? left.isUpper() : right.isUpper());
+            }
+        } else {
+            if (leftBoundIsImplicit != rightBoundIsImplicit) {
+                // only one bound implicit, pick isUpper of the explicit one
+                return Optional.of(leftBoundIsImplicit ? left.isUpper() : right.isUpper());
+            }
+        }
+
+        return Optional.empty();
     }
 
     private static Optional<?> mergeComments(Object base, Object left, Object right) {

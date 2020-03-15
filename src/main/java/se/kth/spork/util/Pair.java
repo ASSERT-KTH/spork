@@ -16,6 +16,10 @@ public class Pair<T,E> {
         this.second = second;
     }
 
+    public static <T,E> Pair<T,E> of(T first, E second) {
+        return new Pair<>(first, second);
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
