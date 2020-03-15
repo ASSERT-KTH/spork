@@ -172,6 +172,10 @@ public class Spoon3dmMerge {
             CtElement elem = wrapper.getElement();
             RoledValues rvs = new RoledValues();
 
+            // general values
+            rvs.add(CtRole.IS_IMPLICIT, elem.isImplicit());
+
+            // element-specific values
             if (elem instanceof CtLiteral) {
                 CtLiteral<?> lit = (CtLiteral<?>) elem;
                 rvs.add(CtRole.VALUE, lit.getValue());
@@ -263,6 +267,14 @@ public class Spoon3dmMerge {
                                 break;
                             case COMMENT_CONTENT:
                                 merged = mergeComments(baseValOpt.orElse(""), leftVal, rightVal);
+                                break;
+                            case IS_IMPLICIT:
+                                if (baseValOpt.isPresent()) {
+                                    merged = Optional.of(!(Boolean) baseValOpt.get());
+                                } else {
+                                    // when in doubt, discard implicitness
+                                    merged = Optional.of(false);
+                                }
                             default:
                                 // pass
                         }
