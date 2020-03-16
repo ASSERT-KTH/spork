@@ -199,6 +199,9 @@ public class Spoon3dmMerge {
                 rvs.add(content);
                 rvs.add(CtRole.COMMENT_TYPE, elem.getValueByRole(CtRole.COMMENT_TYPE));
             }
+            if (elem instanceof CtMethod) {
+                rvs.add(CtRole.IS_DEFAULT, elem.getValueByRole(CtRole.IS_DEFAULT));
+            }
 
             return rvs;
         }
