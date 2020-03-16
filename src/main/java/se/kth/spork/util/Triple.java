@@ -15,4 +15,8 @@ public class Triple<T,K,V> {
         this.second = second;
         this.third = third;
     }
+
+    public static <T,K,V> Triple<T,K,V> of(T first, K second, V third) {
+        return new Triple<>(first, second, third);
+    }
 }
