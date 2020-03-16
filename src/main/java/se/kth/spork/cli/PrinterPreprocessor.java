@@ -2,18 +2,19 @@ package se.kth.spork.cli;
 
 import se.kth.spork.base3dm.Revision;
 import se.kth.spork.spoon.ContentConflict;
+import se.kth.spork.spoon.ContentMerger;
 import se.kth.spork.spoon.RoledValue;
 import se.kth.spork.util.LineBasedMerge;
 import se.kth.spork.util.Pair;
 import spoon.reflect.code.CtComment;
 import spoon.reflect.cu.SourcePosition;
 import spoon.reflect.declaration.CtElement;
+import spoon.reflect.declaration.ModifierKind;
+import spoon.reflect.path.CtRole;
 import spoon.reflect.visitor.CtScanner;
 import spoon.reflect.visitor.printer.CommentOffset;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * A pre-processor that must run before pretty-printing a merged tree. It does things like embedding conflict values
@@ -72,6 +73,7 @@ public class PrinterPreprocessor extends CtScanner {
      * @param conflict A content conflict.
      * @param element The element associated with the conflict.
      */
+    @SuppressWarnings("unchecked")
     private void processConflict(ContentConflict conflict, CtElement element) {
         Object leftVal = conflict.getLeft().getValue();
         Object rightVal = conflict.getRight().getValue();
@@ -106,6 +108,25 @@ public class PrinterPreprocessor extends CtScanner {
                     printerMap.put("super", Pair.of(Revision.RIGHT, "extends"));
                 }
                 break;
+            case MODIFIER:
+                Collection<ModifierKind> leftMods = (Collection<ModifierKind>) leftVal;
+                Collection<ModifierKind> rightMods = (Collection<ModifierKind>) rightVal;
+                Set<ModifierKind> leftVisibilities = ContentMerger.categorizeModifiers(leftMods).first;
+                Set<ModifierKind> rightVisibilities = ContentMerger.categorizeModifiers(rightMods).first;
+
+                if (leftVisibilities.isEmpty()) {
+                    // use the right-hand visibility in actual tree to force something to be printed
+                    Collection<ModifierKind> mods = element.getValueByRole(CtRole.MODIFIER);
+                    ModifierKind rightVis = rightVisibilities.iterator().next();
+                    mods.add(rightVis);
+                    element.setValueByRole(CtRole.MODIFIER, mods);
+                    printerMap.put(rightVis.toString(), Pair.of(Revision.LEFT, ""));
+                } else {
+                    String leftVisStr = leftVisibilities.iterator().next().toString();
+                    String rightVisStr = rightVisibilities.isEmpty()
+                            ? "" : rightVisibilities.iterator().next().toString();
+                    printerMap.put(leftVisStr, Pair.of(Revision.RIGHT, rightVisStr));
+                }
         }
 
         if (!printerMap.isEmpty()) {

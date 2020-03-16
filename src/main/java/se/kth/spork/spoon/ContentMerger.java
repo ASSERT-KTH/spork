@@ -76,6 +76,10 @@ public class ContentMerger {
 
                     Optional<?> merged = Optional.empty();
 
+                    // sometimes a value can be partially merged (e.g. modifiers), and then we want to be
+                    // able to set the merged value, AND flag a conflict.
+                    boolean conflictPresent = false;
+
                     // if either value is equal to base, we keep THE OTHER one
                     if (baseValOpt.isPresent() && baseValOpt.get().equals(leftVal)) {
                         merged = Optional.of(rightVal);
@@ -93,10 +97,12 @@ public class ContentMerger {
                                 }
                                 break;
                             case MODIFIER:
-                                merged = mergeModifierKinds(
+                                Pair<Boolean, Optional<Set<ModifierKind>>> mergePair = mergeModifierKinds(
                                         baseValOpt.map(o -> (Set<ModifierKind>) o),
                                         (Set<ModifierKind>) leftVal,
                                         (Set<ModifierKind>) rightVal);
+                                conflictPresent = mergePair.first;
+                                merged = mergePair.second;
                                 break;
                             case COMMENT_CONTENT:
                                 merged = mergeComments(baseValOpt.orElse(""), leftVal, rightVal);
@@ -116,7 +122,9 @@ public class ContentMerger {
 
                     if (merged.isPresent()) {
                         mergedRoledValues.set(i, role, merged.get());
-                        unresolvedConflicts.pop();
+
+                        if (!conflictPresent)
+                            unresolvedConflicts.pop();
                     }
                 }
 
@@ -167,6 +175,28 @@ public class ContentMerger {
         return Triple.of(visibility, keywords, other);
     }
 
+    /**
+     * Separate modifiers into visibility (public, private, protected), keywords (static, final) and all
+     * others.
+     *
+     * @param modifiers A collection of modifiers.
+     * @return A triple with visibility in first, keywords in second and other in third.
+     */
+    public static Triple<Set<ModifierKind>, Set<ModifierKind>, Set<ModifierKind>>
+    categorizeModifiers(Collection<ModifierKind> modifiers) {
+        return categorizeModifiers(modifiers.stream());
+    }
+
+    /**
+     * Extract the visibility modifier(s).
+     *
+     * @param modifiers A collection of modifiers.
+     * @return A possibly empty set of visibility modifiers.
+     */
+    public static Set<ModifierKind> getVisibility(Collection<ModifierKind> modifiers) {
+        return categorizeModifiers(modifiers).first;
+    }
+
     private static Optional<?> mergeIsUpper(Optional<CtElement> baseElem, CtElement leftElem, CtElement rightElem) {
         CtWildcardReference left = (CtWildcardReference) leftElem;
         CtWildcardReference right = (CtWildcardReference) rightElem;
@@ -201,15 +231,22 @@ public class ContentMerger {
         return Optional.of(merge.first);
     }
 
-    private static Optional<Set<ModifierKind>>
+    /**
+     * Return a pair (conflict, mergedModifiers).
+     * If the conflict value is true, there is a conflict in the visibility modifiers, and the merged value
+     * will always be the left one.
+     */
+    private static Pair<Boolean, Optional<Set<ModifierKind>>>
     mergeModifierKinds(Optional<Set<ModifierKind>> base, Set<ModifierKind> left, Set<ModifierKind> right) {
-        // all revisions must have the same primary value
-
         Set<ModifierKind> baseModifiers = base.orElseGet(HashSet::new);
 
         Stream<ModifierKind> modifiers = Stream.of(baseModifiers, left, right).flatMap(Set::stream);
         Triple<Set<ModifierKind>, Set<ModifierKind>, Set<ModifierKind>>
                 categorizedMods = categorizeModifiers(modifiers);
+
+        Set<ModifierKind> baseVis = getVisibility(baseModifiers);
+        Set<ModifierKind> leftVis = getVisibility(left);
+        Set<ModifierKind> rightVis = getVisibility(right);
 
         Set<ModifierKind> visibility = categorizedMods.first;
         Set<ModifierKind> keywords = categorizedMods.second;
@@ -221,8 +258,12 @@ public class ContentMerger {
 
         // visibility is the only place where we can have obvious addition conflicts
         // TODO further analyze conflicts among other modifiers (e.g. you can't combine static and volatile)
-        if (visibility.size() != 1) {
-            return Optional.empty();
+        boolean conflict = visibility.size() != 1 ||
+                !leftVis.equals(rightVis) && !leftVis.equals(baseVis) && !rightVis.equals(baseVis);
+
+        if (conflict) {
+            // use left version on conflict to follow the convention
+            visibility = leftVis;
         }
 
         Set<ModifierKind> mods = Stream.of(visibility, keywords, other).flatMap(Set::stream)
@@ -235,7 +276,7 @@ public class ContentMerger {
                 )
                 .collect(Collectors.toSet());
 
-        return Optional.of(mods);
+        return Pair.of(conflict,Optional.of(mods));
     }
 
     private static _ContentTriple getContentRevisions(Set<Content<SpoonNode, RoledValues>> contents) {

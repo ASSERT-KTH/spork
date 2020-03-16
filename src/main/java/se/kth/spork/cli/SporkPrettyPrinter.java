@@ -32,6 +32,10 @@ public final class SporkPrettyPrinter extends DefaultJavaPrettyPrinter {
         printerConflictMaps = new ArrayDeque<>();
         setPrinterTokenWriter(new DefaultTokenWriter(printerHelper));
 
+        // This is required to avoid NullPointerExceptions when debugging, as the debugger calls toString from time
+        // to time
+        printerConflictMaps.push(Optional.empty());
+
         // this line is SUPER important because without it implicit elements will be printed. For example,
         // instead of just String, it will print java.lang.String. Which isn't great.
         setIgnoreImplicit(false);
