@@ -1,0 +1,3 @@
+interface Iface {
+    void someMethod();
+}

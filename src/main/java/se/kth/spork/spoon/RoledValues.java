@@ -1,6 +1,6 @@
 package se.kth.spork.spoon;
 
-import se.kth.spork.util.Pair;
+import spoon.reflect.declaration.CtElement;
 import spoon.reflect.path.CtRole;
 
 import java.util.*;
@@ -12,13 +12,16 @@ import java.util.*;
  * @author Simon Larsén
  */
 class RoledValues extends ArrayList<RoledValue> {
+    private final CtElement element;
 
-    public RoledValues() {
+    public RoledValues(CtElement element) {
         super();
+        this.element = element;
     }
 
-    public RoledValues(Collection<? extends RoledValue> collection) {
-        super(collection);
+    public RoledValues(RoledValues other) {
+        super(other);
+        this.element = other.element.clone();
     }
 
     public void add(CtRole role, Object value) {
@@ -27,5 +30,9 @@ class RoledValues extends ArrayList<RoledValue> {
 
     public RoledValue set(int i, CtRole role, Object value) {
         return set(i, new RoledValue(role, value));
+    }
+
+    public CtElement getElement() {
+        return element;
     }
 }

@@ -1,0 +1,3 @@
+class Cls {
+    void method() {}
+}

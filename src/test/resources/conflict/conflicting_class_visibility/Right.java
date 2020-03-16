@@ -1,0 +1,1 @@
+private static class Cls {}
