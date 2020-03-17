@@ -127,6 +127,9 @@ public class PrinterPreprocessor extends CtScanner {
                             ? "" : rightVisibilities.iterator().next().toString();
                     printerMap.put(leftVisStr, Pair.of(Revision.RIGHT, rightVisStr));
                 }
+                break;
+            default:
+                throw new IllegalStateException("Unhandled conflict: " + leftVal + ", " + rightVal);
         }
 
         if (!printerMap.isEmpty()) {
