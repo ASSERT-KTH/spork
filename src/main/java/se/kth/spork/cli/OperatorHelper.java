@@ -24,6 +24,16 @@ class OperatorHelper {
         return o.name().startsWith("POST");
     }
 
+    public static String getOperatorText(Object o) {
+        if (o instanceof UnaryOperatorKind) {
+            return getOperatorText((UnaryOperatorKind) o);
+        } else if (o instanceof BinaryOperatorKind) {
+            return getOperatorText((BinaryOperatorKind) o);
+        } else {
+            throw new IllegalArgumentException("Can't get operator text for type " + o.getClass());
+        }
+    }
+
     /**
      * @return java source code representation of a pre or post unary operator.
      */

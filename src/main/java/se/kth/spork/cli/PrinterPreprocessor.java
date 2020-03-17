@@ -7,6 +7,8 @@ import se.kth.spork.spoon.RoledValue;
 import se.kth.spork.util.LineBasedMerge;
 import se.kth.spork.util.Pair;
 import spoon.reflect.code.CtComment;
+import spoon.reflect.code.CtOperatorAssignment;
+import spoon.reflect.code.UnaryOperatorKind;
 import spoon.reflect.cu.SourcePosition;
 import spoon.reflect.declaration.CtElement;
 import spoon.reflect.declaration.ModifierKind;
@@ -127,6 +129,18 @@ public class PrinterPreprocessor extends CtScanner {
                             ? "" : rightVisibilities.iterator().next().toString();
                     printerMap.put(leftVisStr, Pair.of(Revision.RIGHT, rightVisStr));
                 }
+                break;
+            case OPERATOR_KIND:
+                assert leftVal.getClass() == rightVal.getClass();
+
+                String leftStr = OperatorHelper.getOperatorText(leftVal);
+                String rightStr = OperatorHelper.getOperatorText(rightVal);
+
+                if (element instanceof CtOperatorAssignment) {
+                    leftStr += "=";
+                    rightStr += "=";
+                }
+                printerMap.put(leftStr, Pair.of(Revision.RIGHT, rightStr));
                 break;
             default:
                 throw new IllegalStateException("Unhandled conflict: " + leftVal + ", " + rightVal);
