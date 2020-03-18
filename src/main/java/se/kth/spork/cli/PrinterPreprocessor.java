@@ -45,13 +45,9 @@ public class PrinterPreprocessor extends CtScanner {
             conflicts.forEach(conf -> processConflict(conf, element));
         }
 
-        super.scan(element);
-    }
+        element.getComments().forEach(PrinterPreprocessor::unsetSourcePosition);
 
-    @Override
-    public void visitCtComment(CtComment comment) {
-        unsetSourcePosition(comment);
-        super.visitCtComment(comment);
+        super.scan(element);
     }
 
     /**
