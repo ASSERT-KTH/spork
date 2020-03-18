@@ -58,8 +58,13 @@ public class PrinterPreprocessor extends CtScanner {
      *
      * The reason for this can be found in
      * {@link spoon.reflect.visitor.ElementPrinterHelper#getComments(CtElement, CommentOffset)}.
+     *
+     * If the position is all ready {@link SourcePosition#NOPOSITION}, then do nothing.
      */
     private static void unsetSourcePosition(CtElement element) {
+        if (element.getPosition() == SourcePosition.NOPOSITION)
+            return;
+
         element.putMetadata(POSITION_KEY, element.getPosition());
         element.setPosition(SourcePosition.NOPOSITION);
     }
