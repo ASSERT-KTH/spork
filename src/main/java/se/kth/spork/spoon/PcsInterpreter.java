@@ -1,11 +1,12 @@
 package se.kth.spork.spoon;
 
 import se.kth.spork.base3dm.*;
-import se.kth.spork.util.Pair;
+import spoon.SpoonException;
 import spoon.reflect.code.CtExpression;
 import spoon.reflect.declaration.CtAnnotation;
 import spoon.reflect.declaration.CtElement;
 import spoon.reflect.path.CtRole;
+import spoon.reflect.reference.CtTypeReference;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -41,7 +42,6 @@ public class PcsInterpreter {
         rootToChildren = buildRootToChildren(delta.getStar());
         visitor = new Builder(delta.getContents(), baseLeft, baseRight);
         this.structuralConflicts = delta.getStructuralConflicts();
-        // TODO what to do about root conflicts?
     }
 
     private static <T extends ListNode> Map<T, Map<T, Pcs<T>>> buildRootToChildren(Set<Pcs<T>> pcses) {
@@ -217,6 +217,11 @@ public class PcsInterpreter {
          * @param origRootWrapper A wrapper around the current node's parent.
          */
         public void visit(SpoonNode origRootWrapper, SpoonNode origTreeWrapper) {
+            if (nodes.containsKey(origTreeWrapper)) {
+                // if this happens, then there is a duplicate node in the tree, indicating a move conflict
+                throw new IllegalStateException("Move conflict detected");
+            }
+
             CtElement mergeParent = origRootWrapper == NodeFactory.ROOT ? null : nodes.get(origRootWrapper).getElement();
 
             CtElement originalTree = origTreeWrapper.getElement();
@@ -235,7 +240,6 @@ public class PcsInterpreter {
                 mergeParent.setValueByRole(mergeTreeRole, inserted);
             }
 
-            assert !nodes.containsKey(origTreeWrapper); // if this happens, then there is a duplicate node in the tree
             nodes.put(origTreeWrapper, NodeFactory.wrap(mergeTree));
 
             if (actualRoot == null)
