@@ -62,7 +62,10 @@ public class SpoonMapping {
                     throw new IllegalStateException("non-root node " + m.first.toShortString()
                             + " had no mapped Spoon object");
                 }
-            } else {
+            } else if (spoonSrc.getClass() == spoonDst.getClass()) {
+                // It is important to only map nodes of the exact same type, as 3DM has no notion of "correct"
+                // parent-child relationships. Mapping e.g. an array type reference to a non-array type reference
+                // may cause the resulting merge to try to treat either as the other, which does not work out.
                 mapping.put(spoonSrc, spoonDst);
             }
         }
