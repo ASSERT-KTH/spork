@@ -267,7 +267,7 @@ public class PcsInterpreter {
                 mutableCurrent.add(mergeTree);
                 toSet = mutableCurrent;
             } else if (siblings instanceof Map) {
-                toSet = resolveAnnotationMap(mergeTree, (Map<?, ?>) siblings, originalRoot, originalTree);
+                toSet = resolveAnnotationMap(mergeTree, (Map<?, ?>) siblings, originalTree);
             } else {
                 toSet = mergeTree;
             }
@@ -394,23 +394,18 @@ public class PcsInterpreter {
          * @param mergeTree         The tree node currently being merged, to be inserted as a value among siblings.
          * @param siblings          A potentially empty map of annotation keys->values currently in the merge tree's parent's
          *                          children, i.e. the siblings of the current mergeTree.
-         * @param originalRoot      The root from which the mergeParent was copied.
          * @param originalTree      The tree from which mergeTree was copied.
          * @return A map representing the key/value pairs of an annotation, wich mergeTree inserted among its siblings.
          */
         private Map<?, ?> resolveAnnotationMap(
-                CtElement mergeTree, Map<?, ?> siblings, CtElement originalRoot, CtElement originalTree) {
+                CtElement mergeTree, Map<?, ?> siblings, CtElement originalTree) {
 
             Map<Object, Object> mutableCurrent = new TreeMap<>(siblings);
 
-            // To find the key for the value, we find the key of the original value
-            // in the original annotation. This intuitively seems like it should work,
-            // but complex modifications to annotations may cause this to crash and burn.
-            // TODO review if this approach is feasible
-            CtAnnotation<?> annotation = (CtAnnotation<?>) originalRoot;
+            CtAnnotation<?> annotation = (CtAnnotation<?>) originalTree.getParent();
             Optional<Map.Entry<String, CtExpression>> originalEntry = annotation
                     .getValues().entrySet().stream().filter(
-                            entry -> entry.getValue().equals(originalTree)).findFirst();
+                            entry -> entry.getValue() == originalTree).findFirst();
 
             if (!originalEntry.isPresent()) {
                 throw new IllegalStateException(
