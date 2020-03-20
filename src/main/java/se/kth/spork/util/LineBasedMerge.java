@@ -38,7 +38,7 @@ public class LineBasedMerge {
         MergeResult<RawText> res = merge.merge(new SequenceComparator<RawText>() {
             @Override
             public boolean equals(RawText s, int i, RawText s1, int i1) {
-                return s.getString(i).equals(s1.getString(i));
+                return s.getString(i).equals(s1.getString(i1));
             }
 
             @Override
