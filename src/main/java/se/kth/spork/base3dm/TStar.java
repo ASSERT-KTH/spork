@@ -2,6 +2,7 @@ package se.kth.spork.base3dm;
 
 import java.util.*;
 import java.util.function.Function;
+import java.util.stream.Stream;
 
 /**
  * Represents the T* set in 3DM merge.
@@ -60,10 +61,11 @@ public class TStar<T extends ListNode,V> {
      * @return Another PCS that matches the argument PCS on everything but root.
      */
     public Optional<Pcs<T>> getOtherRoot(Pcs<T> pcs) {
-        return predecessors.getOrDefault(pcs.getPredecessor(), EMPTY_PCS_SET).stream()
-                .filter(p -> !Objects.equals(p.getRoot(), pcs.getRoot())
-                        && Objects.equals(p.getSuccessor(), pcs.getSuccessor()))
-                .findFirst();
+        return Stream.of(pcs.getPredecessor(), pcs.getSuccessor()).flatMap(
+                node -> Stream.of(predecessors.get(node), successors.get(node))
+                        .filter(Objects::nonNull)
+                        .flatMap(Set::stream)
+        ).filter(p -> !p.getRoot().equals(pcs.getRoot())).findFirst();
     }
 
     /**
@@ -72,9 +74,7 @@ public class TStar<T extends ListNode,V> {
      */
     public Optional<Pcs<T>> getOtherSuccessor(Pcs<T> pcs) {
         return predecessors.getOrDefault(pcs.getPredecessor(), EMPTY_PCS_SET).stream()
-                .filter(p ->
-                        !Objects.equals(p.getSuccessor(), pcs.getSuccessor())
-                                && Objects.equals(p.getRoot(), pcs.getRoot()))
+                .filter(p -> !p.getSuccessor().equals(pcs.getSuccessor()))
                 .findFirst();
     }
 
@@ -84,7 +84,7 @@ public class TStar<T extends ListNode,V> {
      */
     public Optional<Pcs<T>> getOtherPredecessor(Pcs<T> pcs) {
         return successors.getOrDefault(pcs.getSuccessor(), EMPTY_PCS_SET).stream()
-                .filter(p -> !Objects.equals(p.getPredecessor(), pcs.getPredecessor()) && Objects.equals(p.getRoot(), pcs.getRoot()))
+                .filter(p -> !p.getPredecessor().equals(pcs.getPredecessor()))
                 .findFirst();
     }
 
