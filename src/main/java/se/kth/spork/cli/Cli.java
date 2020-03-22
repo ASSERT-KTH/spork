@@ -8,14 +8,18 @@ import picocli.CommandLine;
 import se.kth.spork.spoon.Compare;
 import se.kth.spork.spoon.Parser;
 import se.kth.spork.spoon.Spoon3dmMerge;
+import se.kth.spork.util.LineBasedMerge;
+import se.kth.spork.util.Pair;
 import spoon.reflect.declaration.*;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.Callable;
@@ -143,16 +147,8 @@ public class Cli {
         public Integer call() throws IOException {
             long start = System.nanoTime();
 
-            LOGGER.info("Parsing input files");
-            CtModule baseModule = Parser.parse(base.toPath());
-            CtModule leftModule = Parser.parse(left.toPath());
-            CtModule rightModule = Parser.parse(right.toPath());
+            String pretty = merge(base.toPath(), left.toPath(), right.toPath());
 
-            LOGGER.info("Initiating merge");
-            CtModule merge = (CtModule) Spoon3dmMerge.merge(baseModule, leftModule, rightModule);
-
-            LOGGER.info("Pretty-printing");
-            String pretty = prettyPrint(merge);
             if (out != null) {
                 LOGGER.info("Writing merge to " + out);
                 Files.write(out.toPath(), pretty.getBytes(Charset.defaultCharset()),
@@ -164,6 +160,42 @@ public class Cli {
             LOGGER.info("Total time elapsed: " + (double) (System.nanoTime() - start) / 1e9 + " seconds");
             return 0;
         }
+
+    }
+
+    /**
+     * Merge the three paths, that must point to Java files, using AST-based merge.
+     *
+     * @param base Path to base revision.
+     * @param left Path to left revision.
+     * @param right Path to right revision.
+     * @return Pretty-printed merged result.
+     */
+    public static String merge(Path base, Path left, Path right) {
+        LOGGER.info("Parsing input files");
+        CtModule baseModule = Parser.parse(base);
+        CtModule leftModule = Parser.parse(left);
+        CtModule rightModule = Parser.parse(right);
+
+        LOGGER.info("Initiating merge");
+        CtModule merge = (CtModule) Spoon3dmMerge.merge(baseModule, leftModule, rightModule);
+
+        LOGGER.info("Pretty-printing");
+        if (containsTypes(merge)) {
+            return prettyPrint(merge);
+        } else {
+            LOGGER.warn("Merge contains no types (i.e. classes, interfaces, etc), reverting to line-based merge");
+            String baseStr = Parser.read(base);
+            String leftStr = Parser.read(left);
+            String rightStr = Parser.read(right);
+            Pair<String, Boolean> lineMerge = LineBasedMerge.merge(baseStr, leftStr, rightStr);
+            return lineMerge.first;
+        }
+    }
+
+    private static boolean containsTypes(CtElement elem) {
+        List<CtType<?>> types = elem.getElements(e -> true);
+        return types.size() > 0;
     }
 }
 
