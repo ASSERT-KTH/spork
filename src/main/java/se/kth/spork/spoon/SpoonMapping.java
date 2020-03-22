@@ -6,7 +6,9 @@ import com.github.gumtreediff.tree.ITree;
 import com.github.gumtreediff.utils.Pair;
 import gumtree.spoon.builder.SpoonGumTreeBuilder;
 import se.kth.spork.util.GumTreeSpoonAstDiff;
+import spoon.reflect.declaration.CtAnnotation;
 import spoon.reflect.declaration.CtElement;
+import spoon.reflect.path.CtRole;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -16,11 +18,11 @@ import java.util.stream.Collectors;
 
 /**
  * A class for storing matches between tree nodes in two Spoon trees. Inspired by the MappingStore class from GumTree.
- *
+ * <p>
  * See <a href="https://github.com/GumTreeDiff/gumtree/blob/f20565b6261fe3465cd1b3e0914028d5e87699b2/core/src/main/java/com/github/gumtreediff/matchers/MappingStore.java#L1-L151">
- *     MappingStore.java
- *     </a> in GumTree for comparison.
- *
+ * MappingStore.java
+ * </a> in GumTree for comparison.
+ * <p>
  * It is my opinion that this file is sufficiently distinct from GumTree's MappingStore that the former does not count
  * as a derivative of the latter, and the similar functionality is trivial. Therefore, I do not think that the
  * LGPL license of the GumTree project needs to be applied to Spork.
@@ -42,7 +44,7 @@ public class SpoonMapping {
      * Create a Spoon mapping from a GumTree mapping. Every GumTree node must have a "spoon_object" metadata object that
      * refers back to a Spoon node. As this mapping does not cover the whole Spoon tree, additional mappings are
      * inferred.
-     *
+     * <p>
      * TODO verify that the mapping inference is actually correct
      *
      * @param gumtreeMapping A GumTree mapping in which each mapped node has a "spoon_object" metadata object.
@@ -62,10 +64,7 @@ public class SpoonMapping {
                     throw new IllegalStateException("non-root node " + m.first.toShortString()
                             + " had no mapped Spoon object");
                 }
-            } else if (spoonSrc.getClass() == spoonDst.getClass()) {
-                // It is important to only map nodes of the exact same type, as 3DM has no notion of "correct"
-                // parent-child relationships. Mapping e.g. an array type reference to a non-array type reference
-                // may cause the resulting merge to try to treat either as the other, which does not work out.
+            } else if (!ignoreMapping(spoonSrc, spoonDst)) {
                 mapping.put(spoonSrc, spoonDst);
             }
         }
@@ -78,6 +77,28 @@ public class SpoonMapping {
         return srcs.values().stream()
                 .map(dst -> new Pair<>(getSrc(dst).getElement(), dst.getElement()))
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * Sometimes, we want to ignore a mapping that GumTree produces, as it causes trouble for the merge algorithm.
+     */
+    private static boolean ignoreMapping(CtElement src, CtElement dst) {
+        if (src.getClass() != dst.getClass()) {
+            // It is important to only map nodes of the exact same type, as 3DM has no notion of "correct"
+            // parent-child relationships. Mapping e.g. an array type reference to a non-array type reference
+            // may cause the resulting merge to try to treat either as the other, which does not work out.
+            return true;
+        } else if (isAnnotationValue(src) != isAnnotationValue(dst)) {
+            // If one element is an annotation value, but the other is not, mapping them will cause issues resolving
+            // the key of the value. This is a problem related to how annotations are represented in Spoon, namely
+            // that the keys in the annotation map aren't proper nodes.
+            return true;
+        }
+        return false;
+    }
+
+    private static boolean isAnnotationValue(CtElement elem) {
+        return elem.getParent() instanceof CtAnnotation && elem.getRoleInParent() == CtRole.VALUE;
     }
 
     /**
