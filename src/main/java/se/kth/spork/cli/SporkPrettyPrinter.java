@@ -10,6 +10,7 @@ import spoon.reflect.declaration.CtElement;
 import spoon.reflect.visitor.DefaultJavaPrettyPrinter;
 import spoon.reflect.visitor.DefaultTokenWriter;
 import spoon.reflect.visitor.PrinterHelper;
+import spoon.reflect.visitor.PrintingContext;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -65,7 +66,17 @@ public final class SporkPrettyPrinter extends DefaultJavaPrettyPrinter {
         if (structuralConflict != null) {
             writeStructuralConflict(structuralConflict);
         } else {
-            super.scan(e);
+            if (getContext().forceWildcardGenerics()) {
+                // Forcing wildcard generics can cause crashes when references can't be resolved, so we don't want
+                // to do it. An example of where this sometimes causes crashes is if a nested class is used in an
+                // instanceof check.
+                try (PrintingContext.Writable _context = getContext().modify()) {
+                    _context.forceWildcardGenerics(false);
+                    super.scan(e);
+                }
+            } else {
+                super.scan(e);
+            }
         }
 
         return this;
