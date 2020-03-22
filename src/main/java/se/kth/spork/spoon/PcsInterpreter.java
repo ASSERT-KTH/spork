@@ -40,6 +40,21 @@ public class PcsInterpreter {
         rootToChildren = buildRootToChildren(delta.getPcsSet());
         visitor = new Builder(delta.getContents(), baseLeft, baseRight);
         this.structuralConflicts = delta.getStructuralConflicts();
+        checkRootConflicts(structuralConflicts);
+    }
+
+    /**
+     * Spork currently can't handle root conflicts.
+     */
+    private static void checkRootConflicts(Map<Pcs<SpoonNode>, Set<Pcs<SpoonNode>>> structuralConflicts) {
+        for (Map.Entry<Pcs<SpoonNode>, Set<Pcs<SpoonNode>>> entry : structuralConflicts.entrySet()) {
+            Pcs<SpoonNode> pcs = entry.getKey();
+            for (Pcs<SpoonNode> other : entry.getValue()) {
+                if (isRootConflict(pcs, other)) {
+                    throw new IllegalStateException("Root conflict detected");
+                }
+            }
+        }
     }
 
     private static <T extends ListNode> Map<T, Map<T, Pcs<T>>> buildRootToChildren(Set<Pcs<T>> pcses) {
@@ -389,10 +404,10 @@ public class PcsInterpreter {
          * <p>
          * Note: This method mutates none of the input.
          *
-         * @param mergeTree         The tree node currently being merged, to be inserted as a value among siblings.
-         * @param siblings          A potentially empty map of annotation keys->values currently in the merge tree's parent's
-         *                          children, i.e. the siblings of the current mergeTree.
-         * @param originalTree      The tree from which mergeTree was copied.
+         * @param mergeTree    The tree node currently being merged, to be inserted as a value among siblings.
+         * @param siblings     A potentially empty map of annotation keys->values currently in the merge tree's parent's
+         *                     children, i.e. the siblings of the current mergeTree.
+         * @param originalTree The tree from which mergeTree was copied.
          * @return A map representing the key/value pairs of an annotation, wich mergeTree inserted among its siblings.
          */
         private Map<?, ?> resolveAnnotationMap(
@@ -414,6 +429,7 @@ public class PcsInterpreter {
 
             return mutableCurrent;
         }
+
         /**
          * Set the content of a tree that is being/has been merged to the merged content of the original tree.
          *
