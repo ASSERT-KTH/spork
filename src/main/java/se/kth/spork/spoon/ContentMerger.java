@@ -2,7 +2,7 @@ package se.kth.spork.spoon;
 
 import se.kth.spork.base3dm.Content;
 import se.kth.spork.base3dm.Pcs;
-import se.kth.spork.base3dm.TStar;
+import se.kth.spork.base3dm.ChangeSet;
 import se.kth.spork.util.LineBasedMerge;
 import se.kth.spork.util.Pair;
 import se.kth.spork.util.Triple;
@@ -28,8 +28,8 @@ public class ContentMerger {
      * @param delta A merged TStar.
      */
     @SuppressWarnings("unchecked")
-    static void handleContentConflicts(TStar<SpoonNode, RoledValues> delta) {
-        for (Pcs<SpoonNode> pcs : delta.getStar()) {
+    static void handleContentConflicts(ChangeSet<SpoonNode, RoledValues> delta) {
+        for (Pcs<SpoonNode> pcs : delta.getPcsSet()) {
             SpoonNode pred = pcs.getPredecessor();
             Set<Content<SpoonNode, RoledValues>> nodeContents = delta.getContent(pred);
 

@@ -26,8 +26,8 @@ public class TdmMerge {
      * @param base The base revision.
      * @param delta The raw merge.
      */
-    public static <T extends ListNode,V> void resolveRawMerge(TStar<T,V> base, TStar<T,V> delta) {
-        for (Pcs<T> pcs : delta.getStar()) {
+    public static <T extends ListNode,V> void resolveRawMerge(ChangeSet<T,V> base, ChangeSet<T,V> delta) {
+        for (Pcs<T> pcs : delta.getPcsSet()) {
             if (!delta.contains(pcs)) // was removed as otherPcs
                 continue;
 
@@ -72,7 +72,7 @@ public class TdmMerge {
      *
      * If the content conflict cannot be automatically resolved, the contents argument is simply returned as-is.
      */
-    private static <T extends ListNode,V> Set<Content<T,V>> handleContentConflict(Set<Content<T,V>> contents, TStar<T,V> base) {
+    private static <T extends ListNode,V> Set<Content<T,V>> handleContentConflict(Set<Content<T,V>> contents, ChangeSet<T,V> base) {
         if (contents.size() > 3)
             throw new IllegalArgumentException("expected at most 3 pieces of conflicting content, got: " + contents);
 

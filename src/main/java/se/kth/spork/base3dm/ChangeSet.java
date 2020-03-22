@@ -5,16 +5,18 @@ import java.util.function.Function;
 import java.util.stream.Stream;
 
 /**
- * Represents the T* set in 3DM merge.
+ * Represents a change set in 3DM merge. While a change set in pure 3DM merge is just all content tuples and PCS
+ * triples put together, this change set separates content and structure into separate sets, and also introduces
+ * some helper functionality to keep track of conflicts and enable faster lookup of PCS triples.
  *
  * @author Simon Larsén
  */
-public class TStar<T extends ListNode,V> {
+public class ChangeSet<T extends ListNode,V> {
     private Map<T, Set<Pcs<T>>> successors;
     private Map<T, Set<Pcs<T>>> predecessors;
     private Map<T, Set<Content<T,V>>> content;
     private Map<T, T> classRepMap;
-    private Set<Pcs<T>> star;
+    private Set<Pcs<T>> pcsSet;
     private Map<Pcs<T>, Set<Pcs<T>>> structuralConflicts;
 
     @SuppressWarnings("unchecked")
@@ -32,21 +34,21 @@ public class TStar<T extends ListNode,V> {
      * @param trees The trees to add to this T*.
      */
     @SafeVarargs
-    public TStar(Map<T, T> classRepMap, Function<T, V> getContent, Set<Pcs<T>>... trees) {
+    public ChangeSet(Map<T, T> classRepMap, Function<T, V> getContent, Set<Pcs<T>>... trees) {
         this.classRepMap = classRepMap;
         successors = new HashMap<>();
         predecessors = new HashMap<>();
         content = new HashMap<>();
-        star = new HashSet<>();
+        pcsSet = new HashSet<>();
         Arrays.stream(trees).forEach(t -> add(t, getContent));
         structuralConflicts = new HashMap<>();
     }
 
     /**
-     * @return The current state of the merge.
+     * @return The current state of the structure of the merge.
      */
-    public Set<Pcs<T>> getStar() {
-        return new HashSet<>(star);
+    public Set<Pcs<T>> getPcsSet() {
+        return new HashSet<>(pcsSet);
     }
 
     /**
@@ -135,7 +137,7 @@ public class TStar<T extends ListNode,V> {
         predecessors.get(pred).remove(pcs);
         successors.get(succ).remove(pcs);
 
-        star.remove(pcs);
+        pcsSet.remove(pcs);
     }
 
     /**
@@ -204,7 +206,7 @@ public class TStar<T extends ListNode,V> {
         T pred = pcs.getPredecessor();
         T succ = pcs.getSuccessor();
         Pcs<T> classRepPcs = new Pcs<T>(classRepMap.get(root), classRepMap.get(pred), classRepMap.get(succ), pcs.getRevision());
-        star.add(classRepPcs);
+        pcsSet.add(classRepPcs);
         return classRepPcs;
     }
 

@@ -1,12 +1,10 @@
 package se.kth.spork.spoon;
 
 import se.kth.spork.base3dm.*;
-import spoon.SpoonException;
 import spoon.reflect.code.CtExpression;
 import spoon.reflect.declaration.CtAnnotation;
 import spoon.reflect.declaration.CtElement;
 import spoon.reflect.path.CtRole;
-import spoon.reflect.reference.CtTypeReference;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -30,7 +28,7 @@ public class PcsInterpreter {
      * @return A Spoon tree representing the merged PCS structure.
      */
     public static CtElement fromMergedPcs(
-            TStar<SpoonNode, RoledValues> delta,
+            ChangeSet<SpoonNode, RoledValues> delta,
             SpoonMapping baseLeft,
             SpoonMapping baseRight) {
         PcsInterpreter pcsInterpreter = new PcsInterpreter(delta, baseLeft, baseRight);
@@ -38,8 +36,8 @@ public class PcsInterpreter {
         return pcsInterpreter.visitor.actualRoot;
     }
 
-    private PcsInterpreter(TStar<SpoonNode, RoledValues> delta, SpoonMapping baseLeft, SpoonMapping baseRight) {
-        rootToChildren = buildRootToChildren(delta.getStar());
+    private PcsInterpreter(ChangeSet<SpoonNode, RoledValues> delta, SpoonMapping baseLeft, SpoonMapping baseRight) {
+        rootToChildren = buildRootToChildren(delta.getPcsSet());
         visitor = new Builder(delta.getContents(), baseLeft, baseRight);
         this.structuralConflicts = delta.getStructuralConflicts();
     }
