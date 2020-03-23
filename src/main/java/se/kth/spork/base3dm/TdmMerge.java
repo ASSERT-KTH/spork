@@ -31,13 +31,13 @@ public class TdmMerge {
             if (!delta.contains(pcs)) // was removed as otherPcs
                 continue;
 
-            if (!pcs.getPredecessor().isListEdge()) {
-                Set<Content<T,V>> contents = delta.getContent(pcs.getPredecessor());
-                if (contents != null && contents.size() > 1) {
-                    Set<Content<T,V>> newContent = handleContentConflict(contents, base);
-                    delta.setContent(pcs.getPredecessor(), newContent);
-                }
-            }
+            // We need to merge the content of the predecessor and successor, but we can skip the parent.
+            // The reason is that a parent node that never appears as a predecessor or successor will never be
+            // processed when converting from PCS to tree, with the exception of the virtual root (which has no content).
+            // It is however possible for a node to only appear as predecessor or successor in certain conflict
+            // situations, see https://github.com/kth/spork/issues/82 for details
+            mergeContent(pcs.getPredecessor(), base, delta);
+            mergeContent(pcs.getSuccessor(), base, delta);
 
             Optional<Pcs<T>> other = delta.getOtherRoot(pcs);
             if (!other.isPresent())
@@ -62,6 +62,17 @@ public class TdmMerge {
         Map<Pcs<T>, Set<Pcs<T>>> structuralConflicts = delta.getStructuralConflicts();
         if (!structuralConflicts.isEmpty()) {
             LOGGER.warn("STRUCTURAL CONFLICTS DETECTED: " + structuralConflicts);
+        }
+    }
+
+    /**
+     * Merge the content of a node, if possible.
+     */
+    private static <T extends ListNode,V> void mergeContent(T node, ChangeSet<T,V> base, ChangeSet<T,V> delta) {
+        Set<Content<T,V>> contents = delta.getContent(node);
+        if (contents != null && contents.size() > 1) {
+            Set<Content<T,V>> newContent = handleContentConflict(contents, base);
+            delta.setContent(node, newContent);
         }
     }
 
