@@ -10,6 +10,34 @@ import argparse
 
 from typing import List
 
+import daiquiri
+import logging
+
+
+def setup_logging():
+    daiquiri.setup(
+        level=logging.INFO,
+        outputs=(
+            daiquiri.output.Stream(
+                sys.stdout,
+                formatter=daiquiri.formatter.ColorFormatter(
+                    fmt="%(color)s[%(levelname)s] %(message)s%(color_stop)s"
+                ),
+            ),
+            daiquiri.output.File(
+                filename=str("spork_benchmark.log"),
+                formatter=daiquiri.formatter.ColorFormatter(
+                    fmt="%(asctime)s [PID %(process)d] [%(levelname)s] "
+                    "%(name)s -> %(message)s"
+                ),
+            ),
+        ),
+    )
+
+
+setup_logging()
+LOGGER = daiquiri.getLogger(__name__)
+
 
 @dataclasses.dataclass(frozen=True)
 class MergeScenario:
@@ -31,10 +59,12 @@ def extract_merge_scenarios(repo: git.Repo):
         base = repo.merge_base(*merge.parents)
 
         if not base:
-            print(f"No merge base for commits {left.hexsha} and {right.hexsha}")
+            LOGGER.warning(
+                f"No merge base for commits {left.hexsha} and {right.hexsha}"
+            )
             continue
         elif len(base) > 1:
-            print(
+            LOGGER.warning(
                 f"Ambiguous merge base for commits {left.hexsha} and {right.hexsha}: {base}"
             )
             continue
@@ -58,30 +88,42 @@ def insert(revision, diffs: List[git.Commit], mapping):
             mapping[d.a_blob.hexsha][revision] = rev
 
 
-def create_merge_dirs(merge_dir_base, commit_sha, mapping):
-    merge_dir = merge_dir_base / commit_sha
-    merge_dir.mkdir()
+def create_merge_dirs(merge_dir_base, merge_scenarios):
+    for merge in merge_scenarios:
+        merge_dir = merge_dir_base / merge.result.hexsha
+        merge_dir.mkdir()
 
-    for key, val in mapping.items():
-        scenario_dir = merge_dir / key
-        scenario_dir.mkdir()
+        diff_left = merge.base.diff(merge.left)
+        diff_right = merge.base.diff(merge.right)
+        diff_result = merge.base.diff(merge.result)
 
-        base_content = val.get("base") or val.get("result")
-        expected_content = val.get("result") or base_content
+        mapping = collections.defaultdict(dict)
+        insert("left", diff_left, mapping)
+        insert("right", diff_right, mapping)
+        insert("result", diff_result, mapping)
 
-        write_blob_to_file(scenario_dir / "Left.java", val.get("left") or base_content)
-        write_blob_to_file(
-            scenario_dir / "Right.java", val.get("right") or base_content
-        )
-        write_blob_to_file(scenario_dir / "Base.java", base_content)
-        write_blob_to_file(scenario_dir / "Expected.java", expected_content)
+        for key, val in mapping.items():
+            scenario_dir = merge_dir / key
+            scenario_dir.mkdir()
+
+            base_content = val.get("base") or val.get("result")
+            expected_content = val.get("result") or base_content
+
+            write_blob_to_file(
+                scenario_dir / "Left.java", val.get("left") or base_content
+            )
+            write_blob_to_file(
+                scenario_dir / "Right.java", val.get("right") or base_content
+            )
+            write_blob_to_file(scenario_dir / "Base.java", base_content)
+            write_blob_to_file(scenario_dir / "Expected.java", expected_content)
 
 
 def write_blob_to_file(filepath, blob):
     filepath.write_bytes(blob.data_stream[-1].read())
 
 
-def run_merge(scenario_dir, merge_cmd, compare_cmd):
+def run_merge(scenario_dir, merge_cmd):
     base = scenario_dir / "Base.java"
     left = scenario_dir / "Left.java"
     right = scenario_dir / "Right.java"
@@ -98,62 +140,46 @@ def run_merge(scenario_dir, merge_cmd, compare_cmd):
     )
 
     if not merge.is_file():
-        print(f"merge failed to produce a Merge.java file")
-        print(merge_proc.stdout.decode(sys.getdefaultencoding()))
-        print(merge_proc.stderr.decode(sys.getdefaultencoding()))
-        return False
-
-    cmp_proc = subprocess.run(
-        f"{compare_cmd} {expected} {merge}".split(), capture_output=True
-    )
-
-    if cmp_proc.returncode != 0:
-        print(f"failed on blob {scenario_dir.name}")
-        print(cmp_proc.stderr.decode(sys.getdefaultencoding()))
-        print(cmp_proc.stdout.decode(sys.getdefaultencoding()))
+        LOGGER.error(
+            f"merge failed to produce a Merge.java file on {scenario_dir.parent.name}/{scenario_dir.name}"
+        )
+        LOGGER.info(merge_proc.stdout.decode(sys.getdefaultencoding()))
+        LOGGER.info(merge_proc.stderr.decode(sys.getdefaultencoding()))
         return False
     else:
-        print(f"passed on blob {scenario_dir.name}")
+        LOGGER.info(
+            f"Successfully merged {scenario_dir.parent.name}/{scenario_dir.name}"
+        )
         return True
 
 
-def merge_files_separately(merge_scenarios, merge_cmd, cmp_cmd):
-    num_passed = 0
+def merge_files_separately(merge_scenarios, merge_cmd):
+    num_merged = 0
     num_failed = 0
 
-    for merge in merge_scenarios:
-        diff_left = merge.base.diff(merge.left)
-        diff_right = merge.base.diff(merge.right)
-        diff_result = merge.base.diff(merge.result)
+    start = time.time_ns()
+    merge_base_dir = pathlib.Path("merge_directory")
+    merge_base_dir.mkdir(exist_ok=True)
 
-        mapping = collections.defaultdict(dict)
-        insert("left", diff_left, mapping)
-        insert("right", diff_right, mapping)
-        insert("result", diff_result, mapping)
+    create_merge_dirs(merge_base_dir, merge_scenarios)
+    for merge_dir in merge_base_dir.iterdir():
+        LOGGER.info(f"running merge scenarios for commit {merge_dir.name}")
+        assert merge_dir.is_dir()
 
-        # if merge.result.hexsha == "08ebba7998647c258437132baadad922c8b43419":
-        #    continue
+        for scenario_dir in merge_dir.iterdir():
+            assert scenario_dir.is_dir()
 
-        print(f"running merge scenarios for commit {merge.result.hexsha}")
+            if run_merge(scenario_dir, merge_cmd):
+                num_merged += 1
+            else:
+                num_failed += 1
+        LOGGER.info(f"merged: {num_merged}, failed: {num_failed}")
 
-        start = time.time_ns()
-        with tempfile.TemporaryDirectory() as tmpdir:
-            merge_base_dir = pathlib.Path(tmpdir)
-            create_merge_dirs(merge_base_dir, merge.result.hexsha, mapping)
-            for merge_dir in merge_base_dir.iterdir():
-                assert merge_dir.is_dir()
-
-                for scenario_dir in merge_dir.iterdir():
-                    assert scenario_dir.is_dir()
-                    if run_merge(scenario_dir, merge_cmd, cmp_cmd):
-                        num_passed += 1
-                    else:
-                        num_failed += 1
-
-        end = time.time_ns()
-        delta = (end - start) / 1e9
-        print(f"passed: {num_passed}, failed: {num_failed}")
-        print(f"Time elapsed: {delta} seconds")
+    end = time.time_ns()
+    delta = (end - start) / 1e9
+    LOGGER.info(f"merged: {num_merged}, failed: {num_failed}")
+    LOGGER.info(f"Time elapsed: {delta} seconds")
+    LOGGER.info(f"Average time per merge: {delta / (num_merged + num_failed)}")
 
 
 def run_git_merge(merge_scenarios: List[MergeScenario], repo: git.Repo):
@@ -164,20 +190,20 @@ def run_git_merge(merge_scenarios: List[MergeScenario], repo: git.Repo):
     failed_build = 0
 
     for mc in merge_scenarios:
-        print(f"MERGING {mc}\n\n")
+        LOGGER.info(f"MERGING {mc}\n\n")
         repo.git.checkout(mc.left.hexsha, "-f")
 
         try:
             out = repo.git.merge(mc.right.hexsha)
-            print("MERGE OK")
+            LOGGER.info("MERGE OK")
             passed_merge += 1
 
         except git.GitCommandError as exc:
-            print(exc)
+            LOGGER.info(exc)
             failed_merge += 1
 
-    print(f"passed_merge: {passed_merge}, failed_merge: {failed_merge}")
-    print(f"passed_build: {passed_build}, failed_build: {failed_build}")
+    LOGGER.info(f"passed_merge: {passed_merge}, failed_merge: {failed_merge}")
+    LOGGER.info(f"passed_build: {passed_build}, failed_build: {failed_build}")
 
 
 def build_with_maven(repo: git.Repo) -> bool:
@@ -186,7 +212,7 @@ def build_with_maven(repo: git.Repo) -> bool:
 
 
 def build_with_gradle(repo: git.Repo) -> bool:
-    print("BUILDING WITH GRADLE")
+    LOGGER.info("BUILDING WITH GRADLE")
     proc = subprocess.run(
         f"./gradlew clean build -x test -x testng".split(), cwd=repo.working_dir
     )
@@ -227,21 +253,20 @@ def create_cli_parser():
     subparsers = parser.add_subparsers(dest="command")
     subparsers.required = True
 
-    test_command = subparsers.add_parser(
-        "test",
+    merge_command = subparsers.add_parser(
+        "merge",
         help="Test a merge tool by merging one file at a time.",
         parents=[base_parser],
     )
 
-    test_command.add_argument(
+    merge_command.add_argument(
         "--merge-cmd", help="Merge command.", type=str, required=True,
-    )
-    test_command.add_argument(
-        "--cmp-cmd", help="Compare command.", type=str, required=True,
     )
 
     evaluate_command = subparsers.add_parser(
-        "evaluate", help="Evaluate a merge tool by configuring git-merge to use it.", parents=[base_parser],
+        "evaluate",
+        help="Evaluate a merge tool by configuring git-merge to use it.",
+        parents=[base_parser],
     )
 
     return parser
@@ -266,10 +291,10 @@ def main():
     if args.num_merges > 0:
         merge_scenarios = merge_scenarios[: args.num_merges]
 
-    print(f"recreating {len(merge_scenarios)} merges")
+    LOGGER.info(f"recreating {len(merge_scenarios)} merges")
 
-    if args.command == "test":
-        merge_files_separately(merge_scenarios, args.merge_cmd, args.cmp_cmd)
+    if args.command == "merge":
+        merge_files_separately(merge_scenarios, args.merge_cmd)
     elif args.command == "evaluate":
         run_git_merge(merge_scenarios, repo)
     else:
