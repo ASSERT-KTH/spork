@@ -1,14 +1,28 @@
 package se.kth.spork.spoon;
 
-import se.kth.spork.base3dm.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
+import java.util.TreeMap;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+import se.kth.spork.base3dm.ChangeSet;
+import se.kth.spork.base3dm.Content;
+import se.kth.spork.base3dm.ListNode;
+import se.kth.spork.base3dm.Pcs;
+import se.kth.spork.base3dm.Revision;
+import se.kth.spork.base3dm.TdmMerge;
 import spoon.reflect.code.CtExpression;
 import spoon.reflect.declaration.CtAnnotation;
 import spoon.reflect.declaration.CtElement;
 import spoon.reflect.path.CtRole;
-
-import java.util.*;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 /**
  * Class for interpreting a merged PCS structure into a Spoon tree.
@@ -71,8 +85,8 @@ public class PcsInterpreter {
 
     private static boolean isRootConflict(Pcs<?> left, Pcs<?> right) {
         return !Objects.equals(left.getRoot(), right.getRoot()) &&
-                Objects.equals(left.getPredecessor(), right.getPredecessor()) ||
-                Objects.equals(left.getSuccessor(), right.getSuccessor());
+                (Objects.equals(left.getPredecessor(), right.getPredecessor()) ||
+                Objects.equals(left.getSuccessor(), right.getSuccessor()));
     }
 
     private static boolean isPredecessorConflict(Pcs<?> left, Pcs<?> right) {
