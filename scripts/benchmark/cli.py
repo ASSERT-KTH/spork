@@ -8,6 +8,8 @@ import logging
 
 from . import run
 from . import gitutils
+from . import mpi
+from . import fileutils
 
 
 def setup_logging():
@@ -46,7 +48,7 @@ def create_cli_parser():
         "-r",
         "--repo",
         help="Name of the repo to run tests on. If -g is not specified, repo "
-             "is assumed to be local.",
+        "is assumed to be local.",
         type=str,
         required=True,
     )
@@ -54,8 +56,8 @@ def create_cli_parser():
         "-g",
         "--github-user",
         help="GitHub username to fetch repo from. Is combined with `--repo`"
-             "to form a qualified repo name on the form `repo/user`. If this is "
-             "not provided, the repo argument is assumend to be a local directory.",
+        "to form a qualified repo name on the form `repo/user`. If this is "
+        "not provided, the repo argument is assumend to be a local directory.",
         type=str,
     )
     base_parser.add_argument(
@@ -78,6 +80,9 @@ def create_cli_parser():
     merge_command.add_argument(
         "--merge-cmd", help="Merge command.", type=str, required=True,
     )
+    merge_command.add_argument(
+        "--mpi", help="Run merge in parallell using MPI", action="store_true",
+    )
 
     evaluate_command = subparsers.add_parser(
         "evaluate",
@@ -88,33 +93,58 @@ def create_cli_parser():
     return parser
 
 
-def main():
-    parser = create_cli_parser()
-    args = parser.parse_args(sys.argv[1:])
-
+def _merge(args: argparse.Namespace):
     if args.github_user is not None:
-        qualname = f"{args.github_user}/{args.repo}"
-
-        if not pathlib.Path(qualname).exists():
-            url = f"https://github.com/{qualname}.git"
-            repo = git.Repo.clone_from(url, qualname)
-        else:
-            repo = git.Repo(qualname)
+        repo = gitutils.clone_repo(args.repo, args.github_user)
     else:
         repo = git.Repo(args.repo)
 
-    merge_scenarios = gitutils.extract_merge_scenarios(repo)
-    if args.num_merges > 0:
-        merge_scenarios = merge_scenarios[: args.num_merges]
+    merge_scenarios = gitutils.extract_merge_scenarios(
+        repo, args.num_merges if args.num_merges > 0 else None
+    )
 
     LOGGER.info(f"recreating {len(merge_scenarios)} merges")
 
     merge_base_dir = pathlib.Path("merge_directory")
+    merge_base_dir.mkdir(exist_ok=True)
+    merge_dirs = fileutils.create_merge_dirs(merge_base_dir, merge_scenarios)
+
+    run.merge_files_separately(merge_dirs, args.merge_cmd)
+
+
+def _evaluate(args: argparse.Namespace):
+    parser = create_cli_parser()
+    args = parser.parse_args(sys.argv[1:])
+
+    if args.github_user is not None:
+        repo = gitutils.clone_repo(args.repo, args.github_user)
+    else:
+        repo = git.Repo(args.repo)
+
+    merge_scenarios = gitutils.extract_merge_scenarios(
+        repo, args.num_merges if args.num_merges > 0 else None
+    )
+
+    LOGGER.info(f"recreating {len(merge_scenarios)} merges")
+
+    run.run_git_merge(merge_scenarios, repo)
+
+
+def _merge_mpi(args: argparse.Namespace):
+    mpi.main(args)
+
+
+def main():
+    parser = create_cli_parser()
+    args = parser.parse_args(sys.argv[1:])
 
     if args.command == "merge":
-        run.merge_files_separately(merge_base_dir, merge_scenarios, args.merge_cmd)
+        if args.mpi:
+            _merge_mpi(args)
+        else:
+            _merge(args)
     elif args.command == "evaluate":
-        run.run_git_merge(merge_scenarios, repo)
+        _evaluate(args)
     else:
         raise ValueError(f"Unexpected command: {args.command}")
 

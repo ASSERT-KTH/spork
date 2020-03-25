@@ -16,11 +16,15 @@ class Revision(enum.Enum):
     ACTUAL_MERGE = enum.auto()
 
 
-def create_merge_dirs(merge_dir_base: pathlib.Path, merge_scenarios: List[gitutils.MergeScenario]):
+def create_merge_dirs(
+    merge_dir_base: pathlib.Path, merge_scenarios: List[gitutils.MergeScenario]
+) -> List[pathlib.Path]:
     """Create merge directories based on the provided merge scenarios. For each merge scenario A,
     a merge directory A is created. For each file to be merged, a subdirectory with base, left, right and
     expected merge revisions are created.
     """
+    merge_dirs = []
+
     for merge in merge_scenarios:
         merge_dir = merge_dir_base / merge.result.hexsha
         merge_dir.mkdir()
@@ -36,6 +40,7 @@ def create_merge_dirs(merge_dir_base: pathlib.Path, merge_scenarios: List[gituti
 
         for key, val in mapping.items():
             scenario_dir = merge_dir / key
+            merge_dirs.append(scenario_dir)
             scenario_dir.mkdir()
 
             base_content = val.get(Revision.BASE) or val.get("result")
@@ -50,6 +55,7 @@ def create_merge_dirs(merge_dir_base: pathlib.Path, merge_scenarios: List[gituti
             _write_blob_to_file(scenario_dir / "Base.java", base_content)
             _write_blob_to_file(scenario_dir / "Expected.java", expected_content)
 
+    return merge_dirs
 
 def _insert(revision: Revision, diffs: List[git.Commit], mapping):
     for d in diffs:

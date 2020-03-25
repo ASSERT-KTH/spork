@@ -42,25 +42,20 @@ def run_merge(scenario_dir, merge_cmd):
         return True
 
 
-def merge_files_separately(merge_base_dir, merge_scenarios, merge_cmd):
+def merge_files_separately(merge_dirs, merge_cmd):
     num_merged = 0
     num_failed = 0
 
     start = time.time_ns()
-    merge_base_dir.mkdir(exist_ok=True)
-
-    fileutils.create_merge_dirs(merge_base_dir, merge_scenarios)
-    for merge_dir in merge_base_dir.iterdir():
-        LOGGER.info(f"running merge scenarios for commit {merge_dir.name}")
+    for merge_dir in merge_dirs:
+        LOGGER.info(f"running merge scenarios for merge dir {merge_dir.parent.name}/{merge_dir.name}")
         assert merge_dir.is_dir()
 
-        for scenario_dir in merge_dir.iterdir():
-            assert scenario_dir.is_dir()
+        if run_merge(merge_dir, merge_cmd):
+            num_merged += 1
+        else:
+            num_failed += 1
 
-            if run_merge(scenario_dir, merge_cmd):
-                num_merged += 1
-            else:
-                num_failed += 1
         LOGGER.info(f"merged: {num_merged}, failed: {num_failed}")
 
     end = time.time_ns()
