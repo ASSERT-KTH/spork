@@ -4,10 +4,12 @@ import time
 from typing import List
 
 import git
+import daiquiri
 
 from . import fileutils
 from . import gitutils
-from cli import LOGGER
+
+LOGGER = daiquiri.getLogger(__name__)
 
 
 def run_merge(scenario_dir, merge_cmd):
