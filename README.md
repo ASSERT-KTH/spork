@@ -82,6 +82,36 @@ mvn clean compile assembly:single
 This will produce a jar-file in the `target` directory called something along the lines of
 `spork-x.x.x-jar-with-dependencies.jar`. Run the jar with `java -jar path/to/spork/jar`.
 
+## Configure as a Git merge driver
+When Git performs a merge and encounters a file that has been edited in both revisions under merge, it will invoke a
+merge driver to merge the conflicting versions. It's a very simple thing to configure Spork as a merge driver for Java
+files, all you need is to add a couple of lines to a couple of configuration files. First, let's create a
+`.gitattributes` file and specify to use Spork as a merge driver for Java files. Put the following content in your
+`.gitattributes` file (you may all ready have one, check your home directory):
+
+```
+*.java merge=spork
+```
+
+`spork` doesn't mean anything to Git yet, we need to actually define the merge driver called `spork`. We do that in the
+`.gitattributes` file, typically located in your home directory. You should put the following content into it:
+
+```
+[core]
+	attributesfile = /path/to/.gitattributes
+
+[merge "spork"]
+    name = spork
+    driver = java -jar /path/to/spork.jar merge --git-mode %A %O %B -o %A
+```
+
+Then replace `/path/to/.gitattributes` with the absolute path to the `.gitattributes` file you edited/created first,
+and replace `/path/to/spork.jar` with the absolute path to the Spork jar-file. With that done, Spork will be used
+as the merge driver for Java files!
+
+> **Important:** The `--git-mode` option is required to use Spork as a Git merge driver. If you find that Spork always
+> reverts to line-based merge, then that option is probably missing in the `driver` option that invokes Spork.
+
 ## License
 Unless otherwise stated, files in Spork are under the [MIT license](LICENSE).
 
