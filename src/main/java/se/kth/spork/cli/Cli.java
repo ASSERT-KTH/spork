@@ -143,11 +143,31 @@ public class Cli {
                 description = "Path to the output file. Existing files are overwritten")
         File out;
 
+        @CommandLine.Option(
+                names = {"--git-mode"},
+                description = "Enable Git compatibility mode. Required to use Spork as a Git merge driver."
+        )
+        boolean gitMode;
+
         @Override
         public Integer call() throws IOException {
             long start = System.nanoTime();
 
-            String pretty = merge(base.toPath(), left.toPath(), right.toPath());
+            Path basePath = base.toPath();
+            Path leftPath = left.toPath();
+            Path rightPath = right.toPath();
+
+            if (gitMode) {
+                basePath = gitCompatHardLink(basePath);
+                leftPath = gitCompatHardLink(leftPath);
+                rightPath = gitCompatHardLink(rightPath);
+
+                basePath.toFile().deleteOnExit();
+                leftPath.toFile().deleteOnExit();
+                rightPath.toFile().deleteOnExit();
+            }
+
+            String pretty = merge(basePath, leftPath, rightPath);
 
             if (out != null) {
                 LOGGER.info("Writing merge to " + out);
@@ -191,6 +211,29 @@ public class Cli {
             Pair<String, Boolean> lineMerge = LineBasedMerge.merge(baseStr, leftStr, rightStr);
             return lineMerge.first;
         }
+    }
+
+    /**
+     * Create a hard link from a temporary git .merge_xxx file, with the name .merge_xxx.java. This is necessary for
+     * Spork to be compatible with Git, as Spoon will only parse Java files if they actually have the .java file
+     * extension.
+     *
+     * @param path Path to the temporary merge file.
+     * @return A path to a new hard link to the file, but with a .java file extension.
+     */
+    private static Path gitCompatHardLink(Path path) throws IOException {
+        if (!path.getFileName().toString().startsWith(".merge_file")) {
+            throw new IllegalArgumentException(path + " not a Git merge file");
+        }
+
+        Path compatLink = path.resolveSibling(path.getFileName().toString() + ".java");
+        try {
+            Files.createLink(compatLink, path);
+        } catch (UnsupportedOperationException x) {
+            throw new IllegalStateException("Creating Git compatibility hard link not supported by file system");
+        }
+
+        return compatLink;
     }
 
     private static boolean containsTypes(CtElement elem) {
