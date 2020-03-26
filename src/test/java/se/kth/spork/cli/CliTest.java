@@ -3,9 +3,12 @@ package se.kth.spork.cli;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ArgumentsSource;
+import picocli.CommandLine;
 import se.kth.spork.Util;
 import se.kth.spork.spoon.Parser;
 import se.kth.spork.spoon.Spoon3dmMerge;
+import se.kth.spork.util.Pair;
+import spoon.reflect.declaration.CtElement;
 import spoon.reflect.declaration.CtModule;
 
 import java.io.IOException;
@@ -14,9 +17,29 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.*;
 
 class CliTest {
+
+    @ParameterizedTest
+    @ArgumentsSource(Util.ConflictSourceProvider.class)
+    void merge_shouldExitNonZero_onConflict(Util.TestSources sources) {
+        String[] args = {"merge", sources.left.toString(), sources.base.toString(), sources.right.toString()};
+
+        int exitCode = new CommandLine(new Cli.TopCmd()).execute(args);
+
+        assertNotEquals(0, exitCode);
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(Util.BothModifiedSourceProvider.class)
+    void merge_shouldExitZero_onCleanMerge(Util.TestSources sources) {
+        String[] args = {"merge", sources.left.toString(), sources.base.toString(), sources.right.toString()};
+
+        int exitCode = new CommandLine(new Cli.TopCmd()).execute(args);
+
+        assertEquals(0, exitCode);
+    }
 
     @ParameterizedTest
     @ArgumentsSource(Util.LeftModifiedSourceProvider.class)
@@ -44,15 +67,18 @@ class CliTest {
     void prettyPrint_shouldContainConflict(Util.TestSources sources) throws IOException {
         List<Util.Conflict> expectedConflicts = Util.parseConflicts(sources.expected);
 
-        CtModule merged = (CtModule) Spoon3dmMerge.merge(sources.base, sources.left, sources.right);
+        Pair<CtModule, Boolean> merged = Spoon3dmMerge.merge(sources.base, sources.left, sources.right);
+        CtModule mergeTree = merged.first;
+        boolean hasConflicts = merged.second;
 
-        String prettyPrint = Cli.prettyPrint(merged);
+        String prettyPrint = Cli.prettyPrint(mergeTree);
 
         List<Util.Conflict> actualConflicts = Util.parseConflicts(prettyPrint);
 
         System.out.println(prettyPrint);
 
         assertEquals(expectedConflicts, actualConflicts);
+        assertTrue(hasConflicts);
     }
 
     @ParameterizedTest
@@ -60,9 +86,10 @@ class CliTest {
     void prettyPrint_shouldParseToExpectedTree_whenConflictHasBeenStrippedOut(Util.TestSources sources) throws IOException {
         CtModule expected = Parser.parse(Util.keepLeftConflict(sources.expected));
 
-        CtModule merged = (CtModule) Spoon3dmMerge.merge(sources.base, sources.left, sources.right);
+        Pair<CtModule, Boolean> merged = Spoon3dmMerge.merge(sources.base, sources.left, sources.right);
+        CtModule mergeTree = merged.first;
 
-        String prettyPrint = Cli.prettyPrint(merged);
+        String prettyPrint = Cli.prettyPrint(mergeTree);
         CtModule actual = Parser.parse(Util.keepLeftConflict(prettyPrint));
 
         assertEquals(expected, actual);
@@ -76,12 +103,13 @@ class CliTest {
      * @param sources
      */
     private static void runTestMerge(Util.TestSources sources, Path tempDir) throws IOException {
-        CtModule merged = (CtModule) Spoon3dmMerge.merge(sources.base, sources.left, sources.right);
+        Pair<CtModule, Boolean> merged = Spoon3dmMerge.merge(sources.base, sources.left, sources.right);
+        CtModule mergeTree = merged.first;
 
-        Object expectedImports = merged.getMetadata(Parser.IMPORT_STATEMENTS);
+        Object expectedImports = mergeTree.getMetadata(Parser.IMPORT_STATEMENTS);
         assert expectedImports != null;
 
-        String expectedPrettyPrint = Cli.prettyPrint(merged);
+        String expectedPrettyPrint = Cli.prettyPrint(mergeTree);
 
         Path outFile = tempDir.resolve("Merge.java");
         Files.write(outFile, expectedPrettyPrint.getBytes(), StandardOpenOption.CREATE);
@@ -96,9 +124,8 @@ class CliTest {
 
         // this assert is much more detailed, it should catch everything that exists inside the Spoon tree
         // that could potentially be lost in a pretty-print
-        assertEquals(merged, reParsedMerge);
+        assertEquals(mergeTree, reParsedMerge);
 
         assertEquals(reParsedImports, expectedImports);
     }
-
 }

@@ -19,6 +19,7 @@ import se.kth.spork.base3dm.ListNode;
 import se.kth.spork.base3dm.Pcs;
 import se.kth.spork.base3dm.Revision;
 import se.kth.spork.base3dm.TdmMerge;
+import se.kth.spork.util.Pair;
 import spoon.reflect.code.CtExpression;
 import spoon.reflect.declaration.CtAnnotation;
 import spoon.reflect.declaration.CtElement;
@@ -33,24 +34,26 @@ public class PcsInterpreter {
     private final Map<SpoonNode, Map<SpoonNode, Pcs<SpoonNode>>> rootToChildren;
     private final Map<Pcs<SpoonNode>, Set<Pcs<SpoonNode>>> structuralConflicts;
     private final Builder visitor;
+    private boolean hasConflicts;
 
     /**
      * Convert a merged PCS structure into a Spoon tree.
      *
      * @param baseLeft  A tree matching between the base revision and the left revision.
      * @param baseRight A tree matching between the base revision and the right revision.
-     * @return A Spoon tree representing the merged PCS structure.
+     * @return A pair on the form (tree, hasStructuralConflicts).
      */
-    public static CtElement fromMergedPcs(
+    public static Pair<CtElement, Boolean> fromMergedPcs(
             ChangeSet<SpoonNode, RoledValues> delta,
             SpoonMapping baseLeft,
             SpoonMapping baseRight) {
         PcsInterpreter pcsInterpreter = new PcsInterpreter(delta, baseLeft, baseRight);
         pcsInterpreter.traversePcs(NodeFactory.ROOT);
-        return pcsInterpreter.visitor.actualRoot;
+        return Pair.of(pcsInterpreter.visitor.actualRoot, pcsInterpreter.hasConflicts);
     }
 
     private PcsInterpreter(ChangeSet<SpoonNode, RoledValues> delta, SpoonMapping baseLeft, SpoonMapping baseRight) {
+        hasConflicts = false;
         rootToChildren = buildRootToChildren(delta.getPcsSet());
         visitor = new Builder(delta.getContents(), baseLeft, baseRight);
         this.structuralConflicts = delta.getStructuralConflicts();
@@ -149,7 +152,6 @@ public class PcsInterpreter {
             SpoonNode currentRoot,
             Map<SpoonNode, Pcs<SpoonNode>> children) {
         SpoonNode next = nextPcs.getSuccessor();
-        SpoonNode conflictingNode = conflicting.getSuccessor();
 
         Pcs<SpoonNode> leftPcs = nextPcs.getRevision() == Revision.LEFT ? nextPcs : conflicting;
         Pcs<SpoonNode> rightPcs = leftPcs == nextPcs ? conflicting : nextPcs;
@@ -164,6 +166,7 @@ public class PcsInterpreter {
                 traversePcs(node);
             }
         } else {
+            hasConflicts = true;
             visitor.visitConflicting(currentRoot, leftNodes, rightNodes);
             visitor.endConflict();
         }

@@ -79,7 +79,7 @@ public class Cli {
 
     @CommandLine.Command(mixinStandardHelpOptions = true, subcommands = {CompareCommand.class, MergeCommand.class},
             description = "The Spork command line app.", synopsisSubcommandLabel = "<COMMAND>")
-    private static class TopCmd implements Callable<Integer> {
+    static class TopCmd implements Callable<Integer> {
 
         @Override
         public Integer call() {
@@ -167,7 +167,9 @@ public class Cli {
                 rightPath.toFile().deleteOnExit();
             }
 
-            String pretty = merge(basePath, leftPath, rightPath);
+            Pair<String, Boolean> merged = merge(basePath, leftPath, rightPath);
+            String pretty = merged.first;
+            boolean hasConflicts = merged.second;
 
             if (out != null) {
                 LOGGER.info("Writing merge to " + out);
@@ -178,7 +180,7 @@ public class Cli {
             }
 
             LOGGER.info("Total time elapsed: " + (double) (System.nanoTime() - start) / 1e9 + " seconds");
-            return 0;
+            return hasConflicts ? 1 : 0;
         }
 
     }
@@ -189,27 +191,28 @@ public class Cli {
      * @param base Path to base revision.
      * @param left Path to left revision.
      * @param right Path to right revision.
-     * @return Pretty-printed merged result.
+     * @return A pair on the form (prettyPrint, hasConflicts)
      */
-    public static String merge(Path base, Path left, Path right) {
+    public static Pair<String, Boolean> merge(Path base, Path left, Path right) {
         LOGGER.info("Parsing input files");
         CtModule baseModule = Parser.parse(base);
         CtModule leftModule = Parser.parse(left);
         CtModule rightModule = Parser.parse(right);
 
         LOGGER.info("Initiating merge");
-        CtModule merge = (CtModule) Spoon3dmMerge.merge(baseModule, leftModule, rightModule);
+        Pair<CtElement, Boolean> merge = Spoon3dmMerge.merge(baseModule, leftModule, rightModule);
+        CtModule mergeTree = (CtModule) merge.first;
+        boolean hasConflicts = merge.second;
 
         LOGGER.info("Pretty-printing");
-        if (containsTypes(merge)) {
-            return prettyPrint(merge);
+        if (containsTypes(mergeTree)) {
+            return Pair.of(prettyPrint(mergeTree), hasConflicts);
         } else {
             LOGGER.warn("Merge contains no types (i.e. classes, interfaces, etc), reverting to line-based merge");
             String baseStr = Parser.read(base);
             String leftStr = Parser.read(left);
             String rightStr = Parser.read(right);
-            Pair<String, Boolean> lineMerge = LineBasedMerge.merge(baseStr, leftStr, rightStr);
-            return lineMerge.first;
+            return LineBasedMerge.merge(baseStr, leftStr, rightStr);
         }
     }
 

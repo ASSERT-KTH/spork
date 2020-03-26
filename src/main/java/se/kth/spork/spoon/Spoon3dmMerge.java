@@ -7,6 +7,7 @@ import gumtree.spoon.builder.SpoonGumTreeBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import se.kth.spork.base3dm.*;
+import se.kth.spork.util.Pair;
 import spoon.reflect.code.*;
 import spoon.reflect.declaration.*;
 import spoon.reflect.path.CtRole;
@@ -31,15 +32,15 @@ public class Spoon3dmMerge {
      * @param base  The base revision.
      * @param left  The left revision.
      * @param right The right revision.
-     * @return A merged Spoon tree.
+     * @return A pair on the form (mergeTree, hasConflicts).
      */
-    public static CtElement merge(Path base, Path left, Path right) {
+    public static Pair<CtModule, Boolean> merge(Path base, Path left, Path right) {
         long start = System.nanoTime();
         LOGGER.info("Parsing files to Spoon trees");
 
-        CtElement baseTree = Parser.parse(base);
-        CtElement leftTree = Parser.parse(left);
-        CtElement rightTree = Parser.parse(right);
+        CtModule baseTree = Parser.parse(base);
+        CtModule leftTree = Parser.parse(left);
+        CtModule rightTree = Parser.parse(right);
 
         long end = System.nanoTime();
         double timeDelta = (double) (end - start) / 1e9;
@@ -55,9 +56,9 @@ public class Spoon3dmMerge {
      * @param base  The base revision.
      * @param left  The left revision.
      * @param right The right revision.
-     * @return The merge of left and right.
+     * @return A pair on the form (mergeTree, hasConflicts).
      */
-    public static CtElement merge(CtElement base, CtElement left, CtElement right) {
+    public static <T extends CtElement> Pair<T, Boolean> merge(T base, T left, T right) {
         long start = System.nanoTime();
 
         LOGGER.info("Converting to GumTree trees");
@@ -90,18 +91,22 @@ public class Spoon3dmMerge {
 
         LOGGER.info("Resolving final PCS merge");
         TdmMerge.resolveRawMerge(t0Star, delta);
-        ContentMerger.handleContentConflicts(delta);
+        boolean hasContentConflict = ContentMerger.handleContentConflicts(delta);
 
         LOGGER.info("Interpreting resolved PCS merge");
-        CtElement merge = PcsInterpreter.fromMergedPcs(delta, baseLeft, baseRight);
+        Pair<CtElement, Boolean> merge = PcsInterpreter.fromMergedPcs(delta, baseLeft, baseRight);
+        // we can be certain that the merge tree has the same root type as the three constituents, so this cast is safe
+        @SuppressWarnings("unchecked")
+        T mergeTree = (T) merge.first;
+        boolean hasStructuralConflicts = merge.second;
 
         LOGGER.info("Merging import statements");
         List<CtImport> mergedImports = mergeImportStatements(base, left, right);
-        merge.putMetadata(Parser.IMPORT_STATEMENTS, mergedImports);
+        mergeTree.putMetadata(Parser.IMPORT_STATEMENTS, mergedImports);
 
         LOGGER.info("Merged in " + (double) (System.nanoTime() - start) / 1e9 + " seconds");
 
-        return merge;
+        return Pair.of(mergeTree, hasContentConflict || hasStructuralConflicts);
     }
 
     /**

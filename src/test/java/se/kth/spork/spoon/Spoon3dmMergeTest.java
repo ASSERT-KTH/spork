@@ -4,6 +4,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ArgumentsSource;
 import se.kth.spork.Util;
 import se.kth.spork.cli.Cli;
+import se.kth.spork.util.Pair;
 import spoon.reflect.declaration.*;
 
 import java.io.IOException;
@@ -35,19 +36,20 @@ class Spoon3dmMergeTest {
         Object expectedImports = expected.getMetadata(Parser.IMPORT_STATEMENTS);
         assert expectedImports != null;
 
-        CtModule merged = (CtModule) Spoon3dmMerge.merge(sources.base, sources.left, sources.right);
-        Object mergedImports = merged.getMetadata(Parser.IMPORT_STATEMENTS);
+        Pair<CtModule, Boolean> merged = Spoon3dmMerge.merge(sources.base, sources.left, sources.right);
+        CtModule mergeTree = merged.first;
+        Object mergedImports = mergeTree.getMetadata(Parser.IMPORT_STATEMENTS);
 
         // FIXME There should be no need to sort output elements, but resolutions to ordering conflicts can cause strange method ordering
         Compare.sortUnorderedElements(expected);
-        Compare.sortUnorderedElements(merged);
+        Compare.sortUnorderedElements(mergeTree);
 
         // this assert is just to give a better overview of obvious errors, but it relies on the pretty printer's
         // correctness
-        assertEquals(Cli.prettyPrint(expected), Cli.prettyPrint(merged));
+        assertEquals(Cli.prettyPrint(expected), Cli.prettyPrint(mergeTree));
 
         // these asserts are what actually matters
-        assertEquals(expected, merged);
+        assertEquals(expected, mergeTree);
         assertEquals(expectedImports, mergedImports);
     }
 }

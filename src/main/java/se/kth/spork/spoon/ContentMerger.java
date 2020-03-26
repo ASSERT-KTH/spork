@@ -26,9 +26,13 @@ public class ContentMerger {
      * Try to resolve content conflicts in the merge.
      *
      * @param delta A merged TStar.
+     * @return true if unresolvable conflicts were detected. This implies that a content conflict has been placed in
+     * the tree.
      */
     @SuppressWarnings("unchecked")
-    static void handleContentConflicts(ChangeSet<SpoonNode, RoledValues> delta) {
+    static boolean handleContentConflicts(ChangeSet<SpoonNode, RoledValues> delta) {
+        boolean hasConflict = false;
+
         for (Pcs<SpoonNode> pcs : delta.getPcsSet()) {
             SpoonNode pred = pcs.getPredecessor();
             Set<Content<SpoonNode, RoledValues>> nodeContents = delta.getContent(pred);
@@ -131,6 +135,7 @@ public class ContentMerger {
                 if (!unresolvedConflicts.isEmpty()) {
                     // at least one conflict was not resolved
                     pred.getElement().putMetadata(ContentConflict.METADATA_KEY, new ArrayList<>(unresolvedConflicts));
+                    hasConflict = true;
                 }
 
                 Set<Content<SpoonNode, RoledValues>> contents = new HashSet<>();
@@ -138,6 +143,7 @@ public class ContentMerger {
                 delta.setContent(pred, contents);
             }
         }
+        return hasConflict;
     }
 
     /**
