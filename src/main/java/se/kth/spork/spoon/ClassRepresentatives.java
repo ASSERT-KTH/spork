@@ -67,21 +67,12 @@ class ClassRepresentatives {
             CtElement tree = descIt.next();
             tree.putMetadata(TdmMerge.REV, Revision.BASE);
             SpoonNode wrapped = NodeFactory.wrap(tree);
-            classRepMap.put(wrapped, wrapped);
 
-            // also add the start/end of child list dummy nodes
-            SpoonNode startOfList = NodeFactory.startOfChildList(wrapped);
-            SpoonNode endOfList = NodeFactory.endOfChildList(wrapped);
-            classRepMap.put(startOfList, startOfList);
-            classRepMap.put(endOfList, endOfList);
+            mapNodes(wrapped, wrapped, classRepMap);
         }
 
-        // and finally the fake root
-        classRepMap.put(NodeFactory.ROOT, NodeFactory.ROOT);
-        SpoonNode rootSol = NodeFactory.startOfChildList(NodeFactory.ROOT);
-        SpoonNode rootEol = NodeFactory.endOfChildList(NodeFactory.ROOT);
-        classRepMap.put(rootSol, rootSol);
-        classRepMap.put(rootEol, rootEol);
+        // and finally the virtual root
+        mapNodes(NodeFactory.ROOT, NodeFactory.ROOT, classRepMap);
 
         return classRepMap;
     }
@@ -113,21 +104,33 @@ class ClassRepresentatives {
         SpoonNode wrapped = NodeFactory.wrap(t);
         SpoonNode classRep = mappings.getSrc(wrapped);
 
-        SpoonNode startOfChildList = NodeFactory.startOfChildList(wrapped);
-        SpoonNode endOfChildList = NodeFactory.endOfChildList(wrapped);
-
         if (classRep != null) {
-            SpoonNode classRepSol = NodeFactory.startOfChildList(classRep);
-            SpoonNode classRepEol = NodeFactory.endOfChildList(classRep);
-
-            classRepMap.put(wrapped, classRep);
-            classRepMap.put(startOfChildList, classRepSol);
-            classRepMap.put(endOfChildList, classRepEol);
+            mapNodes(wrapped, classRep, classRepMap);
         } else {
-            classRepMap.put(wrapped, wrapped);
-            classRepMap.put(startOfChildList, startOfChildList);
-            classRepMap.put(endOfChildList, endOfChildList);
+            mapNodes(wrapped, wrapped, classRepMap);
         }
+    }
+
+
+    /**
+     * Map from to to, including the associated virtual nodes.
+     *
+     * @param from A SpoonNode.
+     * @param to A SpoonNode
+     * @param classRepMap The class representatives map.
+     */
+    private static void mapNodes(SpoonNode from, SpoonNode to, Map<SpoonNode, SpoonNode> classRepMap) {
+        // map the real nodes
+        classRepMap.put(from, to);
+
+        // map the virtual nodes
+        SpoonNode fromSOL = NodeFactory.startOfChildList(from);
+        SpoonNode toSOL = NodeFactory.startOfChildList(to);
+        SpoonNode fromEOL = NodeFactory.endOfChildList(from);
+        SpoonNode toEOL = NodeFactory.endOfChildList(to);
+
+        classRepMap.put(fromSOL, toSOL);
+        classRepMap.put(fromEOL, toEOL);
     }
 
     /**
@@ -187,7 +190,7 @@ class ClassRepresentatives {
 
                     if (leftParentClassRep == rightParentClassRep) {
                         // map right to left
-                        classRepMap.put(right, left);
+                        mapNodes(right, left, classRepMap);
                     }
                 }
             }
