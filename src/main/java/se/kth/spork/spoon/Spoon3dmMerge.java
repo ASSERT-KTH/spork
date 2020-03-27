@@ -174,7 +174,13 @@ public class Spoon3dmMerge {
                 CtLiteral<?> lit = (CtLiteral<?>) elem;
                 rvs.add(CtRole.VALUE, lit.getValue());
             } else if (elem instanceof CtReference || elem instanceof CtNamedElement) {
-                rvs.add(CtRole.NAME, elem.getValueByRole(CtRole.NAME));
+                String name = elem.getValueByRole(CtRole.NAME);
+                if (!name.matches("\\d+")) {
+                    // Only pick up name if it's not a digit.
+                    // A digit implies anonymous function, see https://github.com/kth/spork/issues/86 for why we don't
+                    // want those.
+                    rvs.add(CtRole.NAME, elem.getValueByRole(CtRole.NAME));
+                }
             } else if (elem instanceof CtBinaryOperator || elem instanceof CtUnaryOperator || elem instanceof CtOperatorAssignment) {
                 rvs.add(CtRole.OPERATOR_KIND, elem.getValueByRole(CtRole.OPERATOR_KIND));
             }
