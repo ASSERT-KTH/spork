@@ -46,10 +46,12 @@ class ContentResolver implements Function<SpoonNode, RoledValues> {
             rvs.add(CtRole.VALUE, lit.getValue());
         } else if (elem instanceof CtReference || elem instanceof CtNamedElement) {
             String name = elem.getValueByRole(CtRole.NAME);
-            if (!name.matches("\\d+")) {
-                // Only pick up name if it's not a digit.
-                // A digit implies anonymous function, see https://github.com/kth/spork/issues/86 for why we don't
-                // want those.
+            if (name.matches("\\d+")) {
+                // If the name is a digit, it's an anonymous class. We resolve that to the empty string to prevent
+                // content mismatching on the names of anonymous functions, which don't matter as far as merging goes.
+                // This might cause other issues, though, but it's the best idea I've got at this time.
+                rvs.add(CtRole.NAME, "");
+            } else {
                 rvs.add(CtRole.NAME, elem.getValueByRole(CtRole.NAME));
             }
         } else if (elem instanceof CtBinaryOperator || elem instanceof CtUnaryOperator || elem instanceof CtOperatorAssignment) {
