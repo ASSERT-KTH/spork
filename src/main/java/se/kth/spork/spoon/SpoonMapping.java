@@ -146,9 +146,7 @@ public class SpoonMapping {
             } else if (hasDst(dstChild) || !GumTreeSpoonAstDiff.isToIgnore(dstChild)) {
                 dstIdx++;
             } else {
-                boolean sameClass = srcChild.getClass() == dstChild.getClass();
-                boolean sameContent = ContentResolver.getContent(srcChild).equals(ContentResolver.getContent(dstChild));
-                if (sameClass && sameContent) {
+                if (srcChild.getClass() == dstChild.getClass()) {
                     put(srcChild, dstChild);
                     newMatches.add(new Pair<>(srcChild, dstChild));
                 }
