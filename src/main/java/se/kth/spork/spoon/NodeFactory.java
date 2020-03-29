@@ -1,5 +1,7 @@
 package se.kth.spork.spoon;
 
+import se.kth.spork.base3dm.Revision;
+import se.kth.spork.base3dm.TdmMerge;
 import spoon.reflect.declaration.CtElement;
 import spoon.reflect.factory.ModuleFactory;
 
@@ -96,6 +98,11 @@ public class NodeFactory {
         }
 
         @Override
+        public Revision getRevision() {
+            return (Revision) element.getMetadata(TdmMerge.REV);
+        }
+
+        @Override
         public boolean equals(Object o) {
             if (this == o) return true;
             if (o == null || getClass() != o.getClass()) return false;
@@ -123,6 +130,11 @@ public class NodeFactory {
         @Override
         public String toString() {
             return "ROOT";
+        }
+
+        @Override
+        public Revision getRevision() {
+            throw new UnsupportedOperationException("The virtual root has no revision");
         }
     }
 
@@ -154,6 +166,11 @@ public class NodeFactory {
         }
 
         @Override
+        public Revision getRevision() {
+            return parent.getRevision();
+        }
+
+        @Override
         public boolean isEndOfList() {
             return side == Side.END;
         }
@@ -162,6 +179,7 @@ public class NodeFactory {
         public boolean isStartOfList() {
             return side == Side.START;
         }
+
 
         @Override
         public boolean equals(Object o) {
