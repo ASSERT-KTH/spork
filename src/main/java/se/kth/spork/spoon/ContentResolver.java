@@ -58,6 +58,10 @@ class ContentResolver implements Function<SpoonNode, RoledValues> {
 
         if (elem instanceof CtParameter) {
             rvs.add(CtRole.IS_VARARGS, elem.getValueByRole(CtRole.IS_VARARGS));
+            rvs.add(CtRole.IS_INFERRED, elem.getValueByRole(CtRole.IS_INFERRED));
+        }
+        if (elem instanceof CtLocalVariable) {
+            rvs.add(CtRole.IS_INFERRED, elem.getValueByRole(CtRole.IS_INFERRED));
         }
         if (elem instanceof CtModifiable) {
             rvs.add(CtRole.MODIFIER, elem.getValueByRole(CtRole.MODIFIER));

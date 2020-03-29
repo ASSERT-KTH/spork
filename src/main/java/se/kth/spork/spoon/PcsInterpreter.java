@@ -23,7 +23,11 @@ import se.kth.spork.util.Pair;
 import spoon.reflect.code.CtExpression;
 import spoon.reflect.declaration.CtAnnotation;
 import spoon.reflect.declaration.CtElement;
+import spoon.reflect.declaration.CtParameter;
 import spoon.reflect.path.CtRole;
+import spoon.reflect.reference.CtParameterReference;
+import spoon.reflect.reference.CtReference;
+import spoon.reflect.reference.CtTypeReference;
 
 /**
  * Class for interpreting a merged PCS structure into a Spoon tree.
@@ -267,13 +271,24 @@ public class PcsInterpreter {
             if (mergeParent != null) {
                 CtRole mergeTreeRole = resolveRole(origTreeWrapper);
                 Object inserted = withSiblings(originalRoot, originalTree, mergeParent, mergeTree, mergeTreeRole);
-                mergeParent.setValueByRole(mergeTreeRole, inserted);
+
+                if (isVarKeyword(mergeTree) && mergeParent instanceof CtParameterReference && mergeTreeRole == CtRole.TYPE) {
+                    // we skip this case, because  for some reason, when it comes to parameter references, Spoon sets
+                    // the type to null if it's actually "var"
+                } else {
+                    mergeParent.setValueByRole(mergeTreeRole, inserted);
+                }
             }
 
             nodes.put(origTreeWrapper, NodeFactory.wrap(mergeTree));
 
             if (actualRoot == null)
                 actualRoot = mergeParent;
+        }
+
+        private boolean isVarKeyword(CtElement mergeTree) {
+            return mergeTree instanceof CtTypeReference
+                    && ((CtTypeReference<?>) mergeTree).getSimpleName().equals("var");
         }
 
         private Object withSiblings(
