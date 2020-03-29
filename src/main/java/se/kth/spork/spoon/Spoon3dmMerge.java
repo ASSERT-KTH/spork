@@ -258,6 +258,9 @@ public class Spoon3dmMerge {
                 rvs.add(CtRole.OPERATOR_KIND, elem.getValueByRole(CtRole.OPERATOR_KIND));
             }
 
+            if (elem instanceof CtParameter) {
+                rvs.add(CtRole.IS_VARARGS, elem.getValueByRole(CtRole.IS_VARARGS));
+            }
             if (elem instanceof CtModifiable) {
                 rvs.add(CtRole.MODIFIER, elem.getValueByRole(CtRole.MODIFIER));
             }
