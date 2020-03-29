@@ -8,6 +8,7 @@ import gumtree.spoon.builder.SpoonGumTreeBuilder;
 import se.kth.spork.util.GumTreeSpoonAstDiff;
 import spoon.reflect.declaration.CtAnnotation;
 import spoon.reflect.declaration.CtElement;
+import spoon.reflect.declaration.CtTypeInformation;
 import spoon.reflect.path.CtRole;
 
 import java.util.ArrayList;
@@ -97,6 +98,13 @@ public class SpoonMapping {
         return false;
     }
 
+    private static boolean isPrimitiveType(CtElement elem) {
+        if (elem instanceof CtTypeInformation) {
+            return ((CtTypeInformation) elem).isPrimitive();
+        }
+        return false;
+    }
+
     private static boolean isAnnotationValue(CtElement elem) {
         return elem.getParent() instanceof CtAnnotation && elem.getRoleInParent() == CtRole.VALUE;
     }
@@ -138,7 +146,9 @@ public class SpoonMapping {
             } else if (hasDst(dstChild) || !GumTreeSpoonAstDiff.isToIgnore(dstChild)) {
                 dstIdx++;
             } else {
-                if (srcChild.getClass() == dstChild.getClass()) {
+                boolean sameClass = srcChild.getClass() == dstChild.getClass();
+                boolean sameContent = ContentResolver.getContent(srcChild).equals(ContentResolver.getContent(dstChild));
+                if (sameClass && sameContent) {
                     put(srcChild, dstChild);
                     newMatches.add(new Pair<>(srcChild, dstChild));
                 }

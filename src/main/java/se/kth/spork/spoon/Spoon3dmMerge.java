@@ -8,15 +8,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import se.kth.spork.base3dm.*;
 import se.kth.spork.util.Pair;
-import spoon.reflect.code.*;
 import spoon.reflect.declaration.*;
-import spoon.reflect.path.CtRole;
-import spoon.reflect.reference.CtReference;
-import spoon.reflect.reference.CtWildcardReference;
 
 import java.nio.file.Path;
 import java.util.*;
-import java.util.function.Function;
 
 /**
  * Spoon specialization of the 3DM merge algorithm.
@@ -86,8 +81,8 @@ public class Spoon3dmMerge {
         Set<Pcs<SpoonNode>> t2 = PcsBuilder.fromSpoon(right, Revision.RIGHT);
 
         LOGGER.info("Computing raw PCS merge");
-        ChangeSet<SpoonNode, RoledValues> delta = new ChangeSet<>(classRepMap, new GetContent(), t0, t1, t2);
-        ChangeSet<SpoonNode, RoledValues> t0Star = new ChangeSet<>(classRepMap, new GetContent(), t0);
+        ChangeSet<SpoonNode, RoledValues> delta = new ChangeSet<>(classRepMap, new ContentResolver(), t0, t1, t2);
+        ChangeSet<SpoonNode, RoledValues> t0Star = new ChangeSet<>(classRepMap, new ContentResolver(), t0);
 
         LOGGER.info("Resolving final PCS merge");
         TdmMerge.resolveRawMerge(t0Star, delta);
@@ -103,7 +98,7 @@ public class Spoon3dmMerge {
                     base, left, right, baseLeft, baseRight, leftRight);
 
             LOGGER.info("Computing raw PCS merge");
-            delta = new ChangeSet<>(classRepMap, new GetContent(), t0, t1, t2);
+            delta = new ChangeSet<>(classRepMap, new ContentResolver(), t0, t1, t2);
 
             LOGGER.info("Resolving final PCS merge");
             TdmMerge.resolveRawMerge(t0Star, delta);
@@ -217,70 +212,6 @@ public class Spoon3dmMerge {
         List<CtImport> ret = new ArrayList<>(merge);
         ret.sort(Comparator.comparing(CtImport::toString));
         return ret;
-    }
-
-    /**
-     * This class determines what the content of any given type of node is.
-     */
-    private static class GetContent implements Function<SpoonNode, RoledValues> {
-
-        /**
-         * Return the content of the supplied node. For example, the content of a CtLiteral is its value, and the
-         * content of a CtNamedElement is its simple name.
-         *
-         * @param wrapper A wrapped Spoon node.
-         * @return The content of the node.
-         */
-        @Override
-        public RoledValues apply(SpoonNode wrapper) {
-            if (wrapper == null || wrapper.getElement() == null)
-                return null;
-
-            CtElement elem = wrapper.getElement();
-            RoledValues rvs = new RoledValues(elem);
-
-            // general values
-            rvs.add(CtRole.IS_IMPLICIT, elem.isImplicit());
-
-            // element-specific values
-            if (elem instanceof CtLiteral) {
-                CtLiteral<?> lit = (CtLiteral<?>) elem;
-                rvs.add(CtRole.VALUE, lit.getValue());
-            } else if (elem instanceof CtReference || elem instanceof CtNamedElement) {
-                String name = elem.getValueByRole(CtRole.NAME);
-                if (!name.matches("\\d+")) {
-                    // Only pick up name if it's not a digit.
-                    // A digit implies anonymous function, see https://github.com/kth/spork/issues/86 for why we don't
-                    // want those.
-                    rvs.add(CtRole.NAME, elem.getValueByRole(CtRole.NAME));
-                }
-            } else if (elem instanceof CtBinaryOperator || elem instanceof CtUnaryOperator || elem instanceof CtOperatorAssignment) {
-                rvs.add(CtRole.OPERATOR_KIND, elem.getValueByRole(CtRole.OPERATOR_KIND));
-            }
-
-            if (elem instanceof CtParameter) {
-                rvs.add(CtRole.IS_VARARGS, elem.getValueByRole(CtRole.IS_VARARGS));
-            }
-            if (elem instanceof CtModifiable) {
-                rvs.add(CtRole.MODIFIER, elem.getValueByRole(CtRole.MODIFIER));
-            }
-            if (elem instanceof CtWildcardReference) {
-                rvs.add(CtRole.IS_UPPER, elem.getValueByRole(CtRole.IS_UPPER));
-            }
-            if (elem instanceof CtComment) {
-                String rawContent = ((CtComment) elem).getRawContent();
-                RoledValue content = new RoledValue(CtRole.COMMENT_CONTENT, elem.getValueByRole(CtRole.COMMENT_CONTENT));
-                content.putMetadata(RoledValue.Key.RAW_CONTENT, rawContent);
-
-                rvs.add(content);
-                rvs.add(CtRole.COMMENT_TYPE, elem.getValueByRole(CtRole.COMMENT_TYPE));
-            }
-            if (elem instanceof CtMethod) {
-                rvs.add(CtRole.IS_DEFAULT, elem.getValueByRole(CtRole.IS_DEFAULT));
-            }
-
-            return rvs;
-        }
     }
 
     private static Matcher matchTrees(ITree src, ITree dst) {
