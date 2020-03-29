@@ -94,6 +94,8 @@ public class SpoonMapping {
             // the key of the value. This is a problem related to how annotations are represented in Spoon, namely
             // that the keys in the annotation map aren't proper nodes.
             return true;
+        } else if (isPrimitiveType(src) != isPrimitiveType(dst)) {
+            return true;
         }
         return false;
     }
@@ -146,7 +148,7 @@ public class SpoonMapping {
             } else if (hasDst(dstChild) || !GumTreeSpoonAstDiff.isToIgnore(dstChild)) {
                 dstIdx++;
             } else {
-                if (srcChild.getClass() == dstChild.getClass()) {
+                if (!ignoreMapping(srcChild, dstChild)) {
                     put(srcChild, dstChild);
                     newMatches.add(new Pair<>(srcChild, dstChild));
                 }
