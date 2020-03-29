@@ -182,6 +182,13 @@ public class SpoonMapping {
         return getSrc(NodeFactory.wrap(dst)).getElement();
     }
 
+    public void remove(SpoonNode element) {
+        SpoonNode removedDst = srcs.remove(element);
+        SpoonNode removedSrc = dsts.remove(element);
+        dsts.remove(removedDst);
+        srcs.remove(removedSrc);
+    }
+
     public void put(CtElement src, CtElement dst) {
         put(NodeFactory.wrap(src), NodeFactory.wrap(dst));
     }
