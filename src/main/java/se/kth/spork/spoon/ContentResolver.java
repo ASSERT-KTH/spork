@@ -47,10 +47,13 @@ class ContentResolver implements Function<SpoonNode, RoledValues> {
         } else if (elem instanceof CtReference || elem instanceof CtNamedElement) {
             String name = elem.getValueByRole(CtRole.NAME);
             if (name.matches("\\d+")) {
-                // If the name is a digit, it's an anonymous class. We resolve that to the empty string to prevent
+                // If the name is a digit, it's an anonymous class. We resolve that to the 0 to prevent
                 // content mismatching on the names of anonymous functions, which don't matter as far as merging goes.
                 // This might cause other issues, though, but it's the best idea I've got at this time.
-                rvs.add(CtRole.NAME, "");
+                //
+                // It's important that an anonymous class' name is a number as this identifies them as anonymous,
+                // see https://github.com/kth/spork/issues/93
+                rvs.add(CtRole.NAME, "0");
             } else {
                 rvs.add(CtRole.NAME, elem.getValueByRole(CtRole.NAME));
             }
