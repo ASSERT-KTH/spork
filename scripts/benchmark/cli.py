@@ -107,7 +107,10 @@ def _merge(args: argparse.Namespace):
 
     merge_base_dir = pathlib.Path("merge_directory")
     merge_base_dir.mkdir(exist_ok=True)
-    merge_dirs = fileutils.create_merge_dirs(merge_base_dir, merge_scenarios)
+    file_merges = gitutils.extract_all_conflicting_files(repo, merge_scenarios)
+    merge_dirs = fileutils.create_merge_dirs(merge_base_dir, file_merges)
+
+    LOGGER.info(f"Extracted {len(merge_dirs)} file merges")
 
     run.merge_files_separately(merge_dirs, args.merge_cmd)
 

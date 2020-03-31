@@ -34,6 +34,11 @@ def run_merge(scenario_dir, merge_cmd):
         )
         LOGGER.info(merge_proc.stdout.decode(sys.getdefaultencoding()))
         LOGGER.info(merge_proc.stderr.decode(sys.getdefaultencoding()))
+        (scenario_dir / "failure").touch()
+        return False
+    elif merge_proc.returncode != 0:
+        LOGGER.warning(f"Merge conflict in {scenario_dir.parent.name}/{scenario_dir.name}")
+        (scenario_dir / "conflict").touch()
         return False
     else:
         LOGGER.info(

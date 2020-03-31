@@ -26,7 +26,10 @@ def master(repo_name: str, github_user: str, num_merges: int):
 
     repo = gitutils.clone_repo(repo_name, github_user)
     merge_scenarios = gitutils.extract_merge_scenarios(repo, num_merges)
-    merge_dirs = fileutils.create_merge_dirs(merge_base_dir, merge_scenarios)
+    file_merges = gitutils.extract_all_conflicting_files(repo, merge_scenarios)
+    merge_dirs = fileutils.create_merge_dirs(merge_base_dir, file_merges)
+
+    print(f"Extracted {len(merge_dirs)} file merges")
 
     dirs_per_proc = int(len(merge_dirs) / NUM_WORKERS)
     range_starts = [i*dirs_per_proc for i in range(NUM_WORKERS)]
