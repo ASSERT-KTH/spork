@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.Callable;
+import java.util.stream.Collectors;
 
 /**
  * Command line interface for Spork.
@@ -45,8 +46,6 @@ public class Cli {
      */
     public static String prettyPrint(CtModule spoonRoot) {
         LOGGER.info("Pre-processing tree for pretty-printing");
-        new PrinterPreprocessor().scan(spoonRoot);
-
         CtPackage activePackage = spoonRoot.getRootPackage();
         while (!activePackage.getPackages().isEmpty()) {
             Set<CtPackage> subPkgs = activePackage.getPackages();
@@ -60,12 +59,19 @@ public class Cli {
             activePackage = pkgOpt.get();
         }
 
+        Collection<?> imports = (Collection<?>) spoonRoot.getMetadata(Parser.IMPORT_STATEMENTS);
+        List<String> importNames = imports.stream()
+                .map(Object::toString)
+                .map(impStmt -> impStmt.substring("import ".length(), impStmt.length() - 1))
+                .collect(Collectors.toList());
+        new PrinterPreprocessor(importNames, activePackage.getQualifiedName()).scan(spoonRoot);
+
+
         StringBuilder sb = new StringBuilder();
         if (!activePackage.isUnnamedPackage()) {
             sb.append("package ").append(activePackage.getQualifiedName()).append(";").append("\n\n");
         }
 
-        Collection<?> imports = (Collection<?>) spoonRoot.getMetadata(Parser.IMPORT_STATEMENTS);
         for (Object imp : imports) {
             sb.append(imp).append("\n");
         }

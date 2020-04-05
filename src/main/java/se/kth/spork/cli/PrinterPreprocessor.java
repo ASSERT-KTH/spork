@@ -6,13 +6,13 @@ import se.kth.spork.spoon.ContentMerger;
 import se.kth.spork.spoon.RoledValue;
 import se.kth.spork.util.LineBasedMerge;
 import se.kth.spork.util.Pair;
-import spoon.reflect.code.CtComment;
 import spoon.reflect.code.CtOperatorAssignment;
-import spoon.reflect.code.UnaryOperatorKind;
 import spoon.reflect.cu.SourcePosition;
 import spoon.reflect.declaration.CtElement;
 import spoon.reflect.declaration.ModifierKind;
 import spoon.reflect.path.CtRole;
+import spoon.reflect.reference.CtPackageReference;
+import spoon.reflect.reference.CtTypeReference;
 import spoon.reflect.visitor.CtScanner;
 import spoon.reflect.visitor.printer.CommentOffset;
 
@@ -33,10 +33,21 @@ public class PrinterPreprocessor extends CtScanner {
     // in a merged tree
     public static final String POSITION_KEY = "spork_position";
 
+    private final List<String> importStatements;
+    private final String activePackage;
+
+    public PrinterPreprocessor(List<String> importStatements, String activePackage) {
+        this.importStatements = importStatements;
+        this.activePackage = activePackage;
+    }
+
     @Override
     public void scan(CtElement element) {
         if (element == null)
             return;
+
+        // FIXME Temporary fix for bug in Spoon. See method javadoc. Remove once fixed in Spoon.
+        handleIncorrectExplicitPackages(element);
 
         @SuppressWarnings("unchecked")
         List<ContentConflict> conflicts = (List<ContentConflict>) element.getMetadata(ContentConflict.METADATA_KEY);
@@ -51,14 +62,50 @@ public class PrinterPreprocessor extends CtScanner {
     }
 
     /**
+     * There's a bug in Spoon that causes packages that should be implicit to be explicit. There's another bug
+     * that sometimes attaches the wrong package to references that don't have an explicit package in the source
+     * code. This method attempts to mark all such occasions of packages implicit, so they are not reflected in the
+     * final output.
+     *
+     * See https://github.com/kth/spork/issues/94
+     *
+     * For each package reference attached to a type reference, mark as implicit if:
+     *
+     * 1. The package reference refers to the package of the current compilation unit.
+     * 2. The type has been explicitly imported.
+     * 3. All types in the package have been imported with a *
+     *
+     * @param element An element.
+     */
+    private void handleIncorrectExplicitPackages(CtElement element) {
+        if (element instanceof CtPackageReference) {
+            String pkgName = ((CtPackageReference) element).getQualifiedName();
+            CtElement parent = element.getParent();
+            if (pkgName.equals(activePackage)) {
+                element.setImplicit(true);
+            } else if (parent instanceof CtTypeReference) {
+                String parentQualName = ((CtTypeReference<?>) parent).getQualifiedName();
+
+                for (String imp : importStatements) {
+                    if (imp.equals(parentQualName) || imp.endsWith("*")
+                            && pkgName.equals(imp.substring(0, imp.length() - 2))) {
+                        element.setImplicit(true);
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    /**
      * Comments that come from a different source file than the node they are attached to are unlikely to actually
      * get printed, as the position relative to the associated node is taken into account by the pretty-printer.
      * Setting the position to {@link SourcePosition#NOPOSITION} causes all comments to be printed before the
      * associated node, but at least they get printed!
-     *
+     * <p>
      * The reason for this can be found in
      * {@link spoon.reflect.visitor.ElementPrinterHelper#getComments(CtElement, CommentOffset)}.
-     *
+     * <p>
      * If the position is all ready {@link SourcePosition#NOPOSITION}, then do nothing.
      */
     private static void unsetSourcePosition(CtElement element) {
@@ -74,7 +121,7 @@ public class PrinterPreprocessor extends CtScanner {
      * as strings may have the conflict embedded directly into the literal.
      *
      * @param conflict A content conflict.
-     * @param element The element associated with the conflict.
+     * @param element  The element associated with the conflict.
      */
     @SuppressWarnings("unchecked")
     private void processConflict(ContentConflict conflict, CtElement element) {
