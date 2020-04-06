@@ -1,6 +1,7 @@
 import subprocess
 import sys
 import time
+import enum
 from typing import List
 
 import git
@@ -11,40 +12,45 @@ from . import gitutils
 
 LOGGER = daiquiri.getLogger(__name__)
 
+class MergeOutcome:
+    CONFLICT = "conflict"
+    SUCCESS = "success"
+    FAIL = "fail"
 
-def run_merge(scenario_dir, merge_cmd):
+def run_merge(scenario_dir, merge_cmd, merge_file_name="Merge.java"):
     base = scenario_dir / "Base.java"
     left = scenario_dir / "Left.java"
     right = scenario_dir / "Right.java"
     expected = scenario_dir / "Expected.java"
-    merge = scenario_dir / "Merge.java"
+    merge = scenario_dir / merge_file_name
 
     assert base.is_file()
     assert left.is_file()
     assert right.is_file()
     assert expected.is_file()
 
+    start = time.perf_counter()
     merge_proc = subprocess.run(
         f"{merge_cmd} {left} {base} {right} -o {merge}".split(), capture_output=True,
     )
+    runtime = time.perf_counter() - start
+
 
     if not merge.is_file():
         LOGGER.error(
-            f"merge failed to produce a Merge.java file on {scenario_dir.parent.name}/{scenario_dir.name}"
+            f"{merge_cmd} failed to produce a Merge.java file on {scenario_dir.parent.name}/{scenario_dir.name}"
         )
         LOGGER.info(merge_proc.stdout.decode(sys.getdefaultencoding()))
         LOGGER.info(merge_proc.stderr.decode(sys.getdefaultencoding()))
-        (scenario_dir / "failure").touch()
-        return False
+        return MergeOutcome.FAIL, runtime
     elif merge_proc.returncode != 0:
         LOGGER.warning(f"Merge conflict in {scenario_dir.parent.name}/{scenario_dir.name}")
-        (scenario_dir / "conflict").touch()
-        return False
+        return MergeOutcome.CONFLICT, runtime
     else:
         LOGGER.info(
             f"Successfully merged {scenario_dir.parent.name}/{scenario_dir.name}"
         )
-        return True
+        return MergeOutcome.SUCCESS, runtime
 
 
 def merge_files_separately(merge_dirs, merge_cmd):
