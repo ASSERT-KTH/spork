@@ -10,6 +10,8 @@ from . import run
 from . import gitutils
 from . import mpi
 from . import fileutils
+from . import gather
+from . import reporter
 
 
 def setup_logging():
@@ -78,7 +80,7 @@ def create_cli_parser():
     )
 
     merge_command.add_argument(
-        "--merge-cmd", help="Merge command.", type=str, required=True,
+        "--merge-commands", help="Merge commands to run.", type=str, required=True, nargs="+"
     )
     merge_command.add_argument(
         "--mpi", help="Run merge in parallell using MPI", action="store_true",
@@ -112,7 +114,8 @@ def _merge(args: argparse.Namespace):
 
     LOGGER.info(f"Extracted {len(merge_dirs)} file merges")
 
-    run.merge_files_separately(merge_dirs, args.merge_cmd)
+    evaluations = gather.run_and_evaluate(merge_dirs, args.merge_commands)
+    reporter.write_results(evaluations, "results.csv")
 
 
 def _evaluate(args: argparse.Namespace):

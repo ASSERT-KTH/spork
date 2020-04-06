@@ -12,7 +12,8 @@ from . import gitutils
 from . import fileutils
 from . import run
 from . import evaluate
-
+from . import gather
+from . import reporter
 
 comm = MPI.COMM_WORLD
 num_procs = comm.Get_size()
@@ -23,8 +24,6 @@ MASTER_RANK = 0
 NUM_WORKERS = num_procs - 1
 
 merge_base_dir = None
-
-GUMTREE_DIFF_BINARY = "/home/slarse/Downloads/gumtree-2.1.2/bin/gumtree"
 
 
 def master(repo_name: str, github_user: str, num_merges: int):
@@ -56,10 +55,10 @@ def master(repo_name: str, github_user: str, num_merges: int):
         results += comm.recv(source=MPI.ANY_SOURCE, status=stat)
         print(f"Master got results from {stat.source}")
 
-    write_results(results, "results.csv")
+    reporter.write_results(results, "results.csv")
 
 
-def worker(*merge_commands):
+def worker(merge_commands):
     assert merge_base_dir is not None
     print(f"Hello world, I am worker {rank}")
 
@@ -70,57 +69,15 @@ def worker(*merge_commands):
 
     num_done = 0
     tot = len(dirs)
-    for merge_dir in dirs:
 
-        for merge_cmd in merge_commands:
-            merge_file_name = f"{merge_cmd}.java"
-            outcome, runtime = run.run_merge(merge_dir, merge_cmd, merge_file_name)
-
-            gumtree_diff_size = -1
-            git_diff_size = -1
-
-            if outcome == run.MergeOutcome.SUCCESS:
-                merge_file = merge_dir / merge_file_name
-                expected_file = merge_dir / "Expected.java"
-                gumtree_diff_size = len(
-                    evaluate.gumtree_edit_script(
-                        GUMTREE_DIFF_BINARY, expected_file, merge_file
-                    )
-                )
-                git_diff_size = len(
-                    evaluate.git_diff_edit_script(expected_file, merge_file)
-                )
-
-            results.append(
-                [str(v) for v in (merge_dir, merge_cmd, outcome, gumtree_diff_size, git_diff_size, runtime)]
-            )
-
+    for merge_evaluation in gather.run_and_evaluate(dirs, merge_commands):
+        results.append(merge_evaluation)
         num_done += 1
         print(f"Proc {rank} progress: {num_done}/{tot}")
 
     print(f"Proc {rank} sending results to master")
     comm.send(results, dest=MASTER_RANK)
 
-def write_results(results, dst):
-    content = [["merge", "tool", "outcome", "gt_diff_size", "git_diff_size", "runtime"], *results]
-    formatted_content = format_for_csv(content)
-
-    with open(dst, mode="w", encoding=sys.getdefaultencoding()) as file:
-        writer = csv.writer(file, delimiter=",")
-        writer.writerows(formatted_content)
-
-def format_for_csv(results):
-    column_widths = largest_cells(results)
-    return [
-	[cell.rjust(column_widths[i]) for i, cell in enumerate(row)]
-	for row in results
-    ]
-
-def largest_cells(rows):
-    """Return a list with the widths of the largest cell of each column."""
-    transpose = list(zip(*rows))
-    widths = map(lambda row: map(len, row), transpose)
-    return list(map(max, widths))
 
 def main(args: argparse.Namespace):
     global merge_base_dir
@@ -129,4 +86,4 @@ def main(args: argparse.Namespace):
     if rank == MASTER_RANK:
         master(args.repo, args.github_user, args.num_merges)
     else:
-        worker("spork", "jdime")
+        worker(args.merge_commands)

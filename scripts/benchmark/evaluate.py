@@ -7,7 +7,7 @@ from typing import List
 
 
 def gumtree_edit_script(
-    gumtree_diff: pathlib.Path, base_file: pathlib.Path, dest_file: pathlib.Path,
+    base_file: pathlib.Path, dest_file: pathlib.Path,
 ) -> List[str]:
     """Return the the edit script produced by vanilla GumTree diff, not
     including all of the lines that say "Match".
@@ -19,7 +19,7 @@ def gumtree_edit_script(
     Returns:
         The edit script produced by GumTree diff.
     """
-    cmd = [str(v) for v in [gumtree_diff, "diff", base_file, dest_file]]
+    cmd = [str(v) for v in ["gumtree", "diff", base_file, dest_file]]
     proc = subprocess.run(cmd, shell=False, capture_output=True)
     if proc.returncode != 0:
         raise RuntimeError(
