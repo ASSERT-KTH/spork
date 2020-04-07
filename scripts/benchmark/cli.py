@@ -2,9 +2,12 @@ import sys
 import pathlib
 import git
 import argparse
+import functools
 
 import daiquiri
 import logging
+
+from mpi4py import MPI
 
 from . import run
 from . import gitutils
@@ -80,7 +83,17 @@ def create_cli_parser():
     )
 
     merge_command.add_argument(
-        "--merge-commands", help="Merge commands to run.", type=str, required=True, nargs="+"
+        "--merge-commands",
+        help="Merge commands to run.",
+        type=str,
+        required=True,
+        nargs="+",
+    )
+    merge_command.add_argument(
+        "--base-merge-dir",
+        help="Base directory to perform the merges in.",
+        type=pathlib.Path,
+        default=pathlib.Path("merge_directory"),
     )
     merge_command.add_argument(
         "--mpi", help="Run merge in parallell using MPI", action="store_true",
@@ -96,6 +109,10 @@ def create_cli_parser():
 
 
 def _merge(args: argparse.Namespace):
+    if args.mpi and MPI.COMM_WORLD.Get_rank() != mpi.MASTER_RANK:
+        mpi.worker(args.merge_commands, args.base_merge_dir)
+        return
+
     if args.github_user is not None:
         repo = gitutils.clone_repo(args.repo, args.github_user)
     else:
@@ -108,13 +125,18 @@ def _merge(args: argparse.Namespace):
     LOGGER.info(f"recreating {len(merge_scenarios)} merges")
 
     merge_base_dir = pathlib.Path("merge_directory")
-    merge_base_dir.mkdir(exist_ok=True)
+    merge_base_dir.mkdir(parents=True, exist_ok=True)
     file_merges = gitutils.extract_all_conflicting_files(repo, merge_scenarios)
     merge_dirs = fileutils.create_merge_dirs(merge_base_dir, file_merges)
 
     LOGGER.info(f"Extracted {len(merge_dirs)} file merges")
 
-    evaluations = gather.run_and_evaluate(merge_dirs, args.merge_commands, merge_base_dir)
+    if args.mpi:
+        evaluations = mpi.master(merge_dirs)
+    else:
+        evaluations = gather.run_and_evaluate(
+            merge_dirs, args.merge_commands, merge_base_dir
+        )
     reporter.write_results(evaluations, "results.csv")
 
 
@@ -136,19 +158,12 @@ def _evaluate(args: argparse.Namespace):
     run.run_git_merge(merge_scenarios, repo)
 
 
-def _merge_mpi(args: argparse.Namespace):
-    mpi.main(args)
-
-
 def main():
     parser = create_cli_parser()
     args = parser.parse_args(sys.argv[1:])
 
     if args.command == "merge":
-        if args.mpi:
-            _merge_mpi(args)
-        else:
-            _merge(args)
+        _merge(args)
     elif args.command == "evaluate":
         _evaluate(args)
     else:

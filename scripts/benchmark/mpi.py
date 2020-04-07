@@ -23,20 +23,9 @@ stat = MPI.Status()
 MASTER_RANK = 0
 NUM_WORKERS = num_procs - 1
 
-merge_base_dir = None
 
-
-def master(repo_name: str, github_user: str, num_merges: int):
-    assert merge_base_dir is not None
-    print("Hello world, I am the master creator!")
-    merge_base_dir.mkdir()
-
-    repo = gitutils.clone_repo(repo_name, github_user)
-    merge_scenarios = gitutils.extract_merge_scenarios(repo, num_merges)
-    file_merges = gitutils.extract_all_conflicting_files(repo, merge_scenarios)
-    merge_dirs = fileutils.create_merge_dirs(merge_base_dir, file_merges)
-
-    print(f"Extracted {len(merge_dirs)} file merges")
+def master(merge_dirs: List[pathlib.Path]):
+    print("Hello world, I am the master!")
 
     dirs_per_proc = int(len(merge_dirs) / NUM_WORKERS)
     range_starts = [i * dirs_per_proc for i in range(NUM_WORKERS)]
@@ -55,35 +44,26 @@ def master(repo_name: str, github_user: str, num_merges: int):
         results += comm.recv(source=MPI.ANY_SOURCE, status=stat)
         print(f"Master got results from {stat.source}")
 
-    reporter.write_results(results, "results.csv")
+    return results
 
 
-def worker(merge_commands):
-    assert merge_base_dir is not None
+def worker(merge_commands, base_merge_dir):
     print(f"Hello world, I am worker {rank}")
 
     dirs = comm.recv(source=MASTER_RANK)
-    print(f"Proc {rank} got {len(dirs)} merge dirs from master")
+    print(f"Proc {rank} got {len(dirs)*len(merge_commands)} jobs from master")
 
     results = []
 
     num_done = 0
-    tot = len(dirs)
+    tot = len(dirs) * len(merge_commands)
 
-    for merge_evaluation in gather.run_and_evaluate(dirs, merge_commands, merge_base_dir):
+    for merge_evaluation in gather.run_and_evaluate(
+        dirs, merge_commands, base_merge_dir
+    ):
         results.append(merge_evaluation)
         num_done += 1
         print(f"Proc {rank} progress: {num_done}/{tot}")
 
     print(f"Proc {rank} sending results to master")
     comm.send(results, dest=MASTER_RANK)
-
-
-def main(args: argparse.Namespace):
-    global merge_base_dir
-    merge_base_dir = pathlib.Path("merge_directory").absolute()
-
-    if rank == MASTER_RANK:
-        master(args.repo, args.github_user, args.num_merges)
-    else:
-        worker(args.merge_commands)
