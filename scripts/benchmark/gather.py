@@ -8,7 +8,7 @@ from . import run
 
 MergeEvaluation = collections.namedtuple(
     "MergeEvaluation",
-    "merge_dir merge_cmd outcome gt_diff_size git_diff_size runtime".split(),
+    "merge_dir merge_cmd outcome gt_diff_size git_diff_size norm_eq runtime".split(),
 )
 
 
@@ -33,6 +33,7 @@ def evaluation_result(merge_result: run.MergeResult):
         git_diff_size = len(
             evaluate.git_diff_edit_script(expected_file, merge_result.merge_file)
         )
+        norm_eq = evaluate.normalized_comparison(expected_file, merge_result.merge_file)
 
     return MergeEvaluation(
         merge_dir=merge_result.merge_dir,
@@ -40,6 +41,7 @@ def evaluation_result(merge_result: run.MergeResult):
         outcome=merge_result.outcome,
         gt_diff_size=gumtree_diff_size,
         git_diff_size=git_diff_size,
+        norm_eq=int(norm_eq),
         runtime=merge_result.runtime,
     )
 

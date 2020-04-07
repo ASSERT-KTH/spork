@@ -45,7 +45,7 @@ def run_file_merges(
         A generator that yields one MergeResult per merge directory.
     """
     # merge_cmd might be a path
-    sanitized_merge_cmd = pathlib.Path(merge_cmd).name
+    sanitized_merge_cmd = pathlib.Path(merge_cmd).name.replace(" ", "_")
     for merge_dir in file_merge_dirs:
         merge_file = merge_dir / f"{sanitized_merge_cmd}.java"
         outcome, runtime = run_merge(merge_dir, merge_cmd, merge_file=merge_file)

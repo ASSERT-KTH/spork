@@ -59,3 +59,16 @@ def git_diff_edit_script(base_file: pathlib.Path, dest_file: pathlib.Path) -> Li
 
     output = proc.stdout.decode(sys.getdefaultencoding())
     return [line for line in output.split("\n") if line.strip()]
+
+def normalized_comparison(base_file: pathlib.Path, dest_file: pathlib.Path) -> bool:
+    """Compare the base file to the destination file with a normalized AST comparison.
+
+    Args:
+        base_file: The base version of the file.
+        dest_file: The edited version of the file.
+    Returns:
+        True if the files are equal after normalization.
+    """
+    cmd = ["spork", "compare", str(base_file), str(dest_file)]
+    proc = subprocess.run(cmd, shell=False, capture_output=True)
+    return proc.returncode == 0
