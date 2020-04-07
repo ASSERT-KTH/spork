@@ -47,20 +47,18 @@ def master(merge_dirs: List[pathlib.Path]):
     return results
 
 
-def worker(merge_commands, base_merge_dir):
+def worker(evaluation_function, num_merge_commands):
     print(f"Hello world, I am worker {rank}")
 
     dirs = comm.recv(source=MASTER_RANK)
-    print(f"Proc {rank} got {len(dirs)*len(merge_commands)} jobs from master")
+    print(f"Proc {rank} got {len(dirs)} jobs from master")
 
     results = []
 
     num_done = 0
-    tot = len(dirs) * len(merge_commands)
+    tot = len(dirs) * num_merge_commands
 
-    for merge_evaluation in gather.run_and_evaluate(
-        dirs, merge_commands, base_merge_dir
-    ):
+    for merge_evaluation in evaluation_function(dirs):
         results.append(merge_evaluation)
         num_done += 1
         print(f"Proc {rank} progress: {num_done}/{tot}")

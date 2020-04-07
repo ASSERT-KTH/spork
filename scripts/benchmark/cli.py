@@ -4,6 +4,8 @@ import git
 import argparse
 import functools
 
+from typing import List
+
 import daiquiri
 import logging
 
@@ -15,6 +17,7 @@ from . import mpi
 from . import fileutils
 from . import gather
 from . import reporter
+from . import analyze
 
 
 def setup_logging():
@@ -72,7 +75,22 @@ def create_cli_parser():
         type=int,
         default=100,
     )
-
+    base_parser.add_argument(
+        "--merge-commands",
+        help="Merge commands to run.",
+        type=str,
+        required=True,
+        nargs="+",
+    )
+    base_parser.add_argument(
+        "--base-merge-dir",
+        help="Base directory to perform the merges in.",
+        type=pathlib.Path,
+        default=pathlib.Path("merge_directory"),
+    )
+    base_parser.add_argument(
+        "--mpi", help="Run merge in parallell using MPI", action="store_true",
+    )
     subparsers = parser.add_subparsers(dest="command")
     subparsers.required = True
 
@@ -82,36 +100,31 @@ def create_cli_parser():
         parents=[base_parser],
     )
 
-    merge_command.add_argument(
-        "--merge-commands",
-        help="Merge commands to run.",
-        type=str,
-        required=True,
-        nargs="+",
-    )
-    merge_command.add_argument(
-        "--base-merge-dir",
-        help="Base directory to perform the merges in.",
-        type=pathlib.Path,
-        default=pathlib.Path("merge_directory"),
-    )
-    merge_command.add_argument(
-        "--mpi", help="Run merge in parallell using MPI", action="store_true",
-    )
-
-    evaluate_command = subparsers.add_parser(
-        "evaluate",
-        help="Evaluate a merge tool by configuring git-merge to use it.",
+    merge_and_compare_command = subparsers.add_parser(
+        "merge-compare",
+        help="Merge like with the merge command, and compare the results to "
+        "some previous results.",
         parents=[base_parser],
+    )
+    merge_and_compare_command.add_argument(
+        "--compare",
+        help="Old results to compare against.",
+        required=True,
+        type=pathlib.Path,
     )
 
     return parser
 
 
-def _merge(args: argparse.Namespace):
+def _run_merges(args: argparse.Namespace) -> List[gather.MergeEvaluation]:
+    evaluation_function = functools.partial(
+        gather.run_and_evaluate,
+        merge_commands=args.merge_commands,
+        base_merge_dir=args.base_merge_dir,
+    )
     if args.mpi and MPI.COMM_WORLD.Get_rank() != mpi.MASTER_RANK:
-        mpi.worker(args.merge_commands, args.base_merge_dir)
-        return
+        mpi.worker(evaluation_function, len(args.merge_commands))
+        return None
 
     if args.github_user is not None:
         repo = gitutils.clone_repo(args.repo, args.github_user)
@@ -134,10 +147,38 @@ def _merge(args: argparse.Namespace):
     if args.mpi:
         evaluations = mpi.master(merge_dirs)
     else:
-        evaluations = gather.run_and_evaluate(
-            merge_dirs, args.merge_commands, merge_base_dir
-        )
+        evaluations = evaluation_function(merge_dirs)
+
+    return evaluations
+
+
+def _merge(args: argparse.Namespace):
+    evaluations = _run_merges(args)
+
+    if not evaluations:
+        assert args.mpi and MPI.COMM_WORLD.Get_rank() != mpi.MASTER_RANK
+        return
+
     reporter.write_results(evaluations, "results.csv")
+
+
+def _merge_and_compare(args: argparse.Namespace):
+    old_evaluations = analyze.Evaluations.from_path(args.compare)
+    evaluations = _run_merges(args)
+
+    if not evaluations:
+        assert args.mpi and MPI.COMM_WORLD.Get_rank() != mpi.MASTER_RANK
+        return
+
+    new_evaluations = analyze.Evaluations(evaluations)
+    new_evaluations.log_diffs(old_evaluations)
+
+    if new_evaluations.at_least_as_good_as(old_evaluations):
+        LOGGER.info("New results were no worse than the reference")
+        sys.exit(0)
+    else:
+        LOGGER.warning("New results were worse than the reference")
+        sys.exit(1)
 
 
 def _evaluate(args: argparse.Namespace):
@@ -164,8 +205,8 @@ def main():
 
     if args.command == "merge":
         _merge(args)
-    elif args.command == "evaluate":
-        _evaluate(args)
+    elif args.command == "merge-compare":
+        _merge_and_compare(args)
     else:
         raise ValueError(f"Unexpected command: {args.command}")
 

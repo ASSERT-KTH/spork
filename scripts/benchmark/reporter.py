@@ -38,6 +38,9 @@ def read_results(results_path: pathlib.Path) -> List[gather.MergeEvaluation]:
 
 
 def _parse_value(v: str):
+    if "/" in v: # this is a path
+        return pathlib.Path(v)
+
     for conv_func in [int, float]:
         try:
             return conv_func(v)
