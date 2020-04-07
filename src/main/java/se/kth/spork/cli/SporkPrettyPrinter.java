@@ -1,21 +1,29 @@
 package se.kth.spork.cli;
 
 import se.kth.spork.base3dm.Revision;
+import se.kth.spork.spoon.PcsInterpreter;
 import se.kth.spork.spoon.StructuralConflict;
 import se.kth.spork.util.Pair;
 import spoon.compiler.Environment;
+import spoon.reflect.code.CtBlock;
 import spoon.reflect.code.CtComment;
 import spoon.reflect.cu.SourcePosition;
 import spoon.reflect.declaration.CtElement;
+import spoon.reflect.declaration.CtField;
+import spoon.reflect.declaration.CtMethod;
+import spoon.reflect.declaration.CtType;
 import spoon.reflect.visitor.DefaultJavaPrettyPrinter;
 import spoon.reflect.visitor.DefaultTokenWriter;
 import spoon.reflect.visitor.PrinterHelper;
 import spoon.reflect.visitor.PrintingContext;
+import spoon.support.StandardEnvironment;
+import spoon.support.sniper.SniperJavaPrettyPrinter;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.charset.Charset;
 import java.util.*;
+import java.util.stream.Collectors;
 
 public final class SporkPrettyPrinter extends DefaultJavaPrettyPrinter {
     public static final String START_CONFLICT = "<<<<<<< LEFT";
@@ -58,8 +66,20 @@ public final class SporkPrettyPrinter extends DefaultJavaPrettyPrinter {
 
     @Override
     public SporkPrettyPrinter scan(CtElement e) {
-        if (e == null)
+        if (e == null) {
             return this;
+        } else if (e.getMetadata(PcsInterpreter.SINGLE_REVISION_KEY) != null &&
+                (e instanceof CtMethod || e instanceof CtField)) {
+            CtElement originalElement = (CtElement) e.getMetadata(PcsInterpreter.ORIGINAL_NODE_KEY);
+            String sniped = getOriginalSource(originalElement);
+            /**
+            env.useTabulations(true); // required for sniper mode
+            String sniped = originalElement.toString();
+            env.useTabulations(false); // required for SporkPrettyPrinter
+             */
+            printerHelper.writeSniperContent(sniped, getTabCount(originalElement));
+            return this;
+        }
 
         StructuralConflict structuralConflict = (StructuralConflict) e.getMetadata(StructuralConflict.METADATA_KEY);
 
@@ -130,6 +150,11 @@ public final class SporkPrettyPrinter extends DefaultJavaPrettyPrinter {
         return getOriginalSource(firstElemPos, lastElemPos);
     }
 
+    private static String getOriginalSource(CtElement elem) {
+        SourcePosition pos = getSourcePos(elem);
+        return getOriginalSource(pos, pos);
+    }
+
     /**
      * Get the source file position from a CtElement, taking care that Spork sometimes stores position information as
      * metadata to circumvent the pretty-printers reliance on positional information (e.g. when printing comments).
@@ -145,12 +170,8 @@ public final class SporkPrettyPrinter extends DefaultJavaPrettyPrinter {
     }
 
     private static String getOriginalSource(SourcePosition start, SourcePosition end) {
-        try (RandomAccessFile file = new RandomAccessFile(start.getFile(), "r")) {
-            return getOriginalSource(start, end, file);
-        } catch (IOException e) {
-            e.printStackTrace();
-            throw new RuntimeException("failed to read original source fragments");
-        }
+        byte[] source = start.getCompilationUnit().getOriginalSourceCode().getBytes(Charset.defaultCharset());
+        return getOriginalSource(start, end, source);
     }
 
     /**
@@ -159,43 +180,68 @@ public final class SporkPrettyPrinter extends DefaultJavaPrettyPrinter {
      *
      * @param start            The source position of the first element.
      * @param end              The source position of the last element.
-     * @param randomAccessFile A random access file pointing to the common source of the start and end elements.
      * @return The source code fragment starting at start and ending at end, including leading indentation.
      * @throws IOException
      */
-    private static String getOriginalSource(SourcePosition start, SourcePosition end, RandomAccessFile randomAccessFile) throws IOException {
-        int startByte = precededByIndentation(randomAccessFile, start) ?
+    private static String getOriginalSource(SourcePosition start, SourcePosition end, byte[] source) {
+        int startByte = precededByIndentation(source, start) ?
                 getLineStartByte(start) : start.getSourceStart();
         int endByte = end.getSourceEnd();
 
-        byte[] content = new byte[endByte - startByte + 1];
+        if (source[startByte] == 32) {
+            startByte++;
+            endByte++;
+        }
 
-        randomAccessFile.seek(startByte);
-        randomAccessFile.read(content);
+        byte[] content = Arrays.copyOfRange(source, startByte, endByte + 1);
 
         return new String(content, Charset.defaultCharset());
     }
 
-    private static boolean precededByIndentation(RandomAccessFile file, SourcePosition pos) throws IOException {
+    private static boolean precededByIndentation(byte[] source, SourcePosition pos) {
         int lineStartByte = getLineStartByte(pos);
-        byte[] before = new byte[pos.getSourceStart() - lineStartByte];
 
-        file.seek(lineStartByte);
-        file.read(before);
+        for (int i = lineStartByte; i < pos.getSourceStart(); i++) {
+            if (source[i] != 32) {
+                return false;
+            }
+        }
+        return true;
+    }
 
-        String s = new String(before, Charset.defaultCharset());
-        return s.matches("\\s+");
+    private static int getTabCount(CtElement elem) {
+        SourcePosition pos = getSourcePos(elem);
+        byte[] fileBytes = pos.getCompilationUnit().getOriginalSourceCode().getBytes(Charset.defaultCharset());
+        int count = 0;
+
+        int[] lineSepPositions = pos.getCompilationUnit().getLineSeparatorPositions();
+        int current = 0;
+        while (current < lineSepPositions.length && lineSepPositions[current] > pos.getSourceStart())
+            current++;
+
+
+        while (current + count < pos.getSourceStart()) {
+            byte b = fileBytes[current + count];
+            if (b != 32) {
+                break;
+            }
+            ++count;
+        }
+        return count;
     }
 
     private static int getLineStartByte(SourcePosition pos) {
         if (pos.getLine() == 1)
             return 0;
 
-        // the index is offset by 2 because:
-        // 1. zero-indexing means -1
-        // 2. line separator indexing means that the 0th line separator corresponds to the _end_ of the first line
-        int prevLineEnd = pos.getLine() - 2;
-        return pos.getCompilationUnit().getLineSeparatorPositions()[prevLineEnd] + 1; // +1 to get the next line start
+        int sourceStart = pos.getSourceStart() - 1;
+
+        int[] lineSepPositions = pos.getCompilationUnit().getLineSeparatorPositions();
+        int current = 0;
+        while (lineSepPositions[current] > sourceStart)
+            current++;
+
+        return lineSepPositions[current];
     }
 
     private class SporkPrinterHelper extends PrinterHelper {
@@ -265,6 +311,56 @@ public final class SporkPrettyPrinter extends DefaultJavaPrettyPrinter {
             lastWritten = s;
             setTabCount(tabBefore);
             return this;
+        }
+
+        public SporkPrinterHelper writeSniperContent(String s, int tabCount) {
+            String[] lines = s.split("\n");
+            if (lines.length == 1) {
+                return write(s);
+            }
+
+            write(lines[0]);
+
+            int initialTabCount = getTabCount();
+            setTabCount(tabCount / 4);
+
+
+            for (int i = 1; i < lines.length; i++) {
+                writeln();
+                String line = lines[i];
+                write(trimIndentation(line, tabCount));
+            }
+            setTabCount(initialTabCount);
+            return this;
+        }
+
+
+        private String trimIndentation(String s, int trimAmount) {
+            if (s.length() >= trimAmount && onlyWhitespace(s.substring(0, trimAmount))) {
+                return s.substring(trimAmount);
+            }
+            return s;
+        }
+
+        private int determineTabCount(String s) {
+            for (int i = 0; i < s.length(); i++) {
+                char c = s.charAt(i);
+                if (!Character.isWhitespace(c)) {
+                    if (c == '*') { // this is most likely a block comment, which has an extra indentation
+                        return i - 1;
+                    }
+                    return i;
+                }
+            }
+            return 0;
+        }
+
+        private boolean onlyWhitespace(String s) {
+            for (char c : s.toCharArray()) {
+                if (!Character.isWhitespace(c))
+                    return false;
+            }
+            return true;
         }
 
         /**

@@ -115,15 +115,8 @@ class CliTest {
         Files.write(outFile, expectedPrettyPrint.getBytes(), StandardOpenOption.CREATE);
 
         CtModule reParsedMerge = Parser.parse(outFile);
-        String reParsedPrettyPRint = Cli.prettyPrint(reParsedMerge);
         Object reParsedImports = reParsedMerge.getMetadata(Parser.IMPORT_STATEMENTS);
 
-        // this assert is to give a better diff when there are obvious failures
-        // it will most likely miss consistent errors in the pretty printer
-        assertEquals(expectedPrettyPrint, reParsedPrettyPRint);
-
-        // this assert is much more detailed, it should catch everything that exists inside the Spoon tree
-        // that could potentially be lost in a pretty-print
         assertEquals(mergeTree, reParsedMerge);
 
         assertEquals(reParsedImports, expectedImports);

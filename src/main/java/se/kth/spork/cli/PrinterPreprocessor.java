@@ -79,9 +79,10 @@ public class PrinterPreprocessor extends CtScanner {
      */
     private void handleIncorrectExplicitPackages(CtElement element) {
         if (element instanceof CtPackageReference) {
-            String pkgName = ((CtPackageReference) element).getQualifiedName();
+            CtPackageReference pkgRef = (CtPackageReference)  element;
+            String pkgName = pkgRef.getQualifiedName();
             CtElement parent = element.getParent();
-            if (pkgName.equals(activePackage)) {
+            if (pkgName.equals(activePackage) || pkgRef.getSimpleName().isEmpty()) {
                 element.setImplicit(true);
             } else if (parent instanceof CtTypeReference) {
                 String parentQualName = ((CtTypeReference<?>) parent).getQualifiedName();
