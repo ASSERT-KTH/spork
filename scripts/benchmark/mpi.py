@@ -70,7 +70,7 @@ def worker(merge_commands):
     num_done = 0
     tot = len(dirs)
 
-    for merge_evaluation in gather.run_and_evaluate(dirs, merge_commands):
+    for merge_evaluation in gather.run_and_evaluate(dirs, merge_commands, merge_base_dir):
         results.append(merge_evaluation)
         num_done += 1
         print(f"Proc {rank} progress: {num_done}/{tot}")

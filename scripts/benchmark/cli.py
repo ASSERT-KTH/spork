@@ -114,7 +114,7 @@ def _merge(args: argparse.Namespace):
 
     LOGGER.info(f"Extracted {len(merge_dirs)} file merges")
 
-    evaluations = gather.run_and_evaluate(merge_dirs, args.merge_commands)
+    evaluations = gather.run_and_evaluate(merge_dirs, args.merge_commands, merge_base_dir)
     reporter.write_results(evaluations, "results.csv")
 
 

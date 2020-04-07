@@ -1,26 +1,49 @@
 """Module for functions that gather data about a merge."""
 import collections
 import pathlib
+import enum
 from typing import Iterable, Iterable
 
 from . import evaluate
 from . import run
 
+
+class EvalAttrName(enum.Enum):
+    merge_dir = "merge_dir"
+    merge_cmd = "merge_cmd"
+    outcome = "outcome"
+    gumtree_diff_size = "gumtree_diff_size"
+    git_diff_size = "git_diff_size"
+    normalized_eq = "norm_eq"
+    runtime = "runtime"
+
+
+NUMERICAL_EVAL_ATTR_NAMES = tuple(
+    e.value
+    for e in (
+        EvalAttrName.gumtree_diff_size,
+        EvalAttrName.git_diff_size,
+        EvalAttrName.normalized_eq,
+        EvalAttrName.runtime,
+    )
+)
+
 MergeEvaluation = collections.namedtuple(
-    "MergeEvaluation",
-    "merge_dir merge_cmd outcome gt_diff_size git_diff_size norm_eq runtime".split(),
+    "MergeEvaluation", [e.value for e in EvalAttrName],
 )
 
 
 def run_and_evaluate(
-    merge_dirs: Iterable[pathlib.Path], merge_commands: Iterable[str]
+    merge_dirs: Iterable[pathlib.Path],
+    merge_commands: Iterable[str],
+    base_merge_dir: pathlib.Path,
 ) -> Iterable[MergeEvaluation]:
     for merge_cmd in merge_commands:
         for merge_result in run.run_file_merges(merge_dirs, merge_cmd):
-            yield evaluation_result(merge_result)
+            yield evaluation_result(merge_result, base_merge_dir)
 
 
-def evaluation_result(merge_result: run.MergeResult):
+def evaluation_result(merge_result: run.MergeResult, base_merge_dir: pathlib.Path):
     """Gather evaluation results from the provided merge result."""
     gumtree_diff_size = -1
     git_diff_size = -1
@@ -36,10 +59,10 @@ def evaluation_result(merge_result: run.MergeResult):
         norm_eq = evaluate.normalized_comparison(expected_file, merge_result.merge_file)
 
     return MergeEvaluation(
-        merge_dir=merge_result.merge_dir,
+        merge_dir=merge_result.merge_dir.relative_to(base_merge_dir),
         merge_cmd=merge_result.merge_cmd,
         outcome=merge_result.outcome,
-        gt_diff_size=gumtree_diff_size,
+        gumtree_diff_size=gumtree_diff_size,
         git_diff_size=git_diff_size,
         norm_eq=int(norm_eq),
         runtime=merge_result.runtime,

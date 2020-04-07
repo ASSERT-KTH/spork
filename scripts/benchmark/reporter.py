@@ -7,6 +7,7 @@ from typing import List, Iterable
 
 from . import gather
 
+
 def write_results(results: Iterable[gather.MergeEvaluation], dst: str) -> None:
     content = [
         list(gather.MergeEvaluation._fields),
@@ -17,6 +18,32 @@ def write_results(results: Iterable[gather.MergeEvaluation], dst: str) -> None:
     with open(dst, mode="w", encoding=sys.getdefaultencoding()) as file:
         writer = csv.writer(file, delimiter=",")
         writer.writerows(formatted_content)
+
+
+def read_results(results_path: pathlib.Path) -> List[gather.MergeEvaluation]:
+    with open(str(results_path), mode="r") as file:
+        reader = csv.reader(file, dialect=_IgnoreWhitespaceDialect())
+        hdrs = list(next(reader))
+        expected_hdrs = list(gather.MergeEvaluation._fields)
+
+        if hdrs != expected_hdrs:
+            raise ValueError(
+                "provided CSV file has wrong headers, expected "
+                f"{expected_hdrs}, got {hdrs}"
+            )
+
+        return [
+            gather.MergeEvaluation(*[_parse_value(v) for v in line]) for line in reader
+        ]
+
+
+def _parse_value(v: str):
+    for conv_func in [int, float]:
+        try:
+            return conv_func(v)
+        except ValueError:
+            pass
+    return v
 
 
 def _format_for_csv(results: List[List[str]]) -> List[List[str]]:
@@ -33,3 +60,5 @@ def _largest_cells(rows):
     return list(map(max, widths))
 
 
+class _IgnoreWhitespaceDialect(csv.unix_dialect):
+    skipinitialspace = True
