@@ -97,9 +97,7 @@ class Evaluations:
             yield as_good_or_better
 
 def _compare(attr_name: str, compare_val, ref_val) -> bool:
-    if attr_name == EvalAttrName.normalized_eq.value:
-        return compare_val >= ref_val
-    elif attr_name == EvalAttrName.runtime.value:
+    if attr_name == EvalAttrName.runtime.value:
         return not _significantly_greater_than(compare_val, ref_val)
     elif attr_name == EvalAttrName.outcome.value:
         return compare_val == ref_val or compare_val != run.MergeOutcome.FAIL

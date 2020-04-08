@@ -6,9 +6,7 @@ import sys
 from typing import List
 
 
-def gumtree_edit_script(
-    base_file: pathlib.Path, dest_file: pathlib.Path,
-) -> List[str]:
+def gumtree_edit_script(base_file: pathlib.Path, dest_file: pathlib.Path,) -> List[str]:
     """Return the the edit script produced by vanilla GumTree diff, not
     including all of the lines that say "Match".
 
@@ -60,6 +58,7 @@ def git_diff_edit_script(base_file: pathlib.Path, dest_file: pathlib.Path) -> Li
     output = proc.stdout.decode(sys.getdefaultencoding())
     return [line for line in output.split("\n") if line.strip()]
 
+
 def normalized_comparison(base_file: pathlib.Path, dest_file: pathlib.Path) -> bool:
     """Compare the base file to the destination file with a normalized AST comparison.
 
@@ -67,8 +66,17 @@ def normalized_comparison(base_file: pathlib.Path, dest_file: pathlib.Path) -> b
         base_file: The base version of the file.
         dest_file: The edited version of the file.
     Returns:
-        True if the files are equal after normalization.
+        The normalized comparison distance.
     """
     cmd = ["spork", "compare", str(base_file), str(dest_file)]
     proc = subprocess.run(cmd, shell=False, capture_output=True)
-    return proc.returncode == 0
+
+    if proc.returncode != 0:
+        return -1
+
+    lines = [
+        line.strip()
+        for line in proc.stdout.decode(sys.getdefaultencoding()).split("\n")
+        if line.strip()
+    ]
+    return int(lines[-1])
