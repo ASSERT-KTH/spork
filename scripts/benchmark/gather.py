@@ -47,6 +47,7 @@ def evaluation_result(merge_result: run.MergeResult, base_merge_dir: pathlib.Pat
     """Gather evaluation results from the provided merge result."""
     gumtree_diff_size = -1
     git_diff_size = -1
+    norm_diff_size = -1
 
     if merge_result.outcome == run.MergeOutcome.SUCCESS:
         expected_file = merge_result.merge_dir / "Expected.java"
