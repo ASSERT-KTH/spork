@@ -98,14 +98,14 @@ class Evaluations:
 
 def _compare(attr_name: str, compare_val, ref_val) -> bool:
     if attr_name == EvalAttrName.runtime.value:
-        return not _significantly_greater_than(compare_val, ref_val)
+        return not _significantly_greater_than(compare_val, ref_val, tol_fraction=1.2)
     elif attr_name == EvalAttrName.outcome.value:
         return compare_val == ref_val or compare_val != run.MergeOutcome.FAIL
     else:
         return compare_val <= ref_val
 
 def _significantly_greater_than(
-    compare: float, reference: float, min_value: float = 2.0, tol_fraction: float = 1.1,
+    compare: float, reference: float, min_value: float = 2.0, tol_fraction: float = 1.2,
 ) -> bool:
     """Return true if compare is significantly larger than reference, and at least one is larger than min_value."""
     if compare < min_value and reference < min_value:
