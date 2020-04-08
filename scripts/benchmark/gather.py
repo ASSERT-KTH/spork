@@ -14,7 +14,7 @@ class EvalAttrName(enum.Enum):
     outcome = "outcome"
     gumtree_diff_size = "gumtree_diff_size"
     git_diff_size = "git_diff_size"
-    normalized_eq = "norm_eq"
+    norm_diff_size = "norm_diff_size"
     runtime = "runtime"
 
 
@@ -23,7 +23,7 @@ NUMERICAL_EVAL_ATTR_NAMES = tuple(
     for e in (
         EvalAttrName.gumtree_diff_size,
         EvalAttrName.git_diff_size,
-        EvalAttrName.normalized_eq,
+        EvalAttrName.norm_diff_size,
         EvalAttrName.runtime,
     )
 )
@@ -56,7 +56,7 @@ def evaluation_result(merge_result: run.MergeResult, base_merge_dir: pathlib.Pat
         git_diff_size = len(
             evaluate.git_diff_edit_script(expected_file, merge_result.merge_file)
         )
-        norm_eq = evaluate.normalized_comparison(expected_file, merge_result.merge_file)
+        norm_diff_size = evaluate.normalized_comparison(expected_file, merge_result.merge_file)
 
     return MergeEvaluation(
         merge_dir=merge_result.merge_dir.relative_to(base_merge_dir),
@@ -64,7 +64,7 @@ def evaluation_result(merge_result: run.MergeResult, base_merge_dir: pathlib.Pat
         outcome=merge_result.outcome,
         gumtree_diff_size=gumtree_diff_size,
         git_diff_size=git_diff_size,
-        norm_eq=int(norm_eq),
+        norm_diff_size=int(norm_diff_size),
         runtime=merge_result.runtime,
     )
 

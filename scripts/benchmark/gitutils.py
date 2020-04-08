@@ -30,19 +30,24 @@ class Revision(enum.Enum):
 
 
 def extract_merge_scenarios(
-    repo: git.Repo, limit: Optional[int] = None
+    repo: git.Repo, merge_commit_shas: Optional[List[str]] = None
 ) -> List[MergeScenario]:
     """Extract merge scenarios from a repo.
 
     Args:
         repo: A Git repo.
-        limit: Maximum amount of merge scenarios to return.
+        merge_commit_shas: Commit shas to extract scenarios for.
     Returns:
         A list of merge scenarios.
     """
-    merge_commits = [
+    merge_commits = (
         commit for commit in repo.iter_commits() if len(commit.parents) == 2
-    ]
+    )
+    if merge_commit_shas is not None:
+        expected_merge_commits = set(merge_commit_shas)
+        merge_commits = (commit for commit in merge_commits if commit.hexsha in expected_merge_commits)
+    else:
+        expected_merge_commits = set()
 
     merge_scenarios = []
 
@@ -61,9 +66,14 @@ def extract_merge_scenarios(
             )
             continue
 
+        expected_merge_commits.remove(merge.hexsha)
         merge_scenarios.append(MergeScenario(merge, base[0], left, right))
 
-    return merge_scenarios if limit is None else merge_scenarios[:limit]
+    if expected_merge_commits:
+        msg = f"Missing merge commits: {expected_merge_commits}"
+        raise RuntimeError(msg)
+
+    return merge_scenarios
 
 
 def extract_all_conflicting_files(

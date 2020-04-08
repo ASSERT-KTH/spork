@@ -4,7 +4,7 @@ import git
 import argparse
 import functools
 
-from typing import List
+from typing import List, Optional
 
 import daiquiri
 import logging
@@ -69,13 +69,6 @@ def create_cli_parser():
         type=str,
     )
     base_parser.add_argument(
-        "-n",
-        "--num-merges",
-        help="Maximum amount of merges to recreate.",
-        type=int,
-        default=100,
-    )
-    base_parser.add_argument(
         "--merge-commands",
         help="Merge commands to run.",
         type=str,
@@ -91,6 +84,14 @@ def create_cli_parser():
     base_parser.add_argument(
         "--mpi", help="Run merge in parallell using MPI", action="store_true",
     )
+    base_parser.add_argument(
+        "-n",
+        "--num-merges",
+        help="Maximum amount of file merges to recreate.",
+        type=int,
+        default=None,
+    )
+
     subparsers = parser.add_subparsers(dest="command")
     subparsers.required = True
 
@@ -98,6 +99,12 @@ def create_cli_parser():
         "merge",
         help="Test a merge tool by merging one file at a time.",
         parents=[base_parser],
+    )
+    merge_command.add_argument(
+        "--merge-commits",
+        help="Path to a list of merge commit shas to operate on.",
+        default=None,
+        type=pathlib.Path,
     )
 
     merge_and_compare_command = subparsers.add_parser(
@@ -116,61 +123,63 @@ def create_cli_parser():
     return parser
 
 
-def _run_merges(args: argparse.Namespace) -> List[gather.MergeEvaluation]:
-    evaluation_function = functools.partial(
-        gather.run_and_evaluate,
-        merge_commands=args.merge_commands,
-        base_merge_dir=args.base_merge_dir,
-    )
-    if args.mpi and MPI.COMM_WORLD.Get_rank() != mpi.MASTER_RANK:
-        mpi.worker(evaluation_function, len(args.merge_commands))
-        return None
+def _run_merges(
+    args: argparse.Namespace,
+    eval_func,
+    expected_merge_commit_shas: Optional[List[str]],
+) -> List[gather.MergeEvaluation]:
+    assert not args.mpi or MPI.COMM_WORLD.Get_rank() == mpi.MASTER_RANK
 
     if args.github_user is not None:
         repo = gitutils.clone_repo(args.repo, args.github_user)
     else:
         repo = git.Repo(args.repo)
 
-    merge_scenarios = gitutils.extract_merge_scenarios(
-        repo, args.num_merges if args.num_merges > 0 else None
-    )
+    merge_scenarios = gitutils.extract_merge_scenarios(repo, expected_merge_commit_shas)
 
-    LOGGER.info(f"recreating {len(merge_scenarios)} merges")
+    LOGGER.info(f"Found {len(merge_scenarios)} merge scenarios")
 
     merge_base_dir = pathlib.Path("merge_directory")
     merge_base_dir.mkdir(parents=True, exist_ok=True)
     file_merges = gitutils.extract_all_conflicting_files(repo, merge_scenarios)
-    merge_dirs = fileutils.create_merge_dirs(merge_base_dir, file_merges)
+    merge_dirs = fileutils.create_merge_dirs(merge_base_dir, file_merges)[
+        : args.num_merges
+    ]
 
     LOGGER.info(f"Extracted {len(merge_dirs)} file merges")
 
     if args.mpi:
         evaluations = mpi.master(merge_dirs)
     else:
-        evaluations = evaluation_function(merge_dirs)
+        evaluations = eval_func(merge_dirs)
 
     return evaluations
 
 
-def _merge(args: argparse.Namespace):
-    evaluations = _run_merges(args)
+def _merge(args: argparse.Namespace, eval_func):
+    commit_shas = None
+    if args.merge_commits:
+        commit_shas = [
+            line.strip()
+            for line in args.merge_commits.read_text(
+                encoding=sys.getdefaultencoding()
+            ).split("\n")
+            if line.strip()
+        ]
 
-    if not evaluations:
-        assert args.mpi and MPI.COMM_WORLD.Get_rank() != mpi.MASTER_RANK
-        return
-
+    evaluations = _run_merges(args, eval_func, expected_merge_commit_shas=commit_shas)
     reporter.write_results(evaluations, "results.csv")
 
 
-def _merge_and_compare(args: argparse.Namespace):
+def _merge_and_compare(args: argparse.Namespace, eval_func):
     old_evaluations = analyze.Evaluations.from_path(args.compare)
-    evaluations = _run_merges(args)
-
-    if not evaluations:
-        assert args.mpi and MPI.COMM_WORLD.Get_rank() != mpi.MASTER_RANK
-        return
-
+    commit_shas = [
+        list(pathlib.Path(path).parents)[-2].name
+        for path in old_evaluations.extract(gather.EvalAttrName.merge_dir.value)
+    ]
+    evaluations = _run_merges(args, eval_func, expected_merge_commit_shas=commit_shas)
     new_evaluations = analyze.Evaluations(evaluations)
+
     new_evaluations.log_diffs(old_evaluations)
 
     if new_evaluations.at_least_as_good_as(old_evaluations):
@@ -203,10 +212,20 @@ def main():
     parser = create_cli_parser()
     args = parser.parse_args(sys.argv[1:])
 
+    eval_func = functools.partial(
+        gather.run_and_evaluate,
+        merge_commands=args.merge_commands,
+        base_merge_dir=args.base_merge_dir,
+    )
+
+    if args.mpi and MPI.COMM_WORLD.Get_rank() != mpi.MASTER_RANK:
+        mpi.worker(eval_func, len(args.merge_commands))
+        return
+
     if args.command == "merge":
-        _merge(args)
+        _merge(args, eval_func)
     elif args.command == "merge-compare":
-        _merge_and_compare(args)
+        _merge_and_compare(args, eval_func)
     else:
         raise ValueError(f"Unexpected command: {args.command}")
 
