@@ -18,12 +18,10 @@ import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
-import java.util.Collection;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Command line interface for Spork.
@@ -115,20 +113,22 @@ public class Cli {
             leftModule = Parser.parse(prettyPrint(leftModule));
             rightModule = Parser.parse(prettyPrint(rightModule));
 
-            Object leftImports = leftModule.getMetadata(Parser.IMPORT_STATEMENTS);
-            Object rightImports = rightModule.getMetadata(Parser.IMPORT_STATEMENTS);
+            Set<?> leftImports = new HashSet<>((Collection<?>) leftModule.getMetadata(Parser.IMPORT_STATEMENTS));
+            Set<?> rightImports = new HashSet<>((Collection<?>) rightModule.getMetadata(Parser.IMPORT_STATEMENTS));
+            Set<?> intersection = new HashSet<>(leftImports);
+            intersection.retainAll(rightImports);
 
             Diff diff = new AstComparator().compare(leftModule, rightModule);
+
             System.out.println(diff);
 
-            boolean importsEqual = leftImports.equals(rightImports);
-            if (!importsEqual) {
-                LOGGER.warn("Import statements differ");
-                LOGGER.info("Left: " + leftImports);
-                LOGGER.info("Right: " + rightImports);
-            }
+            long editCount = Stream.of(leftImports, rightImports)
+                    .flatMap(Set::stream).filter(e -> !intersection.contains(e)).count();
+            editCount += diff.getRootOperations().size();
 
-            return diff.getRootOperations().isEmpty() && importsEqual ? 0 : 1;
+            System.out.println(editCount);
+
+            return 0;
         }
     }
 
