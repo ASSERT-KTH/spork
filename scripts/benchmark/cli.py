@@ -9,11 +9,8 @@ from typing import List, Optional
 import daiquiri
 import logging
 
-from mpi4py import MPI
-
 from . import run
 from . import gitutils
-from . import mpi
 from . import fileutils
 from . import gather
 from . import reporter
@@ -43,6 +40,15 @@ def setup_logging():
 
 setup_logging()
 LOGGER = daiquiri.getLogger(__name__)
+
+MPI_ENABLED = False
+try:
+    from mpi4py import MPI
+    from . import mpi
+
+    MPI_ENABLED = True
+except ModuleNotFoundError:
+    LOGGER.warning("MPI not installed, will not be able to run in MPI-mode")
 
 
 def create_cli_parser():
@@ -81,8 +87,11 @@ def create_cli_parser():
         type=pathlib.Path,
         default=pathlib.Path("merge_directory"),
     )
+
     base_parser.add_argument(
-        "--mpi", help="Run merge in parallell using MPI", action="store_true",
+        "--mpi",
+        help="Run merge in parallell using MPI" if MPI_ENABLED else argparse.SUPPRESS,
+        action="store_true",
     )
     base_parser.add_argument(
         "-n",
@@ -203,6 +212,9 @@ def _merge_and_compare(args: argparse.Namespace, eval_func):
 def _evaluate(args: argparse.Namespace):
     parser = create_cli_parser()
     args = parser.parse_args(sys.argv[1:])
+
+    if args.mpi and not MPI_ENABLED:
+        LOGGER.error("--mpi specified, but mpi4py is not installed")
 
     if args.github_user is not None:
         repo = gitutils.clone_repo(args.repo, args.github_user)
