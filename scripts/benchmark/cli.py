@@ -4,7 +4,7 @@ import git
 import argparse
 import functools
 
-from typing import List, Optional
+from typing import List, Optional, Iterable
 
 import daiquiri
 import logging
@@ -143,7 +143,7 @@ def _run_merges(
     args: argparse.Namespace,
     eval_func,
     expected_merge_commit_shas: Optional[List[str]],
-) -> List[gather.MergeEvaluation]:
+) -> Iterable[gather.MergeEvaluation]:
     assert not args.mpi or MPI.COMM_WORLD.Get_rank() == mpi.MASTER_RANK
 
     if args.github_user is not None:
@@ -193,13 +193,14 @@ def _merge_and_compare(args: argparse.Namespace, eval_func):
         list(pathlib.Path(path).parents)[-2].name
         for path in old_evaluations.extract(gather.EvalAttrName.merge_dir.value)
     ]
-    evaluations = _run_merges(args, eval_func, expected_merge_commit_shas=commit_shas)
-    new_evaluations = analyze.Evaluations(evaluations)
+    new_evaluations = analyze.Evaluations(
+        _run_merges(args, eval_func, expected_merge_commit_shas=commit_shas)
+    )
 
     new_evaluations.log_diffs(old_evaluations)
 
     if args.output is not None:
-        reporter.write_results(evaluations, args.output)
+        reporter.write_results(new_evaluations.evaluations, args.output)
 
     if new_evaluations.at_least_as_good_as(old_evaluations):
         LOGGER.info("New results were no worse than the reference")
