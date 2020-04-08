@@ -91,6 +91,13 @@ def create_cli_parser():
         type=int,
         default=None,
     )
+    base_parser.add_argument(
+        "-o",
+        "--output",
+        help="Where to store the output.",
+        type=pathlib.Path,
+        default=None,
+    )
 
     subparsers = parser.add_subparsers(dest="command")
     subparsers.required = True
@@ -168,7 +175,7 @@ def _merge(args: argparse.Namespace, eval_func):
         ]
 
     evaluations = _run_merges(args, eval_func, expected_merge_commit_shas=commit_shas)
-    reporter.write_results(evaluations, "results.csv")
+    reporter.write_results(evaluations, args.output or "results.csv")
 
 
 def _merge_and_compare(args: argparse.Namespace, eval_func):
@@ -181,6 +188,9 @@ def _merge_and_compare(args: argparse.Namespace, eval_func):
     new_evaluations = analyze.Evaluations(evaluations)
 
     new_evaluations.log_diffs(old_evaluations)
+
+    if args.output is not None:
+        reporter.write_results(evaluations, args.output)
 
     if new_evaluations.at_least_as_good_as(old_evaluations):
         LOGGER.info("New results were no worse than the reference")
