@@ -66,7 +66,7 @@ def extract_merge_scenarios(
             )
             continue
 
-        expected_merge_commits.remove(merge.hexsha)
+        expected_merge_commits -= {merge.hexsha}
         merge_scenarios.append(MergeScenario(merge, base[0], left, right))
 
     if expected_merge_commits:
