@@ -1,0 +1,31 @@
+                                                                   merge_dir,  merge_cmd,outcome,gumtree_diff_size,git_diff_size,norm_diff_size,           runtime
+                    3494c00d0cf789533c6cb023c3464384dd2f23d7/Observable.java,spork_merge,success,              344,         1300,             2,17.630990249000007
+                    f036cd0e6ee1832169b793814a8fdd35165fd852/Observable.java,spork_merge,success,              380,         1301,             0, 16.76943049100001
+                    afbd89a045ee5cf493754e0a290d5f06ae82d3ae/Observable.java,spork_merge,success,              382,         1322,             2,17.955727129999985
+             06d90dab99765cb813031b9f6a1db1640bcbe8c6/BackpressureTests.java,spork_merge,success,              437,          293,             0, 5.362395940000056
+                    00fc1afe254547596b1f9d7893cd1199874b27c2/Observable.java,spork_merge,success,              344,         1300,             2,19.451774288000024
+                    36845db979a3414418da06507fa3f10ccadf644e/Observable.java,spork_merge,success,              361,         1438,             0,18.331000966999966
+                    44945dcc2ecf241d962e90639f7f29ada54d946e/Observable.java,spork_merge,success,              333,         1334,             0,18.393457727999987
+                    19ceb76ce33c41f5c943f6942285b3e0e101d1bf/Observable.java,spork_merge,success,              332,         1349,             0,18.849158078000016
+                    d8f7086d4d989338c79f92821809f9ab98fc734b/Observable.java,spork_merge,success,              320,         1279,             2, 17.65609518299999
+                    7fdbcbfb858607dba229a37d385093b031ced85b/Observable.java,spork_merge,success,              332,         1387,             0,16.484003185000006
+                0caeea85f2b311822d2b7f5fd7695055f4da9397/TestSubscriber.java,spork_merge,success,              117,          203,             0, 3.837724241999922
+                    67f7988154ce61b5004784d654632045db7a9db1/Observable.java,spork_merge,success,              336,         1316,             0,16.668962309999984
+           67f7988154ce61b5004784d654632045db7a9db1/OperatorPublishTest.java,spork_merge,success,               21,           52,             0, 4.140569192000044
+                    26ea1e127799c104e7412c0ecb77a422f1b36f65/Observable.java,spork_merge,success,              329,         1241,             0, 16.46452666899995
+                b86bbf6d5627ef41bfd2134c95c7fe2e2a05b1f3/TestSubscriber.java,spork_merge,success,              115,          160,             0, 3.804265520999934
+             a40a4130edcdadc2340da5787ca30353018173f2/OperatorMulticast.java,spork_merge,success,               18,           36,             0, 3.102133896000055
+                a40a4130edcdadc2340da5787ca30353018173f2/TestSubscriber.java,spork_merge,success,              115,          160,             0,3.5524722060000613
+                    b0250bb60df25c25b19643ab106760b8cac2f65e/Observable.java,spork_merge,success,              311,         1240,             0,16.100806118999913
+                    f1bd2a9630d5a2101f324acf7d399fc1b2a2c87b/Observable.java,spork_merge,success,              314,         1362,             2, 17.12027036400002
+                    aeee037458fd4410d2528883abdecda74afb11c9/Observable.java,spork_merge,success,              310,         1379,             2,      17.727697229
+         4d4a33cc5fc24c2fd31c7cf38a4aa5f3fd1d28ab/IndexedRingBufferTest.java,spork_merge,success,               22,           59,             0, 4.981297147999953
+                    4dd704066772ada59528c6a987e20e026b315b1c/Observable.java,spork_merge,success,              307,         1233,             0, 16.36168262900003
+    4dd704066772ada59528c6a987e20e026b315b1c/OperatorOnBackpressureDrop.java,spork_merge,success,               23,           58,             0,2.4124024060000693
+15d030ba76b7f7fa0cae74bca07b607b272cd469/OperatorOnBackpressureDropTest.java,spork_merge,success,               15,           63,             0,2.5698807500000385
+                    c41b37d11607393bc989642ff44f4a5f809b89ae/Observable.java,spork_merge,success,              277,         1222,             0, 16.63236684200001
+                    13001d02a17de844ab1eb0787469340842a0209c/Observable.java,spork_merge,success,              268,         1371,             0, 17.02800292500001
+                    4182f655944b692d6310f95805a6de9f1a8d1ba6/Observable.java,spork_merge,success,              268,         1258,             0, 15.88982053899997
+                    1f08a674ee508296b12af55fcc8fed2287696405/Observable.java,spork_merge,success,              274,         1199,             0,16.535862477000023
+                    e934c810bbdcf73f628a951d57aecfd83a2cb081/Observable.java,spork_merge,success,              579,         1898,             0, 17.49066081500007
+             ccada81f581a9cde5ef3ac3c85d5ac2f97377e43/OperatorMergeTest.java,spork_merge,success,              174,          313,             0, 8.359490651999977
