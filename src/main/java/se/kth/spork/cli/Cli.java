@@ -109,10 +109,6 @@ public class Cli {
             Compare.sortUnorderedElements(leftModule);
             Compare.sortUnorderedElements(rightModule);
 
-            // reparse to avoid formatting inconsistencies
-            leftModule = Parser.parse(prettyPrint(leftModule));
-            rightModule = Parser.parse(prettyPrint(rightModule));
-
             Set<?> leftImports = new HashSet<>((Collection<?>) leftModule.getMetadata(Parser.IMPORT_STATEMENTS));
             Set<?> rightImports = new HashSet<>((Collection<?>) rightModule.getMetadata(Parser.IMPORT_STATEMENTS));
             Set<?> intersection = new HashSet<>(leftImports);
