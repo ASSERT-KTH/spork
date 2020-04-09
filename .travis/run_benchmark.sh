@@ -25,4 +25,4 @@ bench_returncode=$?
 
 cat results.csv
 
-exit bench_returncode
+exit $bench_returncode
