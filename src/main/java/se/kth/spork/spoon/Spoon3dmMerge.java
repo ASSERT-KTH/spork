@@ -104,14 +104,12 @@ public class Spoon3dmMerge {
             TdmMerge.resolveRawMerge(t0Star, delta);
         }
 
-        boolean hasContentConflict = ContentMerger.handleContentConflicts(delta);
-
         LOGGER.info("Interpreting resolved PCS merge");
         Pair<CtElement, Boolean> merge = PcsInterpreter.fromMergedPcs(delta, baseLeft, baseRight);
         // we can be certain that the merge tree has the same root type as the three constituents, so this cast is safe
         @SuppressWarnings("unchecked")
         T mergeTree = (T) merge.first;
-        boolean hasStructuralConflicts = merge.second;
+        boolean hasConflicts = merge.second;
 
         LOGGER.info("Merging import statements");
         List<CtImport> mergedImports = mergeImportStatements(base, left, right);
@@ -119,7 +117,7 @@ public class Spoon3dmMerge {
 
         LOGGER.info("Merged in " + (double) (System.nanoTime() - start) / 1e9 + " seconds");
 
-        return Pair.of(mergeTree, hasContentConflict || hasStructuralConflicts);
+        return Pair.of(mergeTree, hasConflicts);
     }
 
     /**

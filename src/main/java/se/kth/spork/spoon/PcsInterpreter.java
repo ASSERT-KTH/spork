@@ -1,15 +1,6 @@
 package se.kth.spork.spoon;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Set;
-import java.util.TreeMap;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -23,10 +14,8 @@ import se.kth.spork.util.Pair;
 import spoon.reflect.code.CtExpression;
 import spoon.reflect.declaration.CtAnnotation;
 import spoon.reflect.declaration.CtElement;
-import spoon.reflect.declaration.CtParameter;
 import spoon.reflect.path.CtRole;
 import spoon.reflect.reference.CtParameterReference;
-import spoon.reflect.reference.CtReference;
 import spoon.reflect.reference.CtTypeReference;
 
 /**
@@ -35,10 +24,13 @@ import spoon.reflect.reference.CtTypeReference;
  * @author Simon Larsén
  */
 public class PcsInterpreter {
+    public static final String ORIGINAL_NODE_KEY = "spork_original_node";
+    public static final String SINGLE_REVISION_KEY = "spork_single_revision";
+
     private final Map<SpoonNode, Map<SpoonNode, Pcs<SpoonNode>>> rootToChildren;
     private final Map<Pcs<SpoonNode>, Set<Pcs<SpoonNode>>> structuralConflicts;
     private final Builder visitor;
-    private boolean hasConflicts;
+    private boolean hasStructuralConflicts;
 
     /**
      * Convert a merged PCS structure into a Spoon tree.
@@ -53,11 +45,11 @@ public class PcsInterpreter {
             SpoonMapping baseRight) {
         PcsInterpreter pcsInterpreter = new PcsInterpreter(delta, baseLeft, baseRight);
         pcsInterpreter.traversePcs(NodeFactory.ROOT);
-        return Pair.of(pcsInterpreter.visitor.actualRoot, pcsInterpreter.hasConflicts);
+        return Pair.of(pcsInterpreter.visitor.actualRoot, pcsInterpreter.hasConflicts());
     }
 
     private PcsInterpreter(ChangeSet<SpoonNode, RoledValues> delta, SpoonMapping baseLeft, SpoonMapping baseRight) {
-        hasConflicts = false;
+        hasStructuralConflicts = false;
         rootToChildren = buildRootToChildren(delta.getPcsSet());
         visitor = new Builder(delta.getContents(), baseLeft, baseRight);
         this.structuralConflicts = delta.getStructuralConflicts();
@@ -108,15 +100,25 @@ public class PcsInterpreter {
                 Objects.equals(left.getRoot(), right.getRoot());
     }
 
-    private void traversePcs(SpoonNode currentRoot) {
+    private Set<Revision> traversePcs(SpoonNode currentRoot) {
         Map<SpoonNode, Pcs<SpoonNode>> children = rootToChildren.get(currentRoot);
-        if (children == null) // leaf node
-            return;
 
         SpoonNode next = NodeFactory.startOfChildList(currentRoot);
+        Set<Revision> revisions = new HashSet<>();
+
+        if (currentRoot != NodeFactory.ROOT) {
+            revisions.add(currentRoot.getRevision());
+            visitor.contents.getOrDefault(currentRoot, Collections.emptySet())
+                    .forEach(content -> revisions.add(content.getContext().getRevision()));
+        }
+
+        if (children == null) // leaf node
+            return revisions;
+
         List<SpoonNode> sortedChildren = new ArrayList<>();
         while (true) {
             Pcs<SpoonNode> nextPcs = children.get(next);
+            revisions.add(nextPcs.getRevision());
 
             next = nextPcs.getSuccessor();
             if (next.isEndOfList()) {
@@ -129,6 +131,7 @@ public class PcsInterpreter {
 
             // successor conflicts mark the start of a conflict, any other conflict is to be ignored
             if (successorConflict.isPresent()) {
+                revisions.addAll(Arrays.asList(Revision.LEFT, Revision.RIGHT));
                 next = traverseConflict(nextPcs, successorConflict.get(), currentRoot, children);
             } else {
                 visitor.visit(currentRoot, next);
@@ -136,7 +139,16 @@ public class PcsInterpreter {
             }
         }
 
-        sortedChildren.forEach(this::traversePcs);
+        for (SpoonNode child : sortedChildren) {
+            Set<Revision> subtreeRevisions = traversePcs(child);
+            if (subtreeRevisions.size() == 1) {
+                // has a single revision in subtree (so can be sniper printed)
+                visitor.nodes.get(child).getElement().putMetadata(SINGLE_REVISION_KEY, subtreeRevisions.iterator().next());
+            }
+            revisions.addAll(subtreeRevisions);
+        }
+
+        return revisions;
     }
 
     /**
@@ -170,9 +182,8 @@ public class PcsInterpreter {
                 traversePcs(node);
             }
         } else {
-            hasConflicts = true;
+            hasStructuralConflicts = true;
             visitor.visitConflicting(currentRoot, leftNodes, rightNodes);
-            visitor.endConflict();
         }
 
         return leftNodes.isEmpty() ? next : leftNodes.get(leftNodes.size() - 1);
@@ -210,6 +221,13 @@ public class PcsInterpreter {
     }
 
     /**
+     * @return true if there are structural or content conflicts in the merge.
+     */
+    private boolean hasConflicts() {
+        return hasStructuralConflicts || visitor.hasContentConflict;
+    }
+
+    /**
      * Try to resolve a structural conflict automatically.
      */
     private static Optional<List<SpoonNode>> tryResolveConflict(List<SpoonNode> leftNodes, List<SpoonNode> rightNodes) {
@@ -230,7 +248,7 @@ public class PcsInterpreter {
         private Map<SpoonNode, Set<Content<SpoonNode, RoledValues>>> contents;
         private SpoonMapping baseLeft;
         private SpoonMapping baseRight;
-        private boolean inConflict = false;
+        private boolean hasContentConflict = false;
 
 
         // A mapping from a node in the input PCS structure to its copy in the merged tree
@@ -261,11 +279,15 @@ public class PcsInterpreter {
             CtElement originalTree = origTreeWrapper.getElement();
             CtElement originalRoot = origRootWrapper.getElement();
 
+            Pair<RoledValues, List<ContentConflict>> mergedContent =
+                    ContentMerger.mergedContent(contents.get(origTreeWrapper));
+
             CtElement mergeTree = shallowCopyTree(originalTree);
-            if (!inConflict) {
-                // content should only be merged if not in a conflict
-                // when in a conflict, the original tree's content should always be used
-                setContent(mergeTree, origTreeWrapper);
+            mergedContent.first.forEach(rv -> mergeTree.setValueByRole(rv.getRole(), rv.getValue()));
+            if (!mergedContent.second.isEmpty()) {
+                // at least one conflict was not resolved
+                mergeTree.putMetadata(ContentConflict.METADATA_KEY, mergedContent.second);
+                hasContentConflict = true;
             }
 
             if (mergeParent != null) {
@@ -322,16 +344,13 @@ public class PcsInterpreter {
 
         /**
          * Visit the root nodes of a conflict. Note that the children of these nodes are not visited
-         * by this method, it is the responsibility of the caller to visit the children, and then call
-         * the {@link Builder#endConflict()} once the conflict has been concluded.
+         * by this method.
          *
          * @param parent The parent node of the conflict.
          * @param left   Ordered root nodes from the left part of the conflict.
          * @param right  Ordered root nodes from the right part of the conflict.
          */
         public void visitConflicting(SpoonNode parent, List<SpoonNode> left, List<SpoonNode> right) {
-            inConflict = true;
-
             CtElement mergeParent = nodes.get(parent).getElement();
             CtElement dummy = (left.size() > 0 ? left.get(0) : right.get(0)).getElement();
 
@@ -344,14 +363,6 @@ public class PcsInterpreter {
             Object inserted = withSiblings(parent.getElement(), dummy, mergeParent, dummy, role);
             dummy.delete();
             mergeParent.setValueByRole(role, inserted);
-        }
-
-        /**
-         * Signal the end of a structural conflict. Should be called when all children of the root conflict nodes
-         * have been visited.
-         */
-        public void endConflict() {
-            inConflict = false;
         }
 
         /**
@@ -461,27 +472,6 @@ public class PcsInterpreter {
 
             return mutableCurrent;
         }
-
-        /**
-         * Set the content of a tree that is being/has been merged to the merged content of the original tree.
-         *
-         * @param mergeTree    A tree in the merge output.
-         * @param originalTree A wrapper around the tree from which mergeTree was copied.
-         */
-        private void setContent(CtElement mergeTree, SpoonNode originalTree) {
-            Set<Content<SpoonNode, RoledValues>> nodeContents = contents.get(originalTree);
-
-            if (nodeContents.size() != 1) {
-                throw new IllegalStateException("Internal error, unhandled conflict: " + nodeContents);
-            } else {
-                RoledValues rvs = nodeContents.iterator().next().getValue();
-
-                for (RoledValue roledValue : rvs) {
-                    mergeTree.setValueByRole(roledValue.getRole(), roledValue.getValue());
-                }
-            }
-        }
-
     }
 
     /**
@@ -500,9 +490,9 @@ public class PcsInterpreter {
         // remove the wrapper metadata
         Map<String, Object> metadata = new HashMap<>(treeCopy.getAllMetadata());
         metadata.remove(NodeFactory.WRAPPER_METADATA);
+        metadata.put(ORIGINAL_NODE_KEY, tree);
         treeCopy.setAllMetadata(metadata);
 
         return treeCopy;
     }
-
 }

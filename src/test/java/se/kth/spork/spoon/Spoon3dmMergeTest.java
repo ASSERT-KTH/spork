@@ -46,7 +46,7 @@ class Spoon3dmMergeTest {
 
         // this assert is just to give a better overview of obvious errors, but it relies on the pretty printer's
         // correctness
-        assertEquals(Cli.prettyPrint(expected), Cli.prettyPrint(mergeTree));
+        //assertEquals(Cli.prettyPrint(expected), Cli.prettyPrint(mergeTree));
 
         // these asserts are what actually matters
         assertEquals(expected, mergeTree);

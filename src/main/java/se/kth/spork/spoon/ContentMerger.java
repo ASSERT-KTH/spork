@@ -1,8 +1,6 @@
 package se.kth.spork.spoon;
 
 import se.kth.spork.base3dm.Content;
-import se.kth.spork.base3dm.Pcs;
-import se.kth.spork.base3dm.ChangeSet;
 import se.kth.spork.util.LineBasedMerge;
 import se.kth.spork.util.Pair;
 import se.kth.spork.util.Triple;
@@ -23,127 +21,111 @@ import java.util.stream.Stream;
 public class ContentMerger {
 
     /**
-     * Try to resolve content conflicts in the merge.
-     *
-     * @param delta A merged TStar.
-     * @return true if unresolvable conflicts were detected. This implies that a content conflict has been placed in
-     * the tree.
+     * @param nodeContents The contents associated with this node.
+     * @return A pair of merged contents and a potentially empty collection of unresolved conflicts.
      */
     @SuppressWarnings("unchecked")
-    static boolean handleContentConflicts(ChangeSet<SpoonNode, RoledValues> delta) {
-        boolean hasConflict = false;
+    static Pair<RoledValues, List<ContentConflict>>
+    mergedContent(Set<Content<SpoonNode, RoledValues>> nodeContents) {
+        if (nodeContents.size() == 1) {
+            return Pair.of(nodeContents.iterator().next().getValue(), Collections.emptyList());
+        }
 
-        for (Pcs<SpoonNode> pcs : delta.getPcsSet()) {
-            SpoonNode pred = pcs.getPredecessor();
-            Set<Content<SpoonNode, RoledValues>> nodeContents = delta.getContent(pred);
+        _ContentTriple revisions = getContentRevisions(nodeContents);
+        Optional<Content<SpoonNode, RoledValues>> baseOpt = revisions.first;
+        RoledValues leftRoledValues = revisions.second.getValue();
+        RoledValues rightRoledValues = revisions.third.getValue();
 
-            if (nodeContents.size() > 1) {
-                _ContentTriple revisions = getContentRevisions(nodeContents);
-                Optional<Content<SpoonNode, RoledValues>> baseOpt = revisions.first;
-                RoledValues leftRoledValues = revisions.second.getValue();
-                RoledValues rightRoledValues = revisions.third.getValue();
+        // NOTE: It is important that the left values are copied,
+        // by convention the LEFT values should be put into the tree whenever a conflict cannot be resolved
+        RoledValues mergedRoledValues = new RoledValues(leftRoledValues);
 
-                // NOTE: It is important that the left values are copied,
-                // by convention the LEFT values should be put into the tree whenever a conflict cannot be resolved
-                RoledValues mergedRoledValues = new RoledValues(leftRoledValues);
+        assert leftRoledValues.size() == rightRoledValues.size();
 
-                assert leftRoledValues.size() == rightRoledValues.size();
+        Deque<ContentConflict> unresolvedConflicts = new ArrayDeque<>();
 
-                Deque<ContentConflict> unresolvedConflicts = new ArrayDeque<>();
+        for (int i = 0; i < leftRoledValues.size(); i++) {
+            int finalI = i;
+            RoledValue leftPair = leftRoledValues.get(i);
+            RoledValue rightPair = rightRoledValues.get(i);
+            assert leftPair.getRole() == rightPair.getRole();
 
-                for (int i = 0; i < leftRoledValues.size(); i++) {
-                    int finalI = i;
-                    RoledValue leftPair = leftRoledValues.get(i);
-                    RoledValue rightPair = rightRoledValues.get(i);
-                    assert leftPair.getRole() == rightPair.getRole();
+            Optional<Object> baseValOpt = baseOpt.map(Content::getValue).map(rv -> rv.get(finalI))
+                    .map(RoledValue::getValue);
 
-                    Optional<Object> baseValOpt = baseOpt.map(Content::getValue).map(rv -> rv.get(finalI))
-                            .map(RoledValue::getValue);
+            CtRole role = leftPair.getRole();
+            Object leftVal = leftPair.getValue();
+            Object rightVal = rightPair.getValue();
 
-                    CtRole role = leftPair.getRole();
-                    Object leftVal = leftPair.getValue();
-                    Object rightVal = rightPair.getValue();
+            if (leftPair.equals(rightPair)) {
+                // this pair cannot possibly conflict
+                continue;
+            }
 
-                    if (leftPair.equals(rightPair)) {
-                        // this pair cannot possibly conflict
-                        continue;
-                    }
-
-                    // left and right pairs differ and are so conflicting
-                    // we add them as a conflict, but will later remove it if the conflict can be resolved
-                    unresolvedConflicts.push(new ContentConflict(
-                            role,
-                            baseOpt.map(Content::getValue).map(rv -> rv.get(finalI)),
-                            leftPair,
-                            rightPair));
+            // left and right pairs differ and are so conflicting
+            // we add them as a conflict, but will later remove it if the conflict can be resolved
+            unresolvedConflicts.push(new ContentConflict(
+                    role,
+                    baseOpt.map(Content::getValue).map(rv -> rv.get(finalI)),
+                    leftPair,
+                    rightPair));
 
 
-                    Optional<?> merged = Optional.empty();
+            Optional<?> merged = Optional.empty();
 
-                    // sometimes a value can be partially merged (e.g. modifiers), and then we want to be
-                    // able to set the merged value, AND flag a conflict.
-                    boolean conflictPresent = false;
+            // sometimes a value can be partially merged (e.g. modifiers), and then we want to be
+            // able to set the merged value, AND flag a conflict.
+            boolean conflictPresent = false;
 
-                    // if either value is equal to base, we keep THE OTHER one
-                    if (baseValOpt.isPresent() && baseValOpt.get().equals(leftVal)) {
-                        merged = Optional.of(rightVal);
-                    } else if (baseValOpt.isPresent() && baseValOpt.get().equals(rightVal)) {
-                        merged = Optional.of(leftVal);
-                    } else {
-                        // we need to actually work for this merge :(
-                        switch (role) {
-                            case IS_IMPLICIT:
-                                if (baseValOpt.isPresent()) {
-                                    merged = Optional.of(!(Boolean) baseValOpt.get());
-                                } else {
-                                    // when in doubt, discard implicitness
-                                    merged = Optional.of(false);
-                                }
-                                break;
-                            case MODIFIER:
-                                Pair<Boolean, Optional<Set<ModifierKind>>> mergePair = mergeModifierKinds(
-                                        baseValOpt.map(o -> (Set<ModifierKind>) o),
-                                        (Set<ModifierKind>) leftVal,
-                                        (Set<ModifierKind>) rightVal);
-                                conflictPresent = mergePair.first;
-                                merged = mergePair.second;
-                                break;
-                            case COMMENT_CONTENT:
-                                merged = mergeComments(baseValOpt.orElse(""), leftVal, rightVal);
-                                break;
-                            case IS_UPPER:
-                                merged = mergeIsUpper(
-                                        baseOpt.map(c -> c.getValue().getElement()),
-                                        leftRoledValues.getElement(),
-                                        rightRoledValues.getElement()
-                                );
-                                break;
-                            default:
-                                // pass
+            // if either value is equal to base, we keep THE OTHER one
+            if (baseValOpt.isPresent() && baseValOpt.get().equals(leftVal)) {
+                merged = Optional.of(rightVal);
+            } else if (baseValOpt.isPresent() && baseValOpt.get().equals(rightVal)) {
+                merged = Optional.of(leftVal);
+            } else {
+                // we need to actually work for this merge :(
+                switch (role) {
+                    case IS_IMPLICIT:
+                        if (baseValOpt.isPresent()) {
+                            merged = Optional.of(!(Boolean) baseValOpt.get());
+                        } else {
+                            // when in doubt, discard implicitness
+                            merged = Optional.of(false);
                         }
-                    }
-
-
-                    if (merged.isPresent()) {
-                        mergedRoledValues.set(i, role, merged.get());
-
-                        if (!conflictPresent)
-                            unresolvedConflicts.pop();
-                    }
+                        break;
+                    case MODIFIER:
+                        Pair<Boolean, Optional<Set<ModifierKind>>> mergePair = mergeModifierKinds(
+                                baseValOpt.map(o -> (Set<ModifierKind>) o),
+                                (Set<ModifierKind>) leftVal,
+                                (Set<ModifierKind>) rightVal);
+                        conflictPresent = mergePair.first;
+                        merged = mergePair.second;
+                        break;
+                    case COMMENT_CONTENT:
+                        merged = mergeComments(baseValOpt.orElse(""), leftVal, rightVal);
+                        break;
+                    case IS_UPPER:
+                        merged = mergeIsUpper(
+                                baseOpt.map(c -> c.getValue().getElement()),
+                                leftRoledValues.getElement(),
+                                rightRoledValues.getElement()
+                        );
+                        break;
+                    default:
+                        // pass
                 }
+            }
 
-                if (!unresolvedConflicts.isEmpty()) {
-                    // at least one conflict was not resolved
-                    pred.getElement().putMetadata(ContentConflict.METADATA_KEY, new ArrayList<>(unresolvedConflicts));
-                    hasConflict = true;
-                }
 
-                Set<Content<SpoonNode, RoledValues>> contents = new HashSet<>();
-                contents.add(new Content<>(pcs, mergedRoledValues));
-                delta.setContent(pred, contents);
+            if (merged.isPresent()) {
+                mergedRoledValues.set(i, role, merged.get());
+
+                if (!conflictPresent)
+                    unresolvedConflicts.pop();
             }
         }
-        return hasConflict;
+
+        return Pair.of(mergedRoledValues, new ArrayList<>(unresolvedConflicts));
     }
 
     /**
@@ -282,7 +264,7 @@ public class ContentMerger {
                 )
                 .collect(Collectors.toSet());
 
-        return Pair.of(conflict,Optional.of(mods));
+        return Pair.of(conflict, Optional.of(mods));
     }
 
     private static _ContentTriple getContentRevisions(Set<Content<SpoonNode, RoledValues>> contents) {

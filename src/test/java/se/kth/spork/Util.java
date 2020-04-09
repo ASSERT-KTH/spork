@@ -7,7 +7,13 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.ArgumentsProvider;
 import se.kth.spork.cli.SporkPrettyPrinter;
 import spoon.Launcher;
+import spoon.compiler.Environment;
+import spoon.reflect.CtModel;
 import spoon.reflect.declaration.CtClass;
+import spoon.reflect.declaration.CtCompilationUnit;
+import spoon.reflect.declaration.CtModule;
+import spoon.support.compiler.FileSystemFile;
+import spoon.support.sniper.SniperJavaPrettyPrinter;
 
 import java.io.File;
 import java.io.IOException;
@@ -36,7 +42,7 @@ public class Util {
      */
     public static class BothModifiedSourceProvider implements ArgumentsProvider {
         @Override
-        public Stream<? extends Arguments> provideArguments(ExtensionContext extensionContext) throws Exception {
+        public Stream<? extends Arguments> provideArguments(ExtensionContext extensionContext) {
             return getArgumentSourcesStream(BOTH_MODIFIED_DIRPATH.toFile());
         }
     }
@@ -46,7 +52,7 @@ public class Util {
      */
     public static class LeftModifiedSourceProvider implements ArgumentsProvider {
         @Override
-        public Stream<? extends Arguments> provideArguments(ExtensionContext extensionContext) throws Exception {
+        public Stream<? extends Arguments> provideArguments(ExtensionContext extensionContext) {
             return getArgumentSourcesStream(LEFT_MODIFIED_DIRPATH.toFile());
         }
     }
@@ -56,7 +62,7 @@ public class Util {
      */
     public static class RightModifiedSourceProvider implements ArgumentsProvider {
         @Override
-        public Stream<? extends Arguments> provideArguments(ExtensionContext extensionContext) throws Exception {
+        public Stream<? extends Arguments> provideArguments(ExtensionContext extensionContext) {
             return getArgumentSourcesStream(LEFT_MODIFIED_DIRPATH.toFile()).map(
                     arg -> {
                         TestSources sources = (TestSources) arg.get()[0];
@@ -75,7 +81,7 @@ public class Util {
      */
     public static class ConflictSourceProvider implements ArgumentsProvider {
         @Override
-        public Stream<? extends Arguments> provideArguments(ExtensionContext extensionContext) throws Exception {
+        public Stream<? extends Arguments> provideArguments(ExtensionContext extensionContext) {
             return getArgumentSourcesStream(CONFLICT_DIRPATH.toFile());
         }
     }
@@ -169,6 +175,7 @@ public class Util {
             return Objects.hash(left, right);
         }
     }
+
 
     public static class TestSources {
         public Path base;
