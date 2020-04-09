@@ -36,7 +36,6 @@ public class Util {
     public static final Path BOTH_MODIFIED_DIRPATH = CLEAN_MERGE_DIRPATH.resolve("both_modified");
     public static final Path LEFT_MODIFIED_DIRPATH = CLEAN_MERGE_DIRPATH.resolve("left_modified");
     public static final Path CONFLICT_DIRPATH = Paths.get("src/test/resources/conflict");
-    public static final Path REALWORLD_DIRPATH = Paths.get("src/test/resources/realworld");
 
     /**
      * Provides test sources for scenarios where both left and right revisions are modified.
@@ -84,16 +83,6 @@ public class Util {
         @Override
         public Stream<? extends Arguments> provideArguments(ExtensionContext extensionContext) throws Exception {
             return getArgumentSourcesStream(CONFLICT_DIRPATH.toFile());
-        }
-    }
-
-    /**
-     * Provides test sources for real-world scenarios.
-     */
-    public static class RealWorldSourceProvider implements ArgumentsProvider {
-        @Override
-        public Stream<? extends Arguments> provideArguments(ExtensionContext extensionContext) throws Exception {
-            return getArgumentSourcesStream(REALWORLD_DIRPATH.toFile());
         }
     }
 
@@ -158,36 +147,6 @@ public class Util {
         Pattern leftConflictMarkerPattern = Pattern.compile(SporkPrettyPrinter.START_CONFLICT);
         Matcher leftMarkerMatcher = leftConflictMarkerPattern.matcher(rightRevStrippend);
         return leftMarkerMatcher.replaceAll("");
-    }
-
-    /**
-     * Return a copy of the string that has no blank/whitespace only lines.
-     */
-    public static String withoutBlankLines(String s) {
-        String[] lines = s.split("\n");
-        List<String> sb = new ArrayList<>();
-        for (String line : lines) {
-            if (!line.matches("^\\s*$")) {
-                sb.add(line);
-            }
-        }
-        return String.join("\n", sb);
-    }
-
-    public static CtModule sniperParse(Path path) {
-        Launcher launcher = new Launcher();
-        Environment env = launcher.getEnvironment();
-        env.setPrettyPrinterCreator(() -> new SniperJavaPrettyPrinter(env));
-        launcher.addInputResource(new FileSystemFile(path.toFile()));
-
-        CtModel model = launcher.buildModel();
-
-        return model.getUnnamedModule();
-    }
-
-    public static String sniperPrint(CtModule mod) {
-        CtCompilationUnit cu = mod.getFactory().CompilationUnit().getOrCreate(mod.getRootPackage());
-        return new SniperJavaPrettyPrinter(mod.getFactory().getEnvironment()).printCompilationUnit(cu);
     }
 
     public static class Conflict {
