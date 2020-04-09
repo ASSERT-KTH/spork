@@ -42,7 +42,7 @@ public class Util {
      */
     public static class BothModifiedSourceProvider implements ArgumentsProvider {
         @Override
-        public Stream<? extends Arguments> provideArguments(ExtensionContext extensionContext) throws Exception {
+        public Stream<? extends Arguments> provideArguments(ExtensionContext extensionContext) {
             return getArgumentSourcesStream(BOTH_MODIFIED_DIRPATH.toFile());
         }
     }
@@ -52,7 +52,7 @@ public class Util {
      */
     public static class LeftModifiedSourceProvider implements ArgumentsProvider {
         @Override
-        public Stream<? extends Arguments> provideArguments(ExtensionContext extensionContext) throws Exception {
+        public Stream<? extends Arguments> provideArguments(ExtensionContext extensionContext) {
             return getArgumentSourcesStream(LEFT_MODIFIED_DIRPATH.toFile());
         }
     }
@@ -62,7 +62,7 @@ public class Util {
      */
     public static class RightModifiedSourceProvider implements ArgumentsProvider {
         @Override
-        public Stream<? extends Arguments> provideArguments(ExtensionContext extensionContext) throws Exception {
+        public Stream<? extends Arguments> provideArguments(ExtensionContext extensionContext) {
             return getArgumentSourcesStream(LEFT_MODIFIED_DIRPATH.toFile()).map(
                     arg -> {
                         TestSources sources = (TestSources) arg.get()[0];
@@ -81,7 +81,7 @@ public class Util {
      */
     public static class ConflictSourceProvider implements ArgumentsProvider {
         @Override
-        public Stream<? extends Arguments> provideArguments(ExtensionContext extensionContext) throws Exception {
+        public Stream<? extends Arguments> provideArguments(ExtensionContext extensionContext) {
             return getArgumentSourcesStream(CONFLICT_DIRPATH.toFile());
         }
     }
