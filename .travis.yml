@@ -1,9 +1,16 @@
-dist: trusty
-language: java
-jdk: openjdk8
+git:
+  depth: false
 
-after_success:
-  - bash <(curl -s https://codecov.io/bash)
+matrix:
+  include:
+    - language: python
+      os: linux
+      python: 3.8
+      script: ".travis/run_benchmark.sh"
+    - language: java
+      os: linux
+      jdk: openjdk8
+      after_success: bash <(curl -s https://codecov.io/bash)
 
 notifications:
   email: false
