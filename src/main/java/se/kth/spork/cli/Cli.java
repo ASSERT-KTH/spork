@@ -11,7 +11,6 @@ import se.kth.spork.spoon.Spoon3dmMerge;
 import se.kth.spork.util.LineBasedMerge;
 import se.kth.spork.util.Pair;
 import spoon.reflect.declaration.*;
-import spoon.reflect.visitor.DefaultJavaPrettyPrinter;
 
 import java.io.File;
 import java.io.IOException;
@@ -60,12 +59,9 @@ public class Cli {
             activePackage = pkgOpt.get();
         }
 
-        @SuppressWarnings("unchecked")
-        Collection<CtImport> imports = (Collection<CtImport>) spoonRoot.getMetadata(Parser.IMPORT_STATEMENTS);
-        List<String> importStrings = imports.stream()
-                .map(imp -> new DefaultJavaPrettyPrinter(spoonRoot.getFactory().getEnvironment())
-                        .scan(imp).toString()).collect(Collectors.toList());
-        List<String> importNames = importStrings.stream()
+        Collection<?> imports = (Collection<?>) spoonRoot.getMetadata(Parser.IMPORT_STATEMENTS);
+        List<String> importNames = imports.stream()
+                .map(Object::toString)
                 .map(impStmt -> impStmt.substring("import ".length(), impStmt.length() - 1))
                 .collect(Collectors.toList());
         new PrinterPreprocessor(importNames, activePackage.getQualifiedName()).scan(spoonRoot);
@@ -76,12 +72,12 @@ public class Cli {
             sb.append("package ").append(activePackage.getQualifiedName()).append(";").append("\n\n");
         }
 
-        importStrings.forEach(sb::append);
+        for (Object imp : imports) {
+            sb.append(imp).append("\n");
+        }
 
         for (CtType<?> type : activePackage.getTypes()) {
-            SporkPrettyPrinter sporkPrinter = new SporkPrettyPrinter(spoonRoot.getFactory().getEnvironment());
-            sporkPrinter.scan(type);
-            sb.append("\n\n").append(sporkPrinter.toString());
+            sb.append("\n\n").append(type);
         }
 
         return sb.toString();
