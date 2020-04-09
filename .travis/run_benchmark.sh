@@ -20,7 +20,7 @@ git checkout benchmark
 cd scripts
 
 python3 -m pip install -r requirements.txt
-bench_returncode=python3 -m benchmark.cli merge-compare -r rxjava -g reactivex --compare expected_results.csv --merge-commands "spork merge" --output results.csv
+bench_returncode=$(python3 -m benchmark.cli merge-compare -r rxjava -g reactivex --compare expected_results.csv --merge-commands "spork merge" --output results.csv)
 
 cat results.csv
 
