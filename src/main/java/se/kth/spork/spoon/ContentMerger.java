@@ -1,8 +1,6 @@
 package se.kth.spork.spoon;
 
 import se.kth.spork.base3dm.Content;
-import se.kth.spork.base3dm.Pcs;
-import se.kth.spork.base3dm.ChangeSet;
 import se.kth.spork.util.LineBasedMerge;
 import se.kth.spork.util.Pair;
 import se.kth.spork.util.Triple;
@@ -22,11 +20,15 @@ import java.util.stream.Stream;
  */
 public class ContentMerger {
 
+    /**
+     * @param nodeContents The contents associated with this node.
+     * @return A pair of merged contents and a potentially empty collection of unresolved conflicts.
+     */
     @SuppressWarnings("unchecked")
-    static Pair<RoledValues, Boolean> mergedContent(SpoonNode node, Set<Content<SpoonNode, RoledValues>> nodeContents) {
-        boolean hasConflict = false;
+    static Pair<RoledValues, List<ContentConflict>>
+    mergedContent(Set<Content<SpoonNode, RoledValues>> nodeContents) {
         if (nodeContents.size() == 1) {
-            return Pair.of(nodeContents.iterator().next().getValue(), hasConflict);
+            return Pair.of(nodeContents.iterator().next().getValue(), Collections.emptyList());
         }
 
         _ContentTriple revisions = getContentRevisions(nodeContents);
@@ -123,23 +125,17 @@ public class ContentMerger {
             }
         }
 
-        if (!unresolvedConflicts.isEmpty()) {
-            // at least one conflict was not resolved
-            node.getElement().putMetadata(ContentConflict.METADATA_KEY, new ArrayList<>(unresolvedConflicts));
-            hasConflict = true;
-        }
-
-        return Pair.of(mergedRoledValues, hasConflict);
+        return Pair.of(mergedRoledValues, new ArrayList<>(unresolvedConflicts));
     }
 
-        /**
-         * Separate modifiers into visibility (public, private, protected), keywords (static, final) and all
-         * others.
-         *
-         * @param modifiers A stream of modifiers.
-         * @return A triple with visibility in first, keywords in second and other in third.
-         */
-        public static Triple<Set<ModifierKind>, Set<ModifierKind>, Set<ModifierKind>>
+    /**
+     * Separate modifiers into visibility (public, private, protected), keywords (static, final) and all
+     * others.
+     *
+     * @param modifiers A stream of modifiers.
+     * @return A triple with visibility in first, keywords in second and other in third.
+     */
+    public static Triple<Set<ModifierKind>, Set<ModifierKind>, Set<ModifierKind>>
     categorizeModifiers(Stream<ModifierKind> modifiers) {
         Set<ModifierKind> visibility = new HashSet<>();
         Set<ModifierKind> keywords = new HashSet<>();
@@ -268,7 +264,7 @@ public class ContentMerger {
                 )
                 .collect(Collectors.toSet());
 
-        return Pair.of(conflict,Optional.of(mods));
+        return Pair.of(conflict, Optional.of(mods));
     }
 
     private static _ContentTriple getContentRevisions(Set<Content<SpoonNode, RoledValues>> contents) {

@@ -279,17 +279,16 @@ public class PcsInterpreter {
             CtElement originalTree = origTreeWrapper.getElement();
             CtElement originalRoot = origRootWrapper.getElement();
 
-            // IMPORTANT: Content merging must happen before copying the tree, as the content merger sets conflict
-            // metadata (upon conflict) on the original tree.
-            Pair<RoledValues, Boolean> mergedContent =
-                    ContentMerger.mergedContent(origTreeWrapper, contents.get(origTreeWrapper));
-            if (mergedContent.second) {
-                hasContentConflict = true;
-            }
+            Pair<RoledValues, List<ContentConflict>> mergedContent =
+                    ContentMerger.mergedContent(contents.get(origTreeWrapper));
 
             CtElement mergeTree = shallowCopyTree(originalTree);
             mergedContent.first.forEach(rv -> mergeTree.setValueByRole(rv.getRole(), rv.getValue()));
-
+            if (!mergedContent.second.isEmpty()) {
+                // at least one conflict was not resolved
+                mergeTree.putMetadata(ContentConflict.METADATA_KEY, mergedContent.second);
+                hasContentConflict = true;
+            }
 
             if (mergeParent != null) {
                 CtRole mergeTreeRole = resolveRole(origTreeWrapper);
@@ -496,5 +495,4 @@ public class PcsInterpreter {
 
         return treeCopy;
     }
-
 }
