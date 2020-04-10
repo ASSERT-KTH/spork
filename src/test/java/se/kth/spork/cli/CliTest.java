@@ -117,6 +117,9 @@ class CliTest {
         CtModule reParsedMerge = Parser.parse(outFile);
         Object reParsedImports = reParsedMerge.getMetadata(Parser.IMPORT_STATEMENTS);
 
+        System.out.println(Cli.prettyPrint(mergeTree));
+        assertEquals(Cli.prettyPrint(mergeTree), expectedPrettyPrint);
+
         assertEquals(mergeTree, reParsedMerge);
 
         assertEquals(reParsedImports, expectedImports);
