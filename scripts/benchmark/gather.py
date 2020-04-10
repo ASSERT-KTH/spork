@@ -15,6 +15,8 @@ class EvalAttrName(enum.Enum):
     gumtree_diff_size = "gumtree_diff_size"
     git_diff_size = "git_diff_size"
     norm_diff_size = "norm_diff_size"
+    num_conflicts = "num_conflicts"
+    conflict_size = "conflict_size"
     runtime = "runtime"
 
 
@@ -24,6 +26,8 @@ NUMERICAL_EVAL_ATTR_NAMES = tuple(
         EvalAttrName.gumtree_diff_size,
         EvalAttrName.git_diff_size,
         EvalAttrName.norm_diff_size,
+        EvalAttrName.num_conflicts,
+        EvalAttrName.conflict_size,
         EvalAttrName.runtime,
     )
 )
@@ -48,16 +52,24 @@ def evaluation_result(merge_result: run.MergeResult, base_merge_dir: pathlib.Pat
     gumtree_diff_size = -1
     git_diff_size = -1
     norm_diff_size = -1
+    conflict_size = -1
+    num_conflicts = -1
 
-    if merge_result.outcome == run.MergeOutcome.SUCCESS:
-        expected_file = merge_result.merge_dir / "Expected.java"
-        gumtree_diff_size = len(
-            evaluate.gumtree_edit_script(expected_file, merge_result.merge_file)
-        )
-        git_diff_size = len(
-            evaluate.git_diff_edit_script(expected_file, merge_result.merge_file)
-        )
-        norm_diff_size = evaluate.normalized_comparison(expected_file, merge_result.merge_file)
+    if merge_result.outcome != run.MergeOutcome.FAIL:
+        conflicts = evaluate.extract_conflicts(merge_result.merge_file)
+        conflict_size = sum(c.num_lines for c in conflicts)
+        num_conflicts = len(conflicts)
+
+        if not num_conflicts:
+            expected_file = merge_result.merge_dir / "Expected.java"
+            gumtree_diff_size = len(
+                evaluate.gumtree_edit_script(expected_file, merge_result.merge_file)
+            )
+            git_diff_size = len(
+                evaluate.git_diff_edit_script(expected_file, merge_result.merge_file)
+            )
+            norm_diff_size = evaluate.normalized_comparison(expected_file, merge_result.merge_file)
+
 
     return MergeEvaluation(
         merge_dir=merge_result.merge_dir.relative_to(base_merge_dir),
@@ -66,6 +78,8 @@ def evaluation_result(merge_result: run.MergeResult, base_merge_dir: pathlib.Pat
         gumtree_diff_size=gumtree_diff_size,
         git_diff_size=git_diff_size,
         norm_diff_size=int(norm_diff_size),
+        conflict_size=conflict_size,
+        num_conflicts=num_conflicts,
         runtime=merge_result.runtime,
     )
 
