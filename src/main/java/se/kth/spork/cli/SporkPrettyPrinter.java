@@ -1,7 +1,7 @@
 package se.kth.spork.cli;
 
 import se.kth.spork.base3dm.Revision;
-import se.kth.spork.spoon.PcsInterpreter;
+import se.kth.spork.spoon.SpoonTreeBuilder;
 import se.kth.spork.spoon.StructuralConflict;
 import se.kth.spork.util.Pair;
 import spoon.compiler.Environment;
@@ -62,11 +62,10 @@ public final class SporkPrettyPrinter extends DefaultJavaPrettyPrinter {
     public SporkPrettyPrinter scan(CtElement e) {
         if (e == null) {
             return this;
-        } else if (e.getMetadata(PcsInterpreter.SINGLE_REVISION_KEY) != null &&
+        } else if (e.getMetadata(SpoonTreeBuilder.SINGLE_REVISION_KEY) != null &&
                 (e instanceof CtMethod || e instanceof CtField)) {
-            CtElement originalElement = (CtElement) e.getMetadata(PcsInterpreter.ORIGINAL_NODE_KEY);
-            String originalSource = SourceExtractor.getOriginalSource(originalElement);
-            printerHelper.writeRawSourceCode(originalSource, SourceExtractor.getIndentation(originalElement));
+            String originalSource = SourceExtractor.getOriginalSource(e);
+            printerHelper.writeRawSourceCode(originalSource, SourceExtractor.getIndentation(e));
             return this;
         }
 
@@ -240,5 +239,4 @@ public final class SporkPrettyPrinter extends DefaultJavaPrettyPrinter {
             }
         }
     }
-
 }
