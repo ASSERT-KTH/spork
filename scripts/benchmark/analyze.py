@@ -59,7 +59,6 @@ class Evaluations:
         """Compute the mean of the provided attribute."""
         return sum(self.extract(attr_name)) / len(self.evaluations)
 
-    @functools.lru_cache
     def extract(self, attr_name: str) -> Iterable:
         """Extract all attributes of the provided name."""
         self._check_valid_attr(attr_name)
