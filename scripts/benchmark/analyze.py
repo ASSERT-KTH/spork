@@ -5,11 +5,12 @@ import functools
 from typing import List, Iterable, Tuple, Any
 
 import daiquiri
-from . import gather
+
+from . import evaluate
 from . import reporter
 from . import run
 
-from .gather import EvalAttrName
+from .evaluate import EvalAttrName
 
 LOGGER = daiquiri.getLogger(__name__)
 
@@ -20,9 +21,9 @@ class Evaluations:
     sorted by merge directory.
     """
 
-    evaluations: Tuple[gather.MergeEvaluation]
+    evaluations: Tuple[evaluate.MergeEvaluation]
 
-    def __init__(self, evaluations: Iterable[gather.MergeEvaluation]):
+    def __init__(self, evaluations: Iterable[evaluate.MergeEvaluation]):
         sorted_evals = tuple(sorted(evaluations, key=lambda e: e.merge_dir))
         object.__setattr__(self, "evaluations", sorted_evals)
 
@@ -30,7 +31,7 @@ class Evaluations:
     def _check_valid_attr(attr_name: str) -> None:
         if not attr_name in [e.value for e in EvalAttrName]:
             raise ValueError(
-                f"no attribute {attr_name} in {gather.MergeEvaluation._fields}"
+                f"no attribute {attr_name} in {evaluate.MergeEvaluation._fields}"
             )
 
     @staticmethod
@@ -45,7 +46,7 @@ class Evaluations:
                     f"mismatching merge directories: '{self_eval.merge_dir}' and '{ref_eval.merge_dir}'"
                 )
 
-            for attr_name in gather.NUMERICAL_EVAL_ATTR_NAMES + (EvalAttrName.outcome.value,):
+            for attr_name in evaluate.NUMERICAL_EVAL_ATTR_NAMES + (EvalAttrName.outcome.value,):
                 self_val = getattr(self_eval, attr_name)
                 ref_val = getattr(ref_eval, attr_name)
                 self_as_good = _compare(attr_name, self_val, ref_val)
@@ -84,7 +85,7 @@ class Evaluations:
         if self_fails > ref_fails:
             LOGGER.warning(f"More fails: was={ref_fails}, now={self_fails}")
 
-        for attr_name in gather.NUMERICAL_EVAL_ATTR_NAMES:
+        for attr_name in evaluate.NUMERICAL_EVAL_ATTR_NAMES:
             self_val = self.mean(attr_name)
             ref_val = ref.mean(attr_name)
 

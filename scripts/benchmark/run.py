@@ -1,15 +1,13 @@
 import subprocess
 import sys
 import time
-import enum
 import pathlib
 import dataclasses
-from typing import List, Generator, Tuple
+from typing import List, Generator
 
 import git
 import daiquiri
 
-from . import fileutils
 from . import gitutils
 
 LOGGER = daiquiri.getLogger(__name__)
@@ -48,11 +46,11 @@ def run_file_merges(
     sanitized_merge_cmd = pathlib.Path(merge_cmd).name.replace(" ", "_")
     for merge_dir in file_merge_dirs:
         merge_file = merge_dir / f"{sanitized_merge_cmd}.java"
-        outcome, runtime = run_merge(merge_dir, merge_cmd, merge_file=merge_file)
+        outcome, runtime = run_file_merge(merge_dir, merge_cmd, merge_file=merge_file)
         yield MergeResult(merge_dir, merge_file, sanitized_merge_cmd, outcome, runtime)
 
 
-def run_merge(scenario_dir, merge_cmd, merge_file=None):
+def run_file_merge(scenario_dir, merge_cmd, merge_file=None):
     base = scenario_dir / "Base.java"
     left = scenario_dir / "Left.java"
     right = scenario_dir / "Right.java"
@@ -100,7 +98,7 @@ def merge_files_separately(merge_dirs, merge_cmd):
         )
         assert merge_dir.is_dir()
 
-        if run_merge(merge_dir, merge_cmd):
+        if run_file_merge(merge_dir, merge_cmd):
             num_merged += 1
         else:
             num_failed += 1

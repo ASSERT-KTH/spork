@@ -5,12 +5,12 @@ import pathlib
 
 from typing import List, Iterable
 
-from . import gather
+from . import evaluate
 
 
-def write_results(results: Iterable[gather.MergeEvaluation], dst: str) -> None:
+def write_results(results: Iterable[evaluate.MergeEvaluation], dst: str) -> None:
     content = [
-        list(gather.MergeEvaluation._fields),
+        list(evaluate.MergeEvaluation._fields),
         *[[str(v) for v in res] for res in results],
     ]
     formatted_content = _format_for_csv(content)
@@ -20,11 +20,11 @@ def write_results(results: Iterable[gather.MergeEvaluation], dst: str) -> None:
         writer.writerows(formatted_content)
 
 
-def read_results(results_path: pathlib.Path) -> List[gather.MergeEvaluation]:
+def read_results(results_path: pathlib.Path) -> List[evaluate.MergeEvaluation]:
     with open(str(results_path), mode="r") as file:
         reader = csv.reader(file, dialect=_IgnoreWhitespaceDialect())
         hdrs = list(next(reader))
-        expected_hdrs = list(gather.MergeEvaluation._fields)
+        expected_hdrs = list(evaluate.MergeEvaluation._fields)
 
         if hdrs != expected_hdrs:
             raise ValueError(
@@ -33,12 +33,12 @@ def read_results(results_path: pathlib.Path) -> List[gather.MergeEvaluation]:
             )
 
         return [
-            gather.MergeEvaluation(*[_parse_value(v) for v in line]) for line in reader
+            evaluate.MergeEvaluation(*[_parse_value(v) for v in line]) for line in reader
         ]
 
 
 def _parse_value(v: str):
-    if "/" in v: # this is a path
+    if "/" in v:  # this is a path
         return pathlib.Path(v)
 
     for conv_func in [int, float]:

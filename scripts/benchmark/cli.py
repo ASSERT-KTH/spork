@@ -9,10 +9,10 @@ from typing import List, Optional, Iterable
 import daiquiri
 import logging
 
+from . import evaluate
 from . import run
 from . import gitutils
 from . import fileutils
-from . import gather
 from . import reporter
 from . import analyze
 
@@ -143,7 +143,7 @@ def _run_merges(
     args: argparse.Namespace,
     eval_func,
     expected_merge_commit_shas: Optional[List[str]],
-) -> Iterable[gather.MergeEvaluation]:
+) -> Iterable[evaluate.MergeEvaluation]:
     assert not args.mpi or MPI.COMM_WORLD.Get_rank() == mpi.MASTER_RANK
 
     if args.github_user is not None:
@@ -191,7 +191,7 @@ def _merge_and_compare(args: argparse.Namespace, eval_func):
     old_evaluations = analyze.Evaluations.from_path(args.compare)
     commit_shas = [
         list(pathlib.Path(path).parents)[-2].name
-        for path in old_evaluations.extract(gather.EvalAttrName.merge_dir.value)
+        for path in old_evaluations.extract(evaluate.EvalAttrName.merge_dir.value)
     ]
     new_evaluations = analyze.Evaluations(
         _run_merges(args, eval_func, expected_merge_commit_shas=commit_shas)
@@ -236,7 +236,7 @@ def main():
     args = parser.parse_args(sys.argv[1:])
 
     eval_func = functools.partial(
-        gather.run_and_evaluate,
+        evaluate.run_and_evaluate,
         merge_commands=args.merge_commands,
         base_merge_dir=args.base_merge_dir,
     )

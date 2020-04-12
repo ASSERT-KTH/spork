@@ -1,19 +1,9 @@
 """Module for running benchmarks in parallel with MPI"""
-import argparse
-import sys
 import pathlib
-import csv
 
 from typing import List
 
 from mpi4py import MPI
-
-from . import gitutils
-from . import fileutils
-from . import run
-from . import evaluate
-from . import gather
-from . import reporter
 
 comm = MPI.COMM_WORLD
 num_procs = comm.Get_size()
