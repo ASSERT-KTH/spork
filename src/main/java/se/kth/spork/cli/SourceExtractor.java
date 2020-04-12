@@ -1,11 +1,11 @@
 package se.kth.spork.cli;
 
+import spoon.reflect.cu.CompilationUnit;
 import spoon.reflect.cu.SourcePosition;
 import spoon.reflect.declaration.CtElement;
 
 import java.io.IOException;
 import java.nio.charset.Charset;
-import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -43,6 +43,24 @@ public class SourceExtractor {
     }
 
     /**
+     * Get the original source code fragment starting at start and ending at end, including indentation if start is
+     * the first element on its source code line.
+     *
+     * @param start The source position of the first element.
+     * @param end   The source position of the last element.
+     * @return The source code fragment starting at start and ending at end, including leading indentation.
+     * @throws IOException
+     */
+    private static String getOriginalSource(SourcePosition start, SourcePosition end) {
+        CompilationUnit cu = start.getCompilationUnit();
+        String source = cu.getOriginalSourceCode();
+        int startChar = precededByIndentation(source, start) ?
+                getLineStartIdx(start) : start.getSourceStart();
+        int endChar = end.getSourceEnd();
+        return source.substring(startChar, endChar + 1);
+    }
+
+    /**
      * Return the indentation count for this element. This is a bit hit-and-miss, but it usually works. It finds
      * the line that the element starts on, and counts the amount of indentation characters until the first character
      * on the line.
@@ -53,7 +71,7 @@ public class SourceExtractor {
      */
     static int getIndentation(CtElement elem) {
         SourcePosition pos = getSourcePos(elem);
-        byte[] fileBytes = pos.getCompilationUnit().getOriginalSourceCode().getBytes(Charset.defaultCharset());
+        String source = pos.getCompilationUnit().getOriginalSourceCode();
         int count = 0;
 
         int[] lineSepPositions = pos.getCompilationUnit().getLineSeparatorPositions();
@@ -63,8 +81,8 @@ public class SourceExtractor {
 
 
         while (current + count < pos.getSourceStart()) {
-            byte b = fileBytes[current + count];
-            if (!isIndentation(b)) {
+            char c = source.charAt(current + count);
+            if (!isIndentation(c)) {
                 break;
             }
             ++count;
@@ -86,47 +104,18 @@ public class SourceExtractor {
         return pos;
     }
 
-    private static String getOriginalSource(SourcePosition start, SourcePosition end) {
-        byte[] source = start.getCompilationUnit().getOriginalSourceCode().getBytes(Charset.defaultCharset());
-        return getOriginalSource(start, end, source);
-    }
+    private static boolean precededByIndentation(String source, SourcePosition pos) {
+        int lineStartIdx = getLineStartIdx(pos);
 
-    /**
-     * Get the original source code fragment starting at start and ending at end, including indentation if start is
-     * the first element on its source code line.
-     *
-     * @param start The source position of the first element.
-     * @param end   The source position of the last element.
-     * @return The source code fragment starting at start and ending at end, including leading indentation.
-     * @throws IOException
-     */
-    private static String getOriginalSource(SourcePosition start, SourcePosition end, byte[] source) {
-        int startByte = precededByIndentation(source, start) ?
-                getLineStartByte(start) : start.getSourceStart();
-        int endByte = end.getSourceEnd();
-
-        if (isIndentation(source[startByte])) {
-            startByte++;
-            endByte++;
-        }
-
-        byte[] content = Arrays.copyOfRange(source, startByte, endByte + 1);
-
-        return new String(content, Charset.defaultCharset());
-    }
-
-    private static boolean precededByIndentation(byte[] source, SourcePosition pos) {
-        int lineStartByte = getLineStartByte(pos);
-
-        for (int i = lineStartByte; i < pos.getSourceStart(); i++) {
-            if (!isIndentation(source[i])) {
+        for (int i = lineStartIdx; i < pos.getSourceStart(); i++) {
+            if (!isIndentation(source.charAt(i))) {
                 return false;
             }
         }
         return true;
     }
 
-    private static int getLineStartByte(SourcePosition pos) {
+    private static int getLineStartIdx(SourcePosition pos) {
         if (pos.getLine() == 1)
             return 0;
 
@@ -140,7 +129,7 @@ public class SourceExtractor {
         return lineSepPositions[current];
     }
 
-    private static boolean isIndentation(byte b) {
-        return b == ' ' || b == '\t';
+    private static boolean isIndentation(char c) {
+        return c == ' ' || c == '\t';
     }
 }
