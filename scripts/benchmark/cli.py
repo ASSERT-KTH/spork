@@ -75,25 +75,6 @@ def create_cli_parser():
         type=str,
     )
     base_parser.add_argument(
-        "--merge-commands",
-        help="Merge commands to run.",
-        type=str,
-        required=True,
-        nargs="+",
-    )
-    base_parser.add_argument(
-        "--base-merge-dir",
-        help="Base directory to perform the merges in.",
-        type=pathlib.Path,
-        default=pathlib.Path("merge_directory"),
-    )
-
-    base_parser.add_argument(
-        "--mpi",
-        help="Run merge in parallell using MPI" if MPI_ENABLED else argparse.SUPPRESS,
-        action="store_true",
-    )
-    base_parser.add_argument(
         "-n",
         "--num-merges",
         help="Maximum amount of file merges to recreate.",
@@ -108,13 +89,33 @@ def create_cli_parser():
         default=None,
     )
 
+    base_merge_parser = argparse.ArgumentParser(add_help=False, parents=[base_parser])
+    base_merge_parser.add_argument(
+        "--base-merge-dir",
+        help="Base directory to perform the merges in.",
+        type=pathlib.Path,
+        default=pathlib.Path("merge_directory"),
+    )
+    base_merge_parser.add_argument(
+        "--mpi",
+        help="Run merge in parallell using MPI" if MPI_ENABLED else argparse.SUPPRESS,
+        action="store_true",
+    )
+    base_merge_parser.add_argument(
+        "--merge-commands",
+        help="Merge commands to run.",
+        type=str,
+        required=True,
+        nargs="+",
+    )
+
     subparsers = parser.add_subparsers(dest="command")
     subparsers.required = True
 
     merge_command = subparsers.add_parser(
         "merge",
         help="Test a merge tool by merging one file at a time.",
-        parents=[base_parser],
+        parents=[base_merge_parser],
     )
     merge_command.add_argument(
         "--merge-commits",
@@ -127,13 +128,22 @@ def create_cli_parser():
         "merge-compare",
         help="Merge like with the merge command, and compare the results to "
         "some previous results.",
-        parents=[base_parser],
+        parents=[base_merge_parser],
     )
     merge_and_compare_command.add_argument(
         "--compare",
         help="Old results to compare against.",
         required=True,
         type=pathlib.Path,
+    )
+
+    merge_extractor_command = subparsers.add_parser(
+        "extract-merge-commits",
+        help="Extract merge commits from a repo.",
+        parents=[base_parser],
+    )
+    merge_extractor_command.add_argument(
+        "--non-trivial", help="Extract only non-trivial merges", action="store_true"
     )
 
     return parser
@@ -210,6 +220,29 @@ def _merge_and_compare(args: argparse.Namespace, eval_func):
         sys.exit(1)
 
 
+def _extract_merge_commits(args: argparse.Namespace):
+    if args.github_user is not None:
+        repo = gitutils.clone_repo(args.repo, args.github_user)
+    else:
+        repo = git.Repo(args.repo)
+
+    merge_scenarios = gitutils.extract_merge_scenarios(repo)
+    LOGGER.info(f"Extracted {len(merge_scenarios)} merge scenarios")
+
+    if args.non_trivial:
+        LOGGER.info("Filtering out trivial merge scenarios")
+        merge_scenarios = [
+            scenario
+            for scenario in merge_scenarios
+            if gitutils.extract_conflicting_files(repo, scenario)
+        ]
+        LOGGER.info(f"Found {len(merge_scenarios)} non-trivial merge scenarios")
+
+    outpath = args.output or pathlib.Path("merge_scenarios.txt")
+    outpath.write_text("\n".join([merge.result.hexsha for merge in merge_scenarios]))
+
+
+
 def _evaluate(args: argparse.Namespace):
     parser = create_cli_parser()
     args = parser.parse_args(sys.argv[1:])
@@ -235,6 +268,10 @@ def main():
     parser = create_cli_parser()
     args = parser.parse_args(sys.argv[1:])
 
+    if args.command == "extract-merge-commits":
+        _extract_merge_commits(args)
+        return
+
     eval_func = functools.partial(
         evaluate.run_and_evaluate,
         merge_commands=args.merge_commands,
@@ -244,6 +281,7 @@ def main():
     if args.mpi and MPI.COMM_WORLD.Get_rank() != mpi.MASTER_RANK:
         mpi.worker(eval_func, len(args.merge_commands))
         return
+
 
     if args.command == "merge":
         _merge(args, eval_func)
