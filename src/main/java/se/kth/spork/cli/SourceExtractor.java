@@ -116,6 +116,8 @@ public class SourceExtractor {
      * guess can be made, falls back on the defaults of {@link SourceExtractor#DEFAULT_INDENTATION_SIZE} and
      * {@link SourceExtractor#DEFAULT_IS_TABS}.
      *
+     * The indentation size will only ever be guessed as 1, 2 or 4.
+     *
      * @param model A Spoon model.
      * @return A pair (indentationSize, isTabs).
      */
@@ -138,7 +140,17 @@ public class SourceExtractor {
         boolean isTabs = numStartsWithTab > (double) memberIndentations.size() / 2;
         double indentationMean = memberIndentations.stream()
                 .mapToDouble(Pair::getFirst).sum() / memberIndentations.size();
-        int indentationSize = (int) Math.round(indentationMean);
+
+        double diff1 = Math.abs(1 - indentationMean);
+        double diff2 = Math.abs(2 - indentationMean);
+        double diff4 = Math.abs(4 - indentationMean);
+
+        int indentationSize;
+        if (diff1 > diff2) {
+            indentationSize = diff2 > diff4 ? 4 : 2;
+        } else {
+            indentationSize = 1;
+        }
 
         return Pair.of(indentationSize, isTabs);
     }
