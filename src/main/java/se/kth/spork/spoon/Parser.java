@@ -1,7 +1,12 @@
 package se.kth.spork.spoon;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import se.kth.spork.cli.SourceExtractor;
 import se.kth.spork.cli.SporkPrettyPrinter;
+import se.kth.spork.util.Pair;
 import spoon.Launcher;
+import spoon.compiler.Environment;
 import spoon.reflect.CtModel;
 import spoon.reflect.declaration.*;
 import spoon.support.compiler.FileSystemFile;
@@ -20,6 +25,8 @@ import java.util.function.Consumer;
  */
 public class Parser {
     public static final String IMPORT_STATEMENTS = "spork_import_statements";
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(Parser.class);
 
     /**
      * Parse a Java file to a Spoon tree. Any import statements in the file are attached to the returned module's
@@ -64,10 +71,17 @@ public class Parser {
 
     private static CtModule parse(Consumer<Launcher> addResource) {
         Launcher launcher = new Launcher();
-        launcher.getEnvironment().setPrettyPrinterCreator(
-                () -> new SporkPrettyPrinter(launcher.getEnvironment()));
+        Environment env = launcher.getEnvironment();
+        env.setPrettyPrinterCreator(
+                () -> new SporkPrettyPrinter(env));
         addResource.accept(launcher);
         CtModel model = launcher.buildModel();
+
+        Pair<Integer, Boolean> indentationGuess = SourceExtractor.guessIndentation(model);
+        String indentationType = indentationGuess.second ? "tabs" : "spaces";
+        LOGGER.info("Using indentation: " + indentationGuess.first + " " + indentationType);
+        env.setTabulationSize(indentationGuess.first);
+        env.useTabulations(indentationGuess.second);
 
         CtModule module = model.getUnnamedModule();
 

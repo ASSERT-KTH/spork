@@ -1,11 +1,15 @@
 package se.kth.spork.cli;
 
+import se.kth.spork.util.Pair;
+import spoon.reflect.CtModel;
 import spoon.reflect.cu.CompilationUnit;
 import spoon.reflect.cu.SourcePosition;
 import spoon.reflect.declaration.CtElement;
+import spoon.reflect.declaration.CtTypeMember;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * A class for extracting source code and related information from Spoon nodes.
@@ -13,6 +17,8 @@ import java.util.List;
  * @author Simon Larsén
  */
 public class SourceExtractor {
+    public static final int DEFAULT_INDENTATION_SIZE = 4;
+    public static final boolean DEFAULT_IS_TABS = false;
 
     /**
      * Get the original source fragment corresponding to the nodes provided, or an empty string if the list is
@@ -70,19 +76,71 @@ public class SourceExtractor {
      */
     public static int getIndentation(CtElement elem) {
         SourcePosition pos = getSourcePos(elem);
+        int current = getLineStartIdx(pos);
+        return getIndentation(pos, current);
+    }
+
+    /**
+     * Internal method for getting the indentation of a source position, assuming that lineStartIdx is a correct index
+     * for the line the element starts on..
+     */
+    private static int getIndentation(SourcePosition pos, int lineStartIdx) {
         String source = pos.getCompilationUnit().getOriginalSourceCode();
         int count = 0;
-
-        int current = getLineStartIdx(pos);
-
-        while (current + count < pos.getSourceStart()) {
-            char c = source.charAt(current + count);
+        while (lineStartIdx + count < pos.getSourceStart()) {
+            char c = source.charAt(lineStartIdx + count);
             if (!isIndentation(c)) {
                 break;
             }
             ++count;
         }
         return count;
+    }
+
+    /**
+     * Get the indentation size, and the type of the indentation (tabs or spaces), for the provided element.
+     *
+     * @param elem An element.
+     * @return A pair on the form (indentationSize, isTabs).
+     */
+    public static Pair<Integer, Boolean> getIndentationInfo(CtElement elem) {
+        SourcePosition pos = elem.getPosition();
+        int lineStartIdx = getLineStartIdx(pos);
+        int indentationSize = getIndentation(pos, lineStartIdx);
+        boolean isTabs = pos.getCompilationUnit().getOriginalSourceCode().charAt(lineStartIdx) == '\t';
+        return Pair.of(indentationSize, isTabs);
+    }
+
+    /**
+     * Guess the indentation size and if indentation is using tabs or spaces in the provided module. If no educated
+     * guess can be made, falls back on the defaults of {@link SourceExtractor#DEFAULT_INDENTATION_SIZE} and
+     * {@link SourceExtractor#DEFAULT_IS_TABS}.
+     *
+     * @param model A Spoon model.
+     * @return A pair (indentationSize, isTabs).
+     */
+    public static Pair<Integer, Boolean> guessIndentation(CtModel model) {
+        List<CtTypeMember> topLevelMembers = model.getAllTypes().stream()
+                .filter(e -> e.getPosition().getFile() != null)
+                .filter(e -> getIndentation(e) == 0)
+                .flatMap(e -> e.getTypeMembers().stream())
+                .filter(member -> !member.isImplicit())
+                .limit(20)
+                .collect(Collectors.toList());
+        if (topLevelMembers.isEmpty()) {
+            return Pair.of(DEFAULT_INDENTATION_SIZE, DEFAULT_IS_TABS);
+        }
+
+        List<Pair<Integer, Boolean>> memberIndentations = topLevelMembers.stream()
+                .map(SourceExtractor::getIndentationInfo).collect(Collectors.toList());
+        long numStartsWithTab = memberIndentations.stream().filter(Pair::getSecond).count();
+        // guestimate if tabs are used as indentations if more than half of the members are tab indented
+        boolean isTabs = numStartsWithTab > (double) memberIndentations.size() / 2;
+        double indentationMean = memberIndentations.stream()
+                .mapToDouble(Pair::getFirst).sum() / memberIndentations.size();
+        int indentationSize = (int) Math.round(indentationMean);
+
+        return Pair.of(indentationSize, isTabs);
     }
 
     /**

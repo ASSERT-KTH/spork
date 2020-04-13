@@ -7,7 +7,7 @@ import java.util.Objects;
  *
  * @author Simon Larsén
  */
-public class Pair<T,E> {
+public class Pair<T, E> {
     public final T first;
     public final E second;
 
@@ -16,7 +16,7 @@ public class Pair<T,E> {
         this.second = second;
     }
 
-    public static <T,E> Pair<T,E> of(T first, E second) {
+    public static <T, E> Pair<T, E> of(T first, E second) {
         return new Pair<>(first, second);
     }
 
@@ -32,5 +32,21 @@ public class Pair<T,E> {
     @Override
     public int hashCode() {
         return Objects.hash(first, second);
+    }
+
+    @Override
+    public String toString() {
+        return "Pair{" +
+                "first=" + first +
+                ", second=" + second +
+                '}';
+    }
+
+    public T getFirst() {
+        return first;
+    }
+
+    public E getSecond() {
+        return second;
     }
 }
