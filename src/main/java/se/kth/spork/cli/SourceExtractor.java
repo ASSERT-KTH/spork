@@ -5,7 +5,6 @@ import spoon.reflect.cu.SourcePosition;
 import spoon.reflect.declaration.CtElement;
 
 import java.io.IOException;
-import java.nio.charset.Charset;
 import java.util.List;
 
 /**
@@ -69,16 +68,12 @@ public class SourceExtractor {
      * @return The amount of indentation characters preceding the first non-indentation character on the line this
      *      element is defined on.
      */
-    static int getIndentation(CtElement elem) {
+    public static int getIndentation(CtElement elem) {
         SourcePosition pos = getSourcePos(elem);
         String source = pos.getCompilationUnit().getOriginalSourceCode();
         int count = 0;
 
-        int[] lineSepPositions = pos.getCompilationUnit().getLineSeparatorPositions();
-        int current = 0;
-        while (current < lineSepPositions.length && lineSepPositions[current] > pos.getSourceStart())
-            current++;
-
+        int current = getLineStartIdx(pos);
 
         while (current + count < pos.getSourceStart()) {
             char c = source.charAt(current + count);
@@ -119,14 +114,12 @@ public class SourceExtractor {
         if (pos.getLine() == 1)
             return 0;
 
-        int sourceStart = pos.getSourceStart() - 1;
+        int cur = pos.getSourceStart();
+        String source = pos.getCompilationUnit().getOriginalSourceCode();
+        while (source.charAt(cur) != '\n')
+            cur--;
 
-        int[] lineSepPositions = pos.getCompilationUnit().getLineSeparatorPositions();
-        int current = 0;
-        while (lineSepPositions[current] > sourceStart)
-            current++;
-
-        return lineSepPositions[current];
+        return cur + 1;
     }
 
     private static boolean isIndentation(char c) {
