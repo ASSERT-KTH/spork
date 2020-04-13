@@ -184,19 +184,14 @@ public final class SporkPrettyPrinter extends DefaultJavaPrettyPrinter {
          */
         public SporkPrinterHelper writeRawSourceCode(String s, int indentationCount) {
             String[] lines = s.split("\n");
-            if (lines.length == 1) {
-                super.write(s);
-                return this;
-            }
-
-            write(lines[0]);
 
             int initialTabCount = getTabCount();
             setTabCount(indentationCount / env.getTabulationSize());
 
-
-            for (int i = 1; i < lines.length; i++) {
-                writeln();
+            for (int i = 0; i < lines.length; i++) {
+                if (i != 0) {
+                    writeln();
+                }
                 String line = lines[i];
                 write(trimIndentation(line, indentationCount));
             }
