@@ -180,8 +180,8 @@ def evaluation_result(merge_result: run.MergeResult, base_merge_dir: pathlib.Pat
     gumtree_diff_size = -1
     git_diff_size = -1
     norm_diff_size = -1
-    conflict_size = -1
-    num_conflicts = -1
+    conflict_size = 0
+    num_conflicts = 0
 
     if merge_result.outcome != run.MergeOutcome.FAIL:
         conflicts = extract_conflicts(merge_result.merge_file)
@@ -201,7 +201,7 @@ def evaluation_result(merge_result: run.MergeResult, base_merge_dir: pathlib.Pat
     return MergeEvaluation(
         merge_dir=merge_result.merge_dir.relative_to(base_merge_dir),
         merge_cmd=merge_result.merge_cmd,
-        outcome=merge_result.outcome,
+        outcome=merge_result.outcome if not num_conflicts else run.MergeOutcome.CONFLICT,
         gumtree_diff_size=gumtree_diff_size,
         git_diff_size=git_diff_size,
         norm_diff_size=int(norm_diff_size),
