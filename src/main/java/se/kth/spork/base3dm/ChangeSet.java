@@ -2,6 +2,7 @@ package se.kth.spork.base3dm;
 
 import java.util.*;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
@@ -60,34 +61,34 @@ public class ChangeSet<T extends ListNode,V> {
 
     /**
      * @param pcs A PCS triple.
-     * @return Another PCS that matches the argument PCS on everything but root.
+     * @return All PCSes that are root conflicting with the provided PCS.
      */
-    public Optional<Pcs<T>> getOtherRoot(Pcs<T> pcs) {
+    public List<Pcs<T>> getOtherRoots(Pcs<T> pcs) {
         return Stream.of(pcs.getPredecessor(), pcs.getSuccessor()).flatMap(
                 node -> Stream.of(predecessors.get(node), successors.get(node))
                         .filter(Objects::nonNull)
                         .flatMap(Set::stream)
-        ).filter(p -> !p.getRoot().equals(pcs.getRoot())).findFirst();
+        ).filter(p -> !p.getRoot().equals(pcs.getRoot())).collect(Collectors.toList());
     }
 
     /**
      * @param pcs A PCS triple.
-     * @return Another PCS that matches the argument PCS on everything but successor.
+     * @return All PCSes that are successor conflicting with the provided PCS.
      */
-    public Optional<Pcs<T>> getOtherSuccessor(Pcs<T> pcs) {
+    public List<Pcs<T>> getOtherSuccessors(Pcs<T> pcs) {
         return predecessors.getOrDefault(pcs.getPredecessor(), EMPTY_PCS_SET).stream()
                 .filter(p -> !p.getSuccessor().equals(pcs.getSuccessor()))
-                .findFirst();
+                .collect(Collectors.toList());
     }
 
     /**
      * @param pcs A PCS triple.
-     * @return Another PCS that matches the argument PCS on everything but predecessor.
+     * @return All PCSes that are predecessor conflicting with the provided PCS.
      */
-    public Optional<Pcs<T>> getOtherPredecessor(Pcs<T> pcs) {
+    public List<Pcs<T>> getOtherPredecessors(Pcs<T> pcs) {
         return successors.getOrDefault(pcs.getSuccessor(), EMPTY_PCS_SET).stream()
                 .filter(p -> !p.getPredecessor().equals(pcs.getPredecessor()))
-                .findFirst();
+                .collect(Collectors.toList());
     }
 
     /**
