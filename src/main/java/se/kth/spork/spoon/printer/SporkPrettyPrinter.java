@@ -1,7 +1,7 @@
-package se.kth.spork.cli;
+package se.kth.spork.spoon.printer;
 
 import se.kth.spork.base3dm.Revision;
-import se.kth.spork.spoon.SpoonTreeBuilder;
+import se.kth.spork.spoon.pcsinterpreter.SpoonTreeBuilder;
 import se.kth.spork.spoon.StructuralConflict;
 import se.kth.spork.util.Pair;
 import spoon.compiler.Environment;

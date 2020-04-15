@@ -2,8 +2,8 @@ package se.kth.spork.spoon;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import se.kth.spork.cli.SourceExtractor;
-import se.kth.spork.cli.SporkPrettyPrinter;
+import se.kth.spork.spoon.printer.SourceExtractor;
+import se.kth.spork.spoon.printer.SporkPrettyPrinter;
 import se.kth.spork.util.Pair;
 import spoon.Launcher;
 import spoon.compiler.Environment;

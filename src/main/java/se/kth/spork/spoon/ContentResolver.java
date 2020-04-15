@@ -1,5 +1,8 @@
 package se.kth.spork.spoon;
 
+import se.kth.spork.spoon.wrappers.RoledValue;
+import se.kth.spork.spoon.wrappers.RoledValues;
+import se.kth.spork.spoon.wrappers.SpoonNode;
 import spoon.reflect.code.*;
 import spoon.reflect.declaration.*;
 import spoon.reflect.path.CtRole;

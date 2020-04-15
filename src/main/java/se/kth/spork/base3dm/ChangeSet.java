@@ -67,8 +67,9 @@ public class ChangeSet<T extends ListNode,V> {
         return Stream.of(pcs.getPredecessor(), pcs.getSuccessor()).flatMap(
                 node -> Stream.of(predecessors.get(node), successors.get(node))
                         .filter(Objects::nonNull)
-                        .flatMap(Set::stream)
-        ).filter(p -> !p.getRoot().equals(pcs.getRoot())).collect(Collectors.toList());
+                        .flatMap(Set::stream))
+                .filter(p -> !p.getRoot().equals(pcs.getRoot()))
+                .collect(Collectors.toList());
     }
 
     /**

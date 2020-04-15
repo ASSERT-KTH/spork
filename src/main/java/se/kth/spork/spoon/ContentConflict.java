@@ -1,5 +1,6 @@
 package se.kth.spork.spoon;
 
+import se.kth.spork.spoon.wrappers.RoledValue;
 import spoon.reflect.path.CtRole;
 
 import java.util.Optional;

@@ -7,6 +7,12 @@ import gumtree.spoon.builder.SpoonGumTreeBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import se.kth.spork.base3dm.*;
+import se.kth.spork.spoon.matching.ClassRepresentatives;
+import se.kth.spork.spoon.matching.MappingRemover;
+import se.kth.spork.spoon.matching.SpoonMapping;
+import se.kth.spork.spoon.pcsinterpreter.PcsInterpreter;
+import se.kth.spork.spoon.wrappers.RoledValues;
+import se.kth.spork.spoon.wrappers.SpoonNode;
 import se.kth.spork.util.Pair;
 import spoon.reflect.declaration.*;
 
@@ -31,8 +37,9 @@ public class Spoon3dmMerge {
      */
     public static Pair<CtModule, Boolean> merge(Path base, Path left, Path right) {
         long start = System.nanoTime();
-        LOGGER.info("Parsing files to Spoon trees");
 
+        // PARSING PHASE
+        LOGGER.info("Parsing files to Spoon trees");
         CtModule baseTree = Parser.parse(base);
         CtModule leftTree = Parser.parse(left);
         CtModule rightTree = Parser.parse(right);
@@ -56,6 +63,7 @@ public class Spoon3dmMerge {
     public static <T extends CtElement> Pair<T, Boolean> merge(T base, T left, T right) {
         long start = System.nanoTime();
 
+        // MATCHING PHASE
         LOGGER.info("Converting to GumTree trees");
         ITree baseGumtree = new SpoonGumTreeBuilder().getTree(base);
         ITree leftGumtree = new SpoonGumTreeBuilder().getTree(left);
@@ -71,6 +79,7 @@ public class Spoon3dmMerge {
         SpoonMapping baseRight = SpoonMapping.fromGumTreeMapping(baseRightGumtreeMatch.getMappings());
         SpoonMapping leftRight = SpoonMapping.fromGumTreeMapping(leftRightGumtreeMatch.getMappings());
 
+        // 3DM PHASE
         LOGGER.info("Mapping nodes to class representatives");
         Map<SpoonNode, SpoonNode> classRepMap = ClassRepresentatives.createClassRepresentativesMapping(
                 base, left, right, baseLeft, baseRight, leftRight);
@@ -87,11 +96,11 @@ public class Spoon3dmMerge {
         LOGGER.info("Resolving final PCS merge");
         TdmMerge.resolveRawMerge(t0Star, delta);
 
-        Set<SpoonNode> rootConflictingNodes = extractRootConflictingNodes(delta.getStructuralConflicts());
+        Set<SpoonNode> rootConflictingNodes = StructuralConflict.extractRootConflictingNodes(delta.getStructuralConflicts());
         if (!rootConflictingNodes.isEmpty()) {
             LOGGER.info("Root conflicts detected, restarting merge");
             LOGGER.info("Removing root conflicting nodes from tree matchings");
-            removeFromMappings(rootConflictingNodes, baseLeft, baseRight, leftRight);
+            MappingRemover.removeFromMappings(rootConflictingNodes, baseLeft, baseRight, leftRight);
 
             LOGGER.info("Mapping nodes to class representatives");
             classRepMap = ClassRepresentatives.createClassRepresentativesMapping(
@@ -104,6 +113,7 @@ public class Spoon3dmMerge {
             TdmMerge.resolveRawMerge(t0Star, delta);
         }
 
+        // INTERPRETER PHASE
         LOGGER.info("Interpreting resolved PCS merge");
         Pair<CtElement, Boolean> merge = PcsInterpreter.fromMergedPcs(delta, baseLeft, baseRight);
         // we can be certain that the merge tree has the same root type as the three constituents, so this cast is safe
@@ -118,61 +128,6 @@ public class Spoon3dmMerge {
         LOGGER.info("Merged in " + (double) (System.nanoTime() - start) / 1e9 + " seconds");
 
         return Pair.of(mergeTree, hasConflicts);
-    }
-
-    /**
-     * Remove the provided nodes from the mappings, along with all of their descendants and any associated virtual
-     * nodes. This is a method of allowing certain forms of conflicts to pass by, such as root conflicts. By removing
-     * the mapping, problems with duplicated nodes is removed.
-     */
-    private static void
-    removeFromMappings(Set<SpoonNode> nodes, SpoonMapping baseLeft, SpoonMapping baseRight, SpoonMapping leftRight) {
-        MappingRemover baseLeftMappingRemover = new MappingRemover(baseLeft);
-        MappingRemover baseRightMappingRemover = new MappingRemover(baseRight);
-        MappingRemover leftRightMappingRemover = new MappingRemover(leftRight);
-
-        for (SpoonNode node : nodes) {
-            switch (node.getRevision()) {
-                case BASE:
-                    baseLeftMappingRemover.removeRelatedMappings(node);
-                    baseRightMappingRemover.removeRelatedMappings(node);
-                    break;
-                case LEFT:
-                    baseLeftMappingRemover.removeRelatedMappings(node);
-                    leftRightMappingRemover.removeRelatedMappings(node);
-                    break;
-                case RIGHT:
-                    baseRightMappingRemover.removeRelatedMappings(node);
-                    leftRightMappingRemover.removeRelatedMappings(node);
-                    break;
-            }
-        }
-    }
-
-    private static Set<SpoonNode>
-    extractRootConflictingNodes(Map<Pcs<SpoonNode>, Set<Pcs<SpoonNode>>> structuralConflicts) {
-        Set<SpoonNode> toIgnore = new HashSet<>();
-
-        for (Map.Entry<Pcs<SpoonNode>, Set<Pcs<SpoonNode>>> entry : structuralConflicts.entrySet()) {
-            Pcs<SpoonNode> pcs = entry.getKey();
-            for (Pcs<SpoonNode> other : entry.getValue()) {
-                if (isRootConflict(pcs, other)) {
-                    if (pcs.getPredecessor().equals(other.getPredecessor())) {
-                        toIgnore.add(other.getPredecessor());
-                    }
-                    if (pcs.getSuccessor().equals(other.getSuccessor())) {
-                        toIgnore.add(other.getSuccessor());
-                    }
-                }
-            }
-        }
-        return toIgnore;
-    }
-
-    private static boolean isRootConflict(Pcs<?> left, Pcs<?> right) {
-        return !Objects.equals(left.getRoot(), right.getRoot()) &&
-                (Objects.equals(left.getPredecessor(), right.getPredecessor()) ||
-                        Objects.equals(left.getSuccessor(), right.getSuccessor()));
     }
 
     /**

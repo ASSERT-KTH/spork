@@ -1,9 +1,9 @@
-package se.kth.spork.cli;
+package se.kth.spork.spoon.printer;
 
 import se.kth.spork.base3dm.Revision;
 import se.kth.spork.spoon.ContentConflict;
-import se.kth.spork.spoon.ContentMerger;
-import se.kth.spork.spoon.RoledValue;
+import se.kth.spork.spoon.pcsinterpreter.ContentMerger;
+import se.kth.spork.spoon.wrappers.RoledValue;
 import se.kth.spork.util.LineBasedMerge;
 import se.kth.spork.util.Pair;
 import spoon.reflect.code.CtOperatorAssignment;

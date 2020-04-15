@@ -1,4 +1,4 @@
-package se.kth.spork.spoon;
+package se.kth.spork.spoon.wrappers;
 
 import spoon.reflect.path.CtRole;
 
