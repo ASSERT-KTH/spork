@@ -146,6 +146,12 @@ def create_cli_parser():
         "--non-trivial", help="Extract only non-trivial merges", action="store_true"
     )
 
+    file_merge_metainfo_command = subparsers.add_parser(
+        "extract-file-merge-metainfo",
+        help="Extract metainfo for non-trivial file merges.",
+        parents=[base_parser],
+    )
+
     return parser
 
 
@@ -167,7 +173,9 @@ def _run_merges(
 
     merge_base_dir = pathlib.Path("merge_directory")
     merge_base_dir.mkdir(parents=True, exist_ok=True)
-    file_merges = list(gitutils.extract_all_conflicting_files(repo, merge_scenarios))[:args.num_merges]
+    file_merges = list(gitutils.extract_all_conflicting_files(repo, merge_scenarios))[
+        : args.num_merges
+    ]
     merge_dirs = fileutils.create_merge_dirs(merge_base_dir, file_merges)
 
     LOGGER.info(f"Extracted {len(merge_dirs)} file merges")
@@ -233,13 +241,18 @@ def _extract_merge_commits(args: argparse.Namespace):
     outpath.write_text("\n".join([merge.result.hexsha for merge in merge_scenarios]))
 
 
-def _extract_file_merges(args: argparse.Namespace):
+def _extract_file_merge_metainfo(args: argparse.Namespace):
     if args.github_user is not None:
         repo = gitutils.clone_repo(args.repo, args.github_user)
     else:
         repo = git.Repo(args.repo)
 
     merge_scenarios = gitutils.extract_merge_scenarios(repo)
+    file_merges = list(gitutils.extract_all_conflicting_files(repo, merge_scenarios))[
+        : args.num_merges
+    ]
+    reporter.write_file_merge_metainfo(file_merges, args.output)
+
 
 def main():
     parser = create_cli_parser()
@@ -247,6 +260,9 @@ def main():
 
     if args.command == "extract-merge-commits":
         _extract_merge_commits(args)
+        return
+    elif args.command == "extract-file-merge-metainfo":
+        _extract_file_merge_metainfo(args)
         return
 
     eval_func = functools.partial(

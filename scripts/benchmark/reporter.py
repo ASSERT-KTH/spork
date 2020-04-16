@@ -2,22 +2,40 @@
 import csv
 import sys
 import pathlib
+import dataclasses
 
 from typing import List, Iterable
 
 from . import evaluate
+from . import gitutils
+
+
+@dataclasses.dataclass(frozen=True)
+class FileMergeMetainfo:
+    merge_commit: str
+    merge_blob: str
+    merge_filepath: str
+    base_commit: str
+    base_blob: str
+    base_filepath: str
+    left_commit: str
+    left_blob: str
+    left_filepath: str
+    right_commit: str
+    right_blob: str
+    right_filepath: str
+
+    @classmethod
+    def field_names(cls):
+        return [f.name for f in dataclasses.fields(cls)]
 
 
 def write_results(results: Iterable[evaluate.MergeEvaluation], dst: str) -> None:
-    content = [
-        list(evaluate.MergeEvaluation._fields),
-        *[[str(v) for v in res] for res in results],
-    ]
-    formatted_content = _format_for_csv(content)
-
-    with open(dst, mode="w", encoding=sys.getdefaultencoding()) as file:
-        writer = csv.writer(file, delimiter=",")
-        writer.writerows(formatted_content)
+    _write_csv(
+        headers=list(evaluate.MergeEvaluation._fields),
+        body=[[str(v) for v in res] for res in results],
+        dst=dst,
+    )
 
 
 def read_results(results_path: pathlib.Path) -> List[evaluate.MergeEvaluation]:
@@ -33,8 +51,48 @@ def read_results(results_path: pathlib.Path) -> List[evaluate.MergeEvaluation]:
             )
 
         return [
-            evaluate.MergeEvaluation(*[_parse_value(v) for v in line]) for line in reader
+            evaluate.MergeEvaluation(*[_parse_value(v) for v in line])
+            for line in reader
         ]
+
+
+def write_file_merge_metainfo(file_merges: List[gitutils.FileMerge], dst: str) -> None:
+    metainfos = map(_file_merge_to_metainfo, file_merges)
+    _write_csv(
+        headers=FileMergeMetainfo.field_names(),
+        body=[dataclasses.astuple(meta) for meta in metainfos],
+        dst=dst,
+    )
+
+
+def _file_merge_to_metainfo(file_merge: gitutils.FileMerge) -> FileMergeMetainfo:
+    ms = file_merge.from_merge_scenario
+
+    base_blob = file_merge.base.hexsha if file_merge.base else ""
+    base_filepath = file_merge.base.path if file_merge.base else ""
+
+    return FileMergeMetainfo(
+        merge_commit=ms.result.hexsha,
+        base_commit=ms.base.hexsha,
+        left_commit=ms.left.hexsha,
+        right_commit=ms.right.hexsha,
+        merge_blob=file_merge.result.hexsha,
+        merge_filepath=str(file_merge.result.path),
+        base_blob=base_blob,
+        base_filepath=base_filepath,
+        left_blob=file_merge.left.hexsha,
+        left_filepath=str(file_merge.left.path),
+        right_blob=file_merge.right.hexsha,
+        right_filepath=str(file_merge.right.path),
+    )
+
+
+def _write_csv(headers: List[str], body: List[List[str]], dst: str):
+    formatted_content = _format_for_csv([headers, *body])
+
+    with open(dst, mode="w", encoding=sys.getdefaultencoding()) as file:
+        writer = csv.writer(file, delimiter=",")
+        writer.writerows(formatted_content)
 
 
 def _parse_value(v: str):
