@@ -3,6 +3,7 @@ import collections
 import pathlib
 import sys
 import re
+import dataclasses
 from typing import List, Mapping, Tuple
 
 import git
@@ -17,7 +18,7 @@ BLOB_SHA_SEP = "_"
 
 def create_merge_dirs(
     merge_dir_base: pathlib.Path,
-    file_merges: List[Tuple[git.Commit, List[Mapping[gitutils.Revision, git.Blob]]]],
+    file_merges: List[gitutils.FileMerge],
     strip_comments: bool = True,
 ) -> List[pathlib.Path]:
     """Create merge directories based on the provided merge scenarios. For each merge scenario A,
@@ -26,44 +27,37 @@ def create_merge_dirs(
     """
     merge_dirs = []
 
-    for merge_commit, merge_revisions_list in file_merges:
-        for merge_revisions in merge_revisions_list:
-            result_blob = merge_revisions[gitutils.Revision.ACTUAL_MERGE]
+    for file_merge in file_merges:
+        result_blob = file_merge.result
+        merge_commit = file_merge.from_merge_scenario.result
 
-            if not str(result_blob.name).endswith(".java"):
-                LOGGER.warning(f"{result_blob.name} is not a Java file, skipping")
-                continue
+        left_blob = file_merge.left
+        right_blob = file_merge.right
 
-            left_blob = merge_revisions[gitutils.Revision.LEFT]
-            right_blob = merge_revisions[gitutils.Revision.RIGHT]
+        left_filename = create_blob_filename("Left", left_blob)
+        right_filename = create_blob_filename("Right", right_blob)
+        result_filename = create_blob_filename("Expected", result_blob)
 
-            left_filename = create_blob_filename("Left", left_blob)
-            right_filename = create_blob_filename("Right", right_blob)
-            result_filename = create_blob_filename("Expected", result_blob)
+        merge_dir = merge_dir_base / merge_commit.hexsha / result_blob.name
+        merge_dir.mkdir(parents=True)
 
-            merge_dir = merge_dir_base / merge_commit.hexsha / result_blob.name
-            merge_dir.mkdir(parents=True)
-
+        _write_blob_to_file(merge_dir / result_filename, result_blob, strip_comments)
+        _write_blob_to_file(merge_dir / left_filename, left_blob, strip_comments)
+        _write_blob_to_file(merge_dir / right_filename, right_blob, strip_comments)
+        if file_merge.base:
             _write_blob_to_file(
-                merge_dir / result_filename, result_blob, strip_comments
+                merge_dir / create_blob_filename("Base", file_merge.base),
+                file_merge.base,
+                strip_comments,
             )
-            _write_blob_to_file(merge_dir / left_filename, left_blob, strip_comments)
-            _write_blob_to_file(merge_dir / right_filename, right_blob, strip_comments)
-            if gitutils.Revision.BASE in merge_revisions:
-                base_blob = merge_revisions[gitutils.Revision.BASE]
-                _write_blob_to_file(
-                    merge_dir / create_blob_filename("Base", base_blob),
-                    base_blob,
-                    strip_comments,
-                )
-            else:
-                # If left and right added the same file, there will be no base blob
-                LOGGER.warning(
-                    f"No base blob found for merge commit {merge_commit.hexsha} and result blob {result_blob.hexsha}"
-                )
-                (merge_dir / f"Base{BLOB_SHA_SEP}.java").write_bytes(b"")
+        else:
+            # If left and right added the same file, there will be no base blob
+            LOGGER.warning(
+                f"No base blob for merge commit {merge_commit.hexsha} and result blob {result_blob.hexsha}"
+            )
+            (merge_dir / f"Base{BLOB_SHA_SEP}.java").write_bytes(b"")
 
-            merge_dirs.append(merge_dir)
+        merge_dirs.append(merge_dir)
 
     return merge_dirs
 

@@ -167,10 +167,8 @@ def _run_merges(
 
     merge_base_dir = pathlib.Path("merge_directory")
     merge_base_dir.mkdir(parents=True, exist_ok=True)
-    file_merges = gitutils.extract_all_conflicting_files(repo, merge_scenarios)
-    merge_dirs = fileutils.create_merge_dirs(merge_base_dir, file_merges)[
-        : args.num_merges
-    ]
+    file_merges = list(gitutils.extract_all_conflicting_files(repo, merge_scenarios))[:args.num_merges]
+    merge_dirs = fileutils.create_merge_dirs(merge_base_dir, file_merges)
 
     LOGGER.info(f"Extracted {len(merge_dirs)} file merges")
 
@@ -235,26 +233,13 @@ def _extract_merge_commits(args: argparse.Namespace):
     outpath.write_text("\n".join([merge.result.hexsha for merge in merge_scenarios]))
 
 
-def _evaluate(args: argparse.Namespace):
-    parser = create_cli_parser()
-    args = parser.parse_args(sys.argv[1:])
-
-    if args.mpi and not MPI_ENABLED:
-        LOGGER.error("--mpi specified, but mpi4py is not installed")
-
+def _extract_file_merges(args: argparse.Namespace):
     if args.github_user is not None:
         repo = gitutils.clone_repo(args.repo, args.github_user)
     else:
         repo = git.Repo(args.repo)
 
-    merge_scenarios = gitutils.extract_merge_scenarios(
-        repo, args.num_merges if args.num_merges > 0 else None
-    )
-
-    LOGGER.info(f"recreating {len(merge_scenarios)} merges")
-
-    run.run_git_merge(merge_scenarios, repo)
-
+    merge_scenarios = gitutils.extract_merge_scenarios(repo)
 
 def main():
     parser = create_cli_parser()

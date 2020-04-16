@@ -6,7 +6,7 @@ import os
 import itertools
 import pathlib
 import shutil
-from typing import List, Optional, Mapping, Sequence, Tuple
+from typing import List, Optional, Mapping, Sequence, Tuple, Iterable
 
 import git
 import daiquiri
@@ -20,6 +20,15 @@ class MergeScenario:
     base: git.Commit
     left: git.Commit
     right: git.Commit
+
+
+@dataclasses.dataclass(frozen=True)
+class FileMerge:
+    result: git.Blob
+    base: Optional[git.Blob]
+    left: git.Blob
+    right: git.Blob
+    from_merge_scenario: MergeScenario
 
 
 class Revision(enum.Enum):
@@ -90,13 +99,15 @@ def extract_merge_scenarios(
 
 def extract_all_conflicting_files(
     repo: git.Repo, merge_scenarios: Sequence[MergeScenario],
-) -> List[Tuple[git.Commit, List[Mapping[Revision, git.Blob]]]]:
-    return [(ms.result, extract_conflicting_files(repo, ms)) for ms in merge_scenarios]
+) -> Iterable[FileMerge]:
+    return itertools.chain.from_iterable(
+        extract_conflicting_files(repo, ms) for ms in merge_scenarios
+    )
 
 
 def extract_conflicting_files(
     repo: git.Repo, merge_scenario: MergeScenario,
-) -> List[Mapping[Revision, git.Blob]]:
+) -> List[FileMerge]:
     LOGGER.info(
         f"Extracting conflicting files for merge {merge_scenario.result.hexsha}"
     )
@@ -139,12 +150,30 @@ def extract_conflicting_files(
             LOGGER.warning("Skipping delete/edit file conflict: " + str(rev_map))
             continue
 
-        file_merges.append(rev_map)
+        file_merge = _to_file_merge(rev_map, merge_scenario)
+
+        if not str(file_merge.result.name).endswith(".java"):
+            LOGGER.warning(f"{file_merge.result.name} is not a Java file, skipping")
+            continue
+
+        file_merges.append(file_merge)
 
     if not file_merges:
         LOGGER.info(f"No file merges required for merge commit {result.hexsha}")
 
     return file_merges
+
+
+def _to_file_merge(
+    rev_map: Mapping[Revision, git.Blob], ms: MergeScenario
+) -> FileMerge:
+    base = rev_map[Revision.BASE] if Revision.BASE in rev_map else None
+    left = rev_map[Revision.LEFT]
+    right = rev_map[Revision.RIGHT]
+    result = rev_map[Revision.ACTUAL_MERGE]
+    return FileMerge(
+        base=base, left=left, right=right, result=result, from_merge_scenario=ms
+    )
 
 
 def insert(blob, rev, diff_map, rev_map):
