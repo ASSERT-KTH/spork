@@ -23,6 +23,10 @@ class MergeOutcome:
 class MergeResult:
     merge_dir: pathlib.Path
     merge_file: pathlib.Path
+    base_file: pathlib.Path
+    left_file: pathlib.Path
+    right_file: pathlib.Path
+    expected_file: pathlib.Path
     merge_cmd: str
     outcome: MergeOutcome
     runtime: int
@@ -45,23 +49,47 @@ def run_file_merges(
     # merge_cmd might be a path
     sanitized_merge_cmd = pathlib.Path(merge_cmd).name.replace(" ", "_")
     for merge_dir in file_merge_dirs:
+        filenames = [f.name for f in merge_dir.iterdir() if f.is_file()]
+
+        def get_filename(prefix: str) -> str:
+            matches = [name for name in filenames if name.startswith(prefix)]
+            assert len(matches) == 1
+            return matches[0]
+
         merge_file = merge_dir / f"{sanitized_merge_cmd}.java"
-        outcome, runtime = run_file_merge(merge_dir, merge_cmd, merge_file=merge_file)
-        yield MergeResult(merge_dir, merge_file, sanitized_merge_cmd, outcome, runtime)
+        base = merge_dir / get_filename("Base")
+        left = merge_dir / get_filename("Left")
+        right = merge_dir / get_filename("Right")
+        expected = merge_dir / get_filename("Expected")
+
+        assert base.is_file()
+        assert left.is_file()
+        assert right.is_file()
+        assert expected.is_file()
+
+        outcome, runtime = run_file_merge(
+            merge_dir,
+            merge_cmd,
+            base=base,
+            left=left,
+            right=right,
+            expected=expected,
+            merge=merge_file,
+        )
+        yield MergeResult(
+            merge_dir=merge_dir,
+            merge_file=merge_file,
+            base_file=base,
+            left_file=left,
+            right_file=right,
+            expected_file=expected,
+            merge_cmd=sanitized_merge_cmd,
+            outcome=outcome,
+            runtime=runtime,
+        )
 
 
-def run_file_merge(scenario_dir, merge_cmd, merge_file=None):
-    base = scenario_dir / "Base.java"
-    left = scenario_dir / "Left.java"
-    right = scenario_dir / "Right.java"
-    expected = scenario_dir / "Expected.java"
-    merge = merge_file or scenario_dir / "Merge.java"
-
-    assert base.is_file()
-    assert left.is_file()
-    assert right.is_file()
-    assert expected.is_file()
-
+def run_file_merge(scenario_dir, merge_cmd, base, left, right, expected, merge):
     start = time.perf_counter()
     merge_proc = subprocess.run(
         f"{merge_cmd} {left} {base} {right} -o {merge}".split(), capture_output=True,

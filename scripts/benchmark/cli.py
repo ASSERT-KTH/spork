@@ -200,8 +200,8 @@ def _merge(args: argparse.Namespace, eval_func):
 def _merge_and_compare(args: argparse.Namespace, eval_func):
     old_evaluations = analyze.Evaluations.from_path(args.compare)
     commit_shas = [
-        list(pathlib.Path(path).parents)[-2].name
-        for path in old_evaluations.extract(evaluate.EvalAttrName.merge_dir.value)
+        path
+        for path in old_evaluations.extract(evaluate.EvalAttrName.merge_commit.value)
     ]
     new_evaluations = analyze.Evaluations(
         _run_merges(args, eval_func, expected_merge_commit_shas=commit_shas)

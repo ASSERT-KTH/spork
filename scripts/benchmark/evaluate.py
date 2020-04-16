@@ -7,14 +7,19 @@ import collections
 import itertools
 import dataclasses
 
-from typing import List, Iterable
+from typing import List, Iterable, Mapping
+
+import daiquiri
 
 from . import run
+from . import gitutils
+from . import fileutils
 
 START_CONFLICT = "<<<<<<<"
 MID_CONFLICT = "======="
 END_CONFLICT = ">>>>>>>"
 
+LOGGER = daiquiri.getLogger(__name__)
 
 @dataclasses.dataclass(frozen=True)
 class MergeConflict:
@@ -33,7 +38,7 @@ class MergeConflict:
         return len(self.left) + len(self.right)
 
 
-def gumtree_edit_script(base_file: pathlib.Path, dest_file: pathlib.Path, ) -> List[str]:
+def gumtree_edit_script(base_file: pathlib.Path, dest_file: pathlib.Path,) -> List[str]:
     """Return the the edit script produced by vanilla GumTree diff, not
     including all of the lines that say "Match".
 
@@ -58,7 +63,9 @@ def gumtree_edit_script(base_file: pathlib.Path, dest_file: pathlib.Path, ) -> L
     ]
 
 
-def git_diff_edit_script(base_file: pathlib.Path, dest_file: pathlib.Path, strip_metadata: bool = False) -> List[str]:
+def git_diff_edit_script(
+    base_file: pathlib.Path, dest_file: pathlib.Path, strip_metadata: bool = False
+) -> List[str]:
     """Return the edit script produced by git diff. Requires that the `git`
     program is on the path.
 
@@ -103,6 +110,7 @@ def normalized_comparison(base_file: pathlib.Path, dest_file: pathlib.Path) -> i
     proc = subprocess.run(cmd, shell=False, capture_output=True)
 
     if proc.returncode != 0:
+        LOGGER.warning(proc.stderr.decode(sys.getdefaultencoding()))
         return -1
 
     lines = [
@@ -157,6 +165,15 @@ class EvalAttrName(enum.Enum):
     num_conflicts = "num_conflicts"
     conflict_size = "conflict_size"
     runtime = "runtime"
+    merge_commit = "merge_commit"
+    base_blob = "base_blob"
+    base_lines = "base_lines"
+    left_blob = "left_blob"
+    left_lines = "left_lines"
+    right_blob = "right_blob"
+    right_lines = "right_lines"
+    expected_blob = "expected_blob"
+    expected_lines = "expected_lines"
 
 
 NUMERICAL_EVAL_ATTR_NAMES = tuple(
@@ -168,6 +185,10 @@ NUMERICAL_EVAL_ATTR_NAMES = tuple(
         EvalAttrName.num_conflicts,
         EvalAttrName.conflict_size,
         EvalAttrName.runtime,
+        EvalAttrName.base_lines,
+        EvalAttrName.left_lines,
+        EvalAttrName.right_lines,
+        EvalAttrName.expected_lines,
     )
 )
 MergeEvaluation = collections.namedtuple(
@@ -175,7 +196,10 @@ MergeEvaluation = collections.namedtuple(
 )
 
 
-def evaluation_result(merge_result: run.MergeResult, base_merge_dir: pathlib.Path):
+def evaluation_result(
+    merge_result: run.MergeResult,
+    base_merge_dir: pathlib.Path,
+):
     """Gather evaluation results from the provided merge result."""
     gumtree_diff_size = -1
     git_diff_size = -1
@@ -189,32 +213,47 @@ def evaluation_result(merge_result: run.MergeResult, base_merge_dir: pathlib.Pat
         num_conflicts = len(conflicts)
 
         if not num_conflicts:
-            expected_file = merge_result.merge_dir / "Expected.java"
+            expected_file = merge_result.expected_file
             gumtree_diff_size = len(
                 gumtree_edit_script(expected_file, merge_result.merge_file)
             )
             git_diff_size = len(
                 git_diff_edit_script(expected_file, merge_result.merge_file)
             )
-            norm_diff_size = normalized_comparison(expected_file, merge_result.merge_file)
+            norm_diff_size = normalized_comparison(
+                expected_file, merge_result.merge_file
+            )
 
+    merge_dir = merge_result.merge_dir.relative_to(base_merge_dir)
+    merge_commit = fileutils.extract_commit_sha(merge_dir)
     return MergeEvaluation(
-        merge_dir=merge_result.merge_dir.relative_to(base_merge_dir),
+        merge_dir=merge_dir,
         merge_cmd=merge_result.merge_cmd,
-        outcome=merge_result.outcome if not num_conflicts else run.MergeOutcome.CONFLICT,
+        outcome=merge_result.outcome
+        if not num_conflicts
+        else run.MergeOutcome.CONFLICT,
         gumtree_diff_size=gumtree_diff_size,
         git_diff_size=git_diff_size,
         norm_diff_size=int(norm_diff_size),
         conflict_size=conflict_size,
         num_conflicts=num_conflicts,
         runtime=merge_result.runtime,
+        merge_commit=merge_commit,
+        base_blob=fileutils.extract_blob_sha(merge_result.base_file),
+        base_lines=fileutils.count_lines(merge_result.base_file),
+        left_blob=fileutils.extract_blob_sha(merge_result.left_file),
+        left_lines=fileutils.count_lines(merge_result.left_file),
+        right_blob=fileutils.extract_blob_sha(merge_result.right_file),
+        right_lines=fileutils.count_lines(merge_result.right_file),
+        expected_blob=fileutils.extract_blob_sha(merge_result.expected_file),
+        expected_lines=fileutils.count_lines(merge_result.expected_file),
     )
 
 
 def run_and_evaluate(
-        merge_dirs: Iterable[pathlib.Path],
-        merge_commands: Iterable[str],
-        base_merge_dir: pathlib.Path,
+    merge_dirs: Iterable[pathlib.Path],
+    merge_commands: Iterable[str],
+    base_merge_dir: pathlib.Path,
 ) -> Iterable[MergeEvaluation]:
     for merge_cmd in merge_commands:
         for merge_result in run.run_file_merges(merge_dirs, merge_cmd):
