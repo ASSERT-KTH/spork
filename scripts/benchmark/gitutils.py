@@ -30,13 +30,16 @@ class Revision(enum.Enum):
 
 
 def extract_merge_scenarios(
-    repo: git.Repo, merge_commit_shas: Optional[List[str]] = None
+    repo: git.Repo,
+    merge_commit_shas: Optional[List[str]] = None,
+    non_trivial: bool = False,
 ) -> List[MergeScenario]:
     """Extract merge scenarios from a repo.
 
     Args:
         repo: A Git repo.
         merge_commit_shas: Commit shas to extract scenarios for.
+        non_trivial: If true, extract only scenarios with non-disjoint edits to files.
     Returns:
         A list of merge scenarios.
     """
@@ -45,7 +48,11 @@ def extract_merge_scenarios(
     )
     if merge_commit_shas is not None:
         expected_merge_commits = set(merge_commit_shas)
-        merge_commits = (commit for commit in merge_commits if commit.hexsha in expected_merge_commits)
+        merge_commits = (
+            commit
+            for commit in merge_commits
+            if commit.hexsha in expected_merge_commits
+        )
     else:
         expected_merge_commits = set()
 
@@ -66,8 +73,13 @@ def extract_merge_scenarios(
             )
             continue
 
-        expected_merge_commits -= {merge.hexsha}
-        merge_scenarios.append(MergeScenario(merge, base[0], left, right))
+        scenario = MergeScenario(merge, base[0], left, right)
+
+        if non_trivial and not extract_conflicting_files(repo, scenario):
+            LOGGER.warning(f"Skipping trivial merge commit {merge.hexsha}")
+        else:
+            expected_merge_commits -= {merge.hexsha}
+            merge_scenarios.append(scenario)
 
     if expected_merge_commits:
         msg = f"Missing merge commits: {expected_merge_commits}"
@@ -85,7 +97,9 @@ def extract_all_conflicting_files(
 def extract_conflicting_files(
     repo: git.Repo, merge_scenario: MergeScenario,
 ) -> List[Mapping[Revision, git.Blob]]:
-    LOGGER.info(f"Extracting conflicting files for merge {merge_scenario.result.hexsha}")
+    LOGGER.info(
+        f"Extracting conflicting files for merge {merge_scenario.result.hexsha}"
+    )
 
     left = merge_scenario.left
     right = merge_scenario.right

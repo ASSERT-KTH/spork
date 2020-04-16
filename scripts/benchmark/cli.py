@@ -226,21 +226,13 @@ def _extract_merge_commits(args: argparse.Namespace):
     else:
         repo = git.Repo(args.repo)
 
-    merge_scenarios = gitutils.extract_merge_scenarios(repo)
+    merge_scenarios = gitutils.extract_merge_scenarios(
+        repo, non_trivial=args.non_trivial
+    )
     LOGGER.info(f"Extracted {len(merge_scenarios)} merge scenarios")
-
-    if args.non_trivial:
-        LOGGER.info("Filtering out trivial merge scenarios")
-        merge_scenarios = [
-            scenario
-            for scenario in merge_scenarios
-            if gitutils.extract_conflicting_files(repo, scenario)
-        ]
-        LOGGER.info(f"Found {len(merge_scenarios)} non-trivial merge scenarios")
 
     outpath = args.output or pathlib.Path("merge_scenarios.txt")
     outpath.write_text("\n".join([merge.result.hexsha for merge in merge_scenarios]))
-
 
 
 def _evaluate(args: argparse.Namespace):
@@ -281,7 +273,6 @@ def main():
     if args.mpi and MPI.COMM_WORLD.Get_rank() != mpi.MASTER_RANK:
         mpi.worker(eval_func, len(args.merge_commands))
         return
-
 
     if args.command == "merge":
         _merge(args, eval_func)
