@@ -4,6 +4,7 @@ import git
 import argparse
 import functools
 import collections
+import itertools
 
 from typing import List, Optional, Iterable
 
@@ -90,17 +91,19 @@ def create_cli_parser():
         default=None,
     )
 
+    mpi_parser = argparse.ArgumentParser(add_help=False)
+    mpi_parser.add_argument(
+        "--mpi",
+        help="Run merge in parallell using MPI" if MPI_ENABLED else argparse.SUPPRESS,
+        action="store_true",
+    )
+
     base_merge_parser = argparse.ArgumentParser(add_help=False, parents=[base_parser])
     base_merge_parser.add_argument(
         "--base-merge-dir",
         help="Base directory to perform the merges in.",
         type=pathlib.Path,
         default=pathlib.Path("merge_directory"),
-    )
-    base_merge_parser.add_argument(
-        "--mpi",
-        help="Run merge in parallell using MPI" if MPI_ENABLED else argparse.SUPPRESS,
-        action="store_true",
     )
     base_merge_parser.add_argument(
         "--merge-commands",
@@ -116,7 +119,7 @@ def create_cli_parser():
     merge_command = subparsers.add_parser(
         "merge",
         help="Test a merge tool by merging one file at a time.",
-        parents=[base_merge_parser],
+        parents=[base_merge_parser, mpi_parser],
     )
     merge_command.add_argument(
         "--merge-commits",
@@ -129,7 +132,7 @@ def create_cli_parser():
         "merge-compare",
         help="Merge like with the merge command, and compare the results to "
         "some previous results.",
-        parents=[base_merge_parser],
+        parents=[base_merge_parser, mpi_parser],
     )
     merge_and_compare_command.add_argument(
         "--compare",
@@ -181,20 +184,41 @@ def create_cli_parser():
         action="store_true",
     )
 
+    runtime_bench_command = subparsers.add_parser(
+        "runtime-benchmark",
+        help="Benchmark runtime performance on a per-file basis for the provided merge commits.",
+        description=(
+            "Benchmark runtime performance on a per-file basis. Each merge "
+            "command must output `Parse: ms`, `Merge: ms` and `Total: ms` "
+            "as the final three lines of output."
+        ),
+        parents=[base_merge_parser],
+    )
+    runtime_bench_command.add_argument(
+        "--file-merge-metainfo",
+        help="Path to a CSV file with file merge metainfo. "
+        "Use the `extract-file-merge-metainfo` command to generate one.",
+        required=True,
+        type=pathlib.Path,
+    )
+    runtime_bench_command.add_argument(
+        "--num-runs",
+        help="Amount of times to repeat each merge.",
+        required=True,
+        type=int,
+    )
+
     return parser
 
 
-def _run_merges(
+def _run_file_merges(
     args: argparse.Namespace,
     eval_func,
     expected_merge_commit_shas: Optional[List[str]],
 ) -> Iterable[evaluate.MergeEvaluation]:
     assert not args.mpi or MPI.COMM_WORLD.Get_rank() == mpi.MASTER_RANK
 
-    if args.github_user is not None:
-        repo = gitutils.clone_repo(args.repo, args.github_user)
-    else:
-        repo = git.Repo(args.repo)
+    repo = _get_repo(args.repo, args.github_user)
 
     merge_scenarios = gitutils.extract_merge_scenarios(repo, expected_merge_commit_shas)
 
@@ -223,7 +247,9 @@ def _merge(args: argparse.Namespace, eval_func):
         if args.merge_commits
         else None
     )
-    evaluations = _run_merges(args, eval_func, expected_merge_commit_shas=commit_shas)
+    evaluations = _run_file_merges(
+        args, eval_func, expected_merge_commit_shas=commit_shas
+    )
     reporter.write_results(evaluations, args.output or "results.csv")
 
 
@@ -234,7 +260,7 @@ def _merge_and_compare(args: argparse.Namespace, eval_func):
         for path in old_evaluations.extract(evaluate.EvalAttrName.merge_commit.value)
     ]
     new_evaluations = analyze.Evaluations(
-        _run_merges(args, eval_func, expected_merge_commit_shas=commit_shas)
+        _run_file_merges(args, eval_func, expected_merge_commit_shas=commit_shas)
     )
 
     new_evaluations.log_diffs(old_evaluations)
@@ -251,17 +277,16 @@ def _merge_and_compare(args: argparse.Namespace, eval_func):
 
 
 def _extract_merge_commits(args: argparse.Namespace):
-    if args.github_user is not None:
-        repo = gitutils.clone_repo(args.repo, args.github_user)
-    else:
-        repo = git.Repo(args.repo)
+    repo = _get_repo(args.repo, args.github_user)
 
     merge_scenarios = gitutils.extract_merge_scenarios(
         repo, non_trivial=args.non_trivial
     )
 
     if args.buildable:
-        buildable = [ms for ms in merge_scenarios if run.is_buildable(ms.result.hexsha, repo)]
+        buildable = [
+            ms for ms in merge_scenarios if run.is_buildable(ms.result.hexsha, repo)
+        ]
         LOGGER.info(
             f"Filtered {len(merge_scenarios) - len(buildable)} merges that did not build"
         )
@@ -275,10 +300,7 @@ def _extract_merge_commits(args: argparse.Namespace):
 
 
 def _extract_file_merge_metainfo(args: argparse.Namespace):
-    if args.github_user is not None:
-        repo = gitutils.clone_repo(args.repo, args.github_user)
-    else:
-        repo = git.Repo(args.repo)
+    repo = _get_repo(args.repo, args.github_user)
 
     merge_scenarios = gitutils.extract_merge_scenarios(repo)
     file_merges = list(gitutils.extract_all_conflicting_files(repo, merge_scenarios))[
@@ -288,10 +310,7 @@ def _extract_file_merge_metainfo(args: argparse.Namespace):
 
 
 def _git_merge(args: argparse.Namespace):
-    if args.github_user is not None:
-        repo = gitutils.clone_repo(args.repo, args.github_user)
-    else:
-        repo = git.Repo(args.repo)
+    repo = _get_repo(args.repo, args.github_user)
 
     commit_shas = fileutils.read_non_empty_lines(args.merge_commits)[: args.num_merges]
     merge_scenarios = gitutils.extract_merge_scenarios(
@@ -299,6 +318,28 @@ def _git_merge(args: argparse.Namespace):
     )
     merge_results = run.run_git_merges(merge_scenarios, repo, args.build)
     reporter.write_git_merge_results(merge_results, args.output)
+
+
+def _runtime_benchmark(args: argparse.Namespace):
+    repo = _get_repo(args.repo, args.github_user)
+    file_merge_metainfo = reporter.read_file_merge_metainfo(args.file_merge_metainfo)
+    file_merges = (
+        gitutils.FileMerge.from_metainfo(repo, m) for m in file_merge_metainfo
+    )
+    merge_dirs = fileutils.create_merge_dirs(args.base_merge_dir, file_merges)[:args.num_merges]
+
+    runtime_results = itertools.chain.from_iterable(
+        run.runtime_benchmark(merge_dirs, merge_cmd, args.num_runs)
+        for merge_cmd in args.merge_commands
+    )
+    reporter.write_runtime_results(runtime_results, args.output)
+
+
+def _get_repo(repo: str, github_user: Optional[str]) -> git.Repo:
+    if github_user is not None:
+        return gitutils.clone_repo(repo, github_user)
+    else:
+        return git.Repo(repo)
 
 
 def main():
@@ -313,6 +354,9 @@ def main():
         return
     elif args.command == "git-merge":
         _git_merge(args)
+        return
+    elif args.command == "runtime-benchmark":
+        _runtime_benchmark(args)
         return
 
     eval_func = functools.partial(

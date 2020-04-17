@@ -1,11 +1,12 @@
 import subprocess
+import os
 import sys
 import time
 import pathlib
 import dataclasses
 import collections
 import enum
-from typing import List, Generator, Iterable
+from typing import List, Generator, Iterable, Tuple
 
 import git
 import daiquiri
@@ -16,7 +17,7 @@ from . import fileutils
 LOGGER = daiquiri.getLogger(__name__)
 
 
-class MergeOutcome(enum.Enum):
+class MergeOutcome:
     CONFLICT = "conflict"
     SUCCESS = "success"
     FAIL = "fail"
@@ -40,6 +41,11 @@ GitMergeResult = collections.namedtuple(
     "merge_commit base_commit left_commit right_commit merge_ok build_ok",
 )
 
+RuntimeResult = collections.namedtuple(
+    "RuntimeResult",
+    "merge_commit base_blob left_blob right_blob parse_time_ms merge_time_ms total_time_ms merge_cmd".split(),
+)
+
 
 def run_file_merges(
     file_merge_dirs: List[pathlib.Path], merge_cmd: str
@@ -55,7 +61,11 @@ def run_file_merges(
     Returns:
         A generator that yields one MergeResult per merge directory.
     """
-    # merge_cmd might be a path
+    for merge_result, _ in _run_file_merges(file_merge_dirs, merge_cmd):
+        yield merge_result
+
+
+def _run_file_merges(file_merge_dirs: List[pathlib.Path], merge_cmd: str) -> Iterable:
     sanitized_merge_cmd = pathlib.Path(merge_cmd).name.replace(" ", "_")
     for merge_dir in file_merge_dirs:
         filenames = [f.name for f in merge_dir.iterdir() if f.is_file()]
@@ -76,7 +86,7 @@ def run_file_merges(
         assert right.is_file()
         assert expected.is_file()
 
-        outcome, runtime = run_file_merge(
+        outcome, runtime, proc = _run_file_merge(
             merge_dir,
             merge_cmd,
             base=base,
@@ -95,12 +105,12 @@ def run_file_merges(
             merge_cmd=sanitized_merge_cmd,
             outcome=outcome,
             runtime=runtime,
-        )
+        ), proc
 
 
-def run_file_merge(scenario_dir, merge_cmd, base, left, right, expected, merge):
+def _run_file_merge(scenario_dir, merge_cmd, base, left, right, expected, merge):
     start = time.perf_counter()
-    merge_proc = subprocess.run(
+    proc = subprocess.run(
         f"{merge_cmd} {left} {base} {right} -o {merge}".split(), capture_output=True,
     )
     runtime = time.perf_counter() - start
@@ -109,19 +119,19 @@ def run_file_merge(scenario_dir, merge_cmd, base, left, right, expected, merge):
         LOGGER.error(
             f"{merge_cmd} failed to produce a Merge.java file on {scenario_dir.parent.name}/{scenario_dir.name}"
         )
-        LOGGER.info(merge_proc.stdout.decode(sys.getdefaultencoding()))
-        LOGGER.info(merge_proc.stderr.decode(sys.getdefaultencoding()))
-        return MergeOutcome.FAIL, runtime
-    elif merge_proc.returncode != 0:
+        LOGGER.info(proc.stdout.decode(sys.getdefaultencoding()))
+        LOGGER.info(proc.stderr.decode(sys.getdefaultencoding()))
+        return MergeOutcome.FAIL, runtime, proc
+    elif proc.returncode != 0:
         LOGGER.warning(
             f"Merge conflict in {scenario_dir.parent.name}/{scenario_dir.name}"
         )
-        return MergeOutcome.CONFLICT, runtime
+        return MergeOutcome.CONFLICT, runtime, proc
     else:
         LOGGER.info(
             f"Successfully merged {scenario_dir.parent.name}/{scenario_dir.name}"
         )
-        return MergeOutcome.SUCCESS, runtime
+        return MergeOutcome.SUCCESS, runtime, proc
 
 
 def run_git_merges(
@@ -159,10 +169,12 @@ def run_git_merge(
     Returns:
         Result on the merge and potential build.
     """
-    ms = merge_scenario # alias for less verbosity
+    ms = merge_scenario  # alias for less verbosity
 
     with gitutils.merge_no_commit(repo, ms.left.hexsha, ms.right.hexsha) as merge_ok:
-        build_ok = fileutils.mvn_compile(workdir=repo.working_tree_dir) if build else False
+        build_ok = (
+            fileutils.mvn_compile(workdir=repo.working_tree_dir) if build else False
+        )
 
     return GitMergeResult(
         merge_commit=ms.result.hexsha,
@@ -172,6 +184,7 @@ def run_git_merge(
         left_commit=ms.left.hexsha,
         right_commit=ms.right.hexsha,
     )
+
 
 def is_buildable(commit_sha: str, repo: git.Repo) -> bool:
     """Try to build the commit with Maven.
@@ -185,5 +198,48 @@ def is_buildable(commit_sha: str, repo: git.Repo) -> bool:
     with gitutils.saved_git_head(repo):
         repo.git.switch(commit_sha, "--detach", "--quiet", "--force")
         return fileutils.mvn_compile(workdir=repo.working_tree_dir)
-    
 
+
+def runtime_benchmark(
+    file_merge_dirs: List[pathlib.Path], merge_cmd: str, repeats: int
+) -> Iterable[RuntimeResult]:
+    for _ in range(repeats):
+        for ms, proc in _run_file_merges(file_merge_dirs, merge_cmd):
+            assert ms.outcome != MergeOutcome.FAIL
+            parse_time, merge_time, total_time = _parse_runtimes(proc.stdout)
+
+            merge_commit = fileutils.extract_commit_sha(ms.merge_dir)
+            base_blob, left_blob, right_blob = [
+                fileutils.extract_blob_sha(fp)
+                for fp in [ms.base_file, ms.left_file, ms.right_file]
+            ]
+
+            yield RuntimeResult(
+                merge_commit=merge_commit,
+                base_blob=base_blob,
+                left_blob=left_blob,
+                right_blob=right_blob,
+                merge_cmd=merge_cmd,
+                parse_time_ms=parse_time,
+                merge_time_ms=merge_time,
+                total_time_ms=total_time,
+            )
+
+
+def _parse_runtimes(stdout: bytes) -> Tuple[float]:
+    decoded = stdout.decode(sys.getdefaultencoding())
+    parse_line, merge_line, total_line = decoded.strip().split("\n")[-3:]
+
+    return (
+        _parse_runtime(parse_line, "Parse:"),
+        _parse_runtime(merge_line, "Merge:"),
+        _parse_runtime(total_line, "Total:"),
+    )
+
+
+def _parse_runtime(line: str, expected_prefix: str) -> float:
+    line = line.strip()
+    if not line.startswith(expected_prefix):
+        raise RuntimeError(f"Expected line to start with {expected_prefix}: {line}")
+
+    return float(line.split()[-1])

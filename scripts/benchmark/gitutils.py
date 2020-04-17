@@ -22,6 +22,15 @@ class MergeScenario:
     left: git.Commit
     right: git.Commit
 
+    @staticmethod
+    def from_metainfo(repo: git.Repo, metainfo) -> "MergeScenario":
+        return MergeScenario(
+            result=repo.commit(metainfo.merge_commit),
+            base=repo.commit(metainfo.base_commit),
+            left=repo.commit(metainfo.left_commit),
+            right=repo.commit(metainfo.right_commit),
+        )
+
 
 @dataclasses.dataclass(frozen=True)
 class FileMerge:
@@ -30,6 +39,17 @@ class FileMerge:
     left: git.Blob
     right: git.Blob
     from_merge_scenario: MergeScenario
+
+    @staticmethod
+    def from_metainfo(repo: git.Repo, metainfo) -> "FileMerge":
+        ms = MergeScenario.from_metainfo(repo, metainfo)
+        result = ms.result.tree[str(metainfo.merge_filepath)]
+        base = ms.base.tree[str(metainfo.base_filepath)]
+        left = ms.left.tree[str(metainfo.left_filepath)]
+        right = ms.right.tree[str(metainfo.right_filepath)]
+        return FileMerge(
+            result=result, base=base, left=left, right=right, from_merge_scenario=ms
+        )
 
 
 class Revision(enum.Enum):
@@ -273,3 +293,9 @@ def clone_repo(
         repo = git.Repo(str(repo_path))
 
     return repo
+
+
+def _get_blob(repo: git.Repo, commit_sha: str, blob_sha: str) -> git.Blob:
+    commit = repo.commit(commit_sha)
+    tree = commit.tree
+    return tree[blob_sha]

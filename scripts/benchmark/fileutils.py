@@ -6,7 +6,7 @@ import re
 import dataclasses
 import subprocess
 import re
-from typing import List, Mapping, Tuple
+from typing import List, Mapping, Tuple, Iterable
 
 import git
 import daiquiri
@@ -24,7 +24,7 @@ BLOCK_COMMENT_PATTERN = re.compile("(?s)/\*.*?\*/")
 
 def create_merge_dirs(
     merge_dir_base: pathlib.Path,
-    file_merges: List[gitutils.FileMerge],
+    file_merges: Iterable[gitutils.FileMerge],
     strip_comments: bool = False,
 ) -> List[pathlib.Path]:
     """Create merge directories based on the provided merge scenarios. For each merge scenario A,
@@ -35,14 +35,18 @@ def create_merge_dirs(
 
     for file_merge in file_merges:
         result_blob = file_merge.result
-        merge_commit = file_merge.from_merge_scenario.result
+        ms = file_merge.from_merge_scenario
+        merge_commit = ms.result
+        left_commit = ms.left
+        right_commit = ms.right
+        base_commit = ms.base
 
         left_blob = file_merge.left
         right_blob = file_merge.right
 
-        left_filename = create_blob_filename("Left", left_blob)
-        right_filename = create_blob_filename("Right", right_blob)
-        result_filename = create_blob_filename("Expected", result_blob)
+        left_filename = create_blob_filename("Left", left_blob, left_commit)
+        right_filename = create_blob_filename("Right", right_blob, right_commit)
+        result_filename = create_blob_filename("Expected", result_blob, merge_commit)
 
         merge_dir = merge_dir_base / merge_commit.hexsha / result_blob.name
         merge_dir.mkdir(parents=True)
@@ -52,7 +56,7 @@ def create_merge_dirs(
         _write_blob_to_file(merge_dir / right_filename, right_blob, strip_comments)
         if file_merge.base:
             _write_blob_to_file(
-                merge_dir / create_blob_filename("Base", file_merge.base),
+                merge_dir / create_blob_filename("Base", file_merge.base, base_commit),
                 file_merge.base,
                 strip_comments,
             )
@@ -61,7 +65,7 @@ def create_merge_dirs(
             LOGGER.warning(
                 f"No base blob for merge commit {merge_commit.hexsha} and result blob {result_blob.hexsha}"
             )
-            (merge_dir / f"Base{BLOB_SHA_SEP}.java").write_bytes(b"")
+            (merge_dir / f"Base{BLOB_SHA_SEP}{BLOB_SHA_SEP}.java").write_bytes(b"")
 
         merge_dirs.append(merge_dir)
 
@@ -72,6 +76,9 @@ def extract_commit_sha(merge_dir: pathlib.Path) -> str:
     """Extract the commit sha from a merge directory path."""
     return list(merge_dir.parents)[0].name
 
+def extract_commit_sha_from_filepath(filepath: pathlib.Path) -> str:
+    """Extract the commit sha from a Java file in a merge directory."""
+    return filepath.name[:-5].split(BLOB_SHA_SEP)[-2]
 
 def extract_blob_sha(filepath: pathlib.Path) -> str:
     """Extract the blob commit sha from a Java file in a merge directory."""
@@ -90,9 +97,9 @@ def mvn_compile(workdir: pathlib.Path):
     return proc.returncode == 0
 
 
-def create_blob_filename(prefix: str, blob: git.Blob, ext: str = "java") -> str:
+def create_blob_filename(prefix: str, blob: git.Blob, commit: git.Commit, ext: str = "java") -> str:
     """Create the filename for a blob."""
-    return f"{prefix}{BLOB_SHA_SEP}{blob.hexsha}.{ext}"
+    return f"{prefix}{BLOB_SHA_SEP}{commit.hexsha}{BLOB_SHA_SEP}{blob.hexsha}.{ext}"
 
 
 def read_non_empty_lines(path: pathlib.Path) -> List[str]:
