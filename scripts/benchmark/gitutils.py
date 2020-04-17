@@ -6,7 +6,8 @@ import os
 import itertools
 import pathlib
 import shutil
-from typing import List, Optional, Mapping, Sequence, Tuple, Iterable
+import contextlib
+from typing import List, Optional, Mapping, Sequence, Tuple, Iterable, ContextManager
 
 import git
 import daiquiri
@@ -65,6 +66,7 @@ def extract_merge_scenarios(
     else:
         expected_merge_commits = set()
 
+    merge_commits = list(merge_commits)
     merge_scenarios = []
 
     for merge in merge_commits:
@@ -162,6 +164,58 @@ def extract_conflicting_files(
         LOGGER.info(f"No file merges required for merge commit {result.hexsha}")
 
     return file_merges
+
+
+@contextlib.contextmanager
+def merge_no_commit(
+    repo: git.Repo, left_sha: str, right_sha: str
+) -> ContextManager[bool]:
+    """Returns a context manager that on enter performs the desired merge
+    without committing, and on exit aborts the merge and restores the repo HEAD to
+    the initial state.
+
+    Args:
+        repo: A git repo to merge in.
+        left_sha: The hexsha of the left commit (the "current" version).
+        right_sha: The hexsha of the right commit (the "other" version).
+    Returns:
+        A context manager that yields True on a merge without conflicts.
+    """
+    with saved_git_head(repo):
+        repo.git.switch(left_sha, "--force", "--detach", "--quiet")
+        try:
+            repo.git.merge(right_sha, "--no-commit")
+            success = True
+        except git.CommandError:
+            success = False
+
+        yield success
+
+        repo.git.merge("--abort")
+
+
+@contextlib.contextmanager
+def saved_git_head(repo: git.Repo) -> ContextManager[None]:
+    """Create a context manager that automatically restores the repos HEAD when exited.
+
+    Args:
+        repo: A Git repository.
+    Returns:
+        A context manager that restores the Git HEAD on exit.
+    """
+    saved_head = repo.head.commit.hexsha
+    LOGGER.info(f"Repo HEAD saved at {saved_head}")
+
+    exc = None
+    try:
+        yield
+    except BaseException as e:
+        exc = e
+    finally:
+        repo.git.checkout(saved_head, "--force")
+        LOGGER.info(f"Restored repo HEAD to {saved_head}")
+        if exc is not None:
+            raise exc
 
 
 def _to_file_merge(

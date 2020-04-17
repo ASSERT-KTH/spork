@@ -3,17 +3,20 @@ import sys
 import time
 import pathlib
 import dataclasses
-from typing import List, Generator
+import collections
+import enum
+from typing import List, Generator, Iterable
 
 import git
 import daiquiri
 
 from . import gitutils
+from . import fileutils
 
 LOGGER = daiquiri.getLogger(__name__)
 
 
-class MergeOutcome:
+class MergeOutcome(enum.Enum):
     CONFLICT = "conflict"
     SUCCESS = "success"
     FAIL = "fail"
@@ -32,9 +35,15 @@ class MergeResult:
     runtime: int
 
 
+GitMergeResult = collections.namedtuple(
+    "GitMergeResult",
+    "merge_commit base_commit left_commit right_commit merge_ok build_ok",
+)
+
+
 def run_file_merges(
     file_merge_dirs: List[pathlib.Path], merge_cmd: str
-) -> Generator[MergeResult, None, None]:
+) -> Iterable[MergeResult]:
     """Run the file merges in the provided directories and put the output in a file called `merge_cmd`.java.
 
     Args:
@@ -115,50 +124,66 @@ def run_file_merge(scenario_dir, merge_cmd, base, left, right, expected, merge):
         return MergeOutcome.SUCCESS, runtime
 
 
-def merge_files_separately(merge_dirs, merge_cmd):
-    num_merged = 0
-    num_failed = 0
+def run_git_merges(
+    merge_scenarios: List[gitutils.MergeScenario], repo: git.Repo, build: bool = False
+) -> Iterable[GitMergeResult]:
+    """Replay the provided merge scenarios using git-merge. Assumes that the
+    merge scenarios belong to the provided repo. The merge tool to use must be
+    configured in .gitattributes and .gitconfig, see the README at
+    https://github.com/kth/spork for details on that.
 
-    start = time.time_ns()
-    for merge_dir in merge_dirs:
-        LOGGER.info(
-            f"running merge scenarios for merge dir {merge_dir.parent.name}/{merge_dir.name}"
-        )
-        assert merge_dir.is_dir()
-
-        if run_file_merge(merge_dir, merge_cmd):
-            num_merged += 1
-        else:
-            num_failed += 1
-
-        LOGGER.info(f"merged: {num_merged}, failed: {num_failed}")
-
-    end = time.time_ns()
-    delta = (end - start) / 1e9
-    LOGGER.info(f"merged: {num_merged}, failed: {num_failed}")
-    LOGGER.info(f"Time elapsed: {delta} seconds")
-    LOGGER.info(f"Average time per merge: {delta / (num_merged + num_failed)}")
+    Args:
+        merge_scenarios: A list of merge scenarios.
+        repo: The related repository.
+        build: If True, try to build the project with Maven after merge.
+    Returns:
+        An iterable of merge results.
+    """
+    for ms in merge_scenarios:
+        LOGGER.info(f"Running scenario {ms.result.hexsha}")
+        yield run_git_merge(ms, repo, build)
 
 
-def run_git_merge(merge_scenarios: List[gitutils.MergeScenario], repo: git.Repo):
-    passed_merge = 0
-    failed_merge = 0
+def run_git_merge(
+    merge_scenario: gitutils.MergeScenario, repo: git.Repo, build: bool
+) -> GitMergeResult:
+    """Replay a single merge scenario. Assumes that the merge scenario belongs
+    to the provided repo. The merge tool to use must be configured in
+    .gitattributes and .gitconfig, see the README at
+    https://github.com/kth/spork for details on that.
 
-    passed_build = 0
-    failed_build = 0
+    Args:
+        merge_scenario: A merge scenario.
+        repo: The related repository.
+        build: If True, try to build the project with Maven after merge.
+    Returns:
+        Result on the merge and potential build.
+    """
+    ms = merge_scenario # alias for less verbosity
 
-    for mc in merge_scenarios:
-        LOGGER.info(f"MERGING {mc}\n\n")
-        repo.git.checkout(mc.left.hexsha, "-f")
+    with gitutils.merge_no_commit(repo, ms.left.hexsha, ms.right.hexsha) as merge_ok:
+        build_ok = fileutils.mvn_compile(workdir=repo.working_tree_dir) if build else False
 
-        try:
-            out = repo.git.merge(mc.right.hexsha)
-            LOGGER.info("MERGE OK")
-            passed_merge += 1
+    return GitMergeResult(
+        merge_commit=ms.result.hexsha,
+        merge_ok=merge_ok,
+        build_ok=build_ok,
+        base_commit=ms.base.hexsha,
+        left_commit=ms.left.hexsha,
+        right_commit=ms.right.hexsha,
+    )
 
-        except git.GitCommandError as exc:
-            LOGGER.info(exc)
-            failed_merge += 1
+def is_buildable(commit_sha: str, repo: git.Repo) -> bool:
+    """Try to build the commit with Maven.
 
-    LOGGER.info(f"passed_merge: {passed_merge}, failed_merge: {failed_merge}")
-    LOGGER.info(f"passed_build: {passed_build}, failed_build: {failed_build}")
+    Args:
+        commit_sha: A commit hexsha.
+        repo: The related Git repo.
+    Returns:
+        True if the build was successful.
+    """
+    with gitutils.saved_git_head(repo):
+        repo.git.switch(commit_sha, "--detach", "--quiet", "--force")
+        return fileutils.mvn_compile(workdir=repo.working_tree_dir)
+    
+

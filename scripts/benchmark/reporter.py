@@ -8,6 +8,7 @@ from typing import List, Iterable
 
 from . import evaluate
 from . import gitutils
+from . import run
 
 
 @dataclasses.dataclass(frozen=True)
@@ -65,6 +66,16 @@ def write_file_merge_metainfo(file_merges: List[gitutils.FileMerge], dst: str) -
     )
 
 
+def write_git_merge_results(
+    merge_results: Iterable[run.GitMergeResult], dst: str
+) -> None:
+    _write_csv(
+        headers=list(run.GitMergeResult._fields),
+        body=[[str(v) for v in res] for res in merge_results],
+        dst=dst,
+    )
+
+
 def _file_merge_to_metainfo(file_merge: gitutils.FileMerge) -> FileMergeMetainfo:
     ms = file_merge.from_merge_scenario
 
@@ -88,7 +99,8 @@ def _file_merge_to_metainfo(file_merge: gitutils.FileMerge) -> FileMergeMetainfo
 
 
 def _write_csv(headers: List[str], body: List[List[str]], dst: str):
-    formatted_content = _format_for_csv([headers, *body])
+    sorted_body = sorted(body, key=lambda lst: lst[0])
+    formatted_content = _format_for_csv([headers, *sorted_body])
 
     with open(dst, mode="w", encoding=sys.getdefaultencoding()) as file:
         writer = csv.writer(file, delimiter=",")
@@ -108,7 +120,7 @@ def _parse_value(v: str):
 
 
 def _format_for_csv(results: List[List[str]]) -> List[List[str]]:
-    column_widths = _largest_cells(results)
+    column_widths = [largest + 1 for largest in _largest_cells(results)]
     return [
         [cell.rjust(column_widths[i]) for i, cell in enumerate(row)] for row in results
     ]

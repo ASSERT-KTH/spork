@@ -86,7 +86,7 @@ def count_lines(filepath: pathlib.Path) -> int:
 
 def mvn_compile(workdir: pathlib.Path):
     """Compile the project in workdir with mvn."""
-    proc = subprocess.run("mvn clean compile".split(), cwd=workdir, capture_output=True)
+    proc = subprocess.run("mvn clean compile".split(), cwd=workdir)
     return proc.returncode == 0
 
 
@@ -108,6 +108,7 @@ def strip_comments(java_code: str) -> str:
     """Strip inline and block comments from the provided source code."""
     block_comments_stripped = re.sub(BLOCK_COMMENT_PATTERN, "", java_code)
     return re.sub(INLINE_COMMENT_PATTERN, "", block_comments_stripped)
+
 
 def copy_withouth_comments(src: pathlib.Path, dst: pathlib.Path) -> None:
     """Copy the content in src to dst, stripping any Java comments."""

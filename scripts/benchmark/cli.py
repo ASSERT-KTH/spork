@@ -3,6 +3,7 @@ import pathlib
 import git
 import argparse
 import functools
+import collections
 
 from typing import List, Optional, Iterable
 
@@ -145,11 +146,39 @@ def create_cli_parser():
     merge_extractor_command.add_argument(
         "--non-trivial", help="Extract only non-trivial merges", action="store_true"
     )
+    merge_extractor_command.add_argument(
+        "--buildable",
+        help="Only extract merge scenarios if they can be built with maven",
+        action="store_true",
+    )
 
     file_merge_metainfo_command = subparsers.add_parser(
         "extract-file-merge-metainfo",
         help="Extract metainfo for non-trivial file merges.",
         parents=[base_parser],
+    )
+    file_merge_metainfo_command.add_argument(
+        "--merge-commits",
+        help="Path to a list of merge commit shas to operate on.",
+        default=None,
+        type=pathlib.Path,
+    )
+
+    git_merge_command = subparsers.add_parser(
+        "git-merge",
+        help="Replay the merge commits provided using Git and the currently configured merge driver.",
+        parents=[base_parser],
+    )
+    git_merge_command.add_argument(
+        "--merge-commits",
+        help="Path to a list of merge commit shas to operate on.",
+        required=True,
+        type=pathlib.Path,
+    )
+    git_merge_command.add_argument(
+        "--build",
+        help="Try to build the project with Maven after the merge.",
+        action="store_true",
     )
 
     return parser
@@ -189,16 +218,11 @@ def _run_merges(
 
 
 def _merge(args: argparse.Namespace, eval_func):
-    commit_shas = None
-    if args.merge_commits:
-        commit_shas = [
-            line.strip()
-            for line in args.merge_commits.read_text(
-                encoding=sys.getdefaultencoding()
-            ).split("\n")
-            if line.strip()
-        ]
-
+    commit_shas = (
+        fileutils.read_non_empty_lines(args.merge_commits)
+        if args.merge_commits
+        else None
+    )
     evaluations = _run_merges(args, eval_func, expected_merge_commit_shas=commit_shas)
     reporter.write_results(evaluations, args.output or "results.csv")
 
@@ -235,10 +259,19 @@ def _extract_merge_commits(args: argparse.Namespace):
     merge_scenarios = gitutils.extract_merge_scenarios(
         repo, non_trivial=args.non_trivial
     )
-    LOGGER.info(f"Extracted {len(merge_scenarios)} merge scenarios")
+
+    if args.buildable:
+        buildable = [ms for ms in merge_scenarios if run.is_buildable(ms.result.hexsha, repo)]
+        LOGGER.info(
+            f"Filtered {len(merge_scenarios) - len(buildable)} merges that did not build"
+        )
+        merge_scenarios = buildable
+
+    LOGGER.info(f"Extracted {len(merge_scenarios)} merge commits")
 
     outpath = args.output or pathlib.Path("merge_scenarios.txt")
     outpath.write_text("\n".join([merge.result.hexsha for merge in merge_scenarios]))
+    LOGGER.info(f"Merge commits saved to {outpath}")
 
 
 def _extract_file_merge_metainfo(args: argparse.Namespace):
@@ -254,6 +287,20 @@ def _extract_file_merge_metainfo(args: argparse.Namespace):
     reporter.write_file_merge_metainfo(file_merges, args.output)
 
 
+def _git_merge(args: argparse.Namespace):
+    if args.github_user is not None:
+        repo = gitutils.clone_repo(args.repo, args.github_user)
+    else:
+        repo = git.Repo(args.repo)
+
+    commit_shas = fileutils.read_non_empty_lines(args.merge_commits)[: args.num_merges]
+    merge_scenarios = gitutils.extract_merge_scenarios(
+        repo, merge_commit_shas=commit_shas
+    )
+    merge_results = run.run_git_merges(merge_scenarios, repo, args.build)
+    reporter.write_git_merge_results(merge_results, args.output)
+
+
 def main():
     parser = create_cli_parser()
     args = parser.parse_args(sys.argv[1:])
@@ -263,6 +310,9 @@ def main():
         return
     elif args.command == "extract-file-merge-metainfo":
         _extract_file_merge_metainfo(args)
+        return
+    elif args.command == "git-merge":
+        _git_merge(args)
         return
 
     eval_func = functools.partial(
