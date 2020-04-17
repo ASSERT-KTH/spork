@@ -6,6 +6,7 @@ import sys
 import collections
 import itertools
 import dataclasses
+import tempfile
 
 from typing import List, Iterable, Mapping
 
@@ -20,6 +21,7 @@ MID_CONFLICT = "======="
 END_CONFLICT = ">>>>>>>"
 
 LOGGER = daiquiri.getLogger(__name__)
+
 
 @dataclasses.dataclass(frozen=True)
 class MergeConflict:
@@ -197,8 +199,7 @@ MergeEvaluation = collections.namedtuple(
 
 
 def evaluation_result(
-    merge_result: run.MergeResult,
-    base_merge_dir: pathlib.Path,
+    merge_result: run.MergeResult, base_merge_dir: pathlib.Path,
 ):
     """Gather evaluation results from the provided merge result."""
     gumtree_diff_size = -1
@@ -208,21 +209,21 @@ def evaluation_result(
     num_conflicts = 0
 
     if merge_result.outcome != run.MergeOutcome.FAIL:
+        # extract conflicts from the original file
         conflicts = extract_conflicts(merge_result.merge_file)
         conflict_size = sum(c.num_lines for c in conflicts)
         num_conflicts = len(conflicts)
 
-        if not num_conflicts:
-            expected_file = merge_result.expected_file
-            gumtree_diff_size = len(
-                gumtree_edit_script(expected_file, merge_result.merge_file)
-            )
-            git_diff_size = len(
-                git_diff_edit_script(expected_file, merge_result.merge_file)
-            )
-            norm_diff_size = normalized_comparison(
-                expected_file, merge_result.merge_file
-            )
+        # perform rest of analysis with comments stripped
+        with tempfile.TemporaryDirectory() as tmpdir:
+            expected = pathlib.Path(tmpdir) / "Expected.java"
+            actual = pathlib.Path(tmpdir) / "Merge.java"
+            fileutils.copy_withouth_comments(merge_result.expected_file, expected)
+            fileutils.copy_withouth_comments(merge_result.merge_file, actual)
+
+            gumtree_diff_size = len(gumtree_edit_script(expected, actual))
+            git_diff_size = len(git_diff_edit_script(expected, actual))
+            norm_diff_size = normalized_comparison(expected, actual)
 
     merge_dir = merge_result.merge_dir.relative_to(base_merge_dir)
     merge_commit = fileutils.extract_commit_sha(merge_dir)

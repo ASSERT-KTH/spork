@@ -4,6 +4,8 @@ import pathlib
 import sys
 import re
 import dataclasses
+import subprocess
+import re
 from typing import List, Mapping, Tuple
 
 import git
@@ -15,11 +17,15 @@ LOGGER = daiquiri.getLogger(__name__)
 
 BLOB_SHA_SEP = "_"
 
+INLINE_COMMENT_PATTERN = re.compile("//.*")
+# the (?s) flag is equivalent to the re.DOTALL flag
+BLOCK_COMMENT_PATTERN = re.compile("(?s)/\*.*?\*/")
+
 
 def create_merge_dirs(
     merge_dir_base: pathlib.Path,
     file_merges: List[gitutils.FileMerge],
-    strip_comments: bool = True,
+    strip_comments: bool = False,
 ) -> List[pathlib.Path]:
     """Create merge directories based on the provided merge scenarios. For each merge scenario A,
     a merge directory A is created. For each file to be merged, a subdirectory with base, left, right and
@@ -78,16 +84,43 @@ def count_lines(filepath: pathlib.Path) -> int:
         return len([1 for _ in f.readlines()])
 
 
+def mvn_compile(workdir: pathlib.Path):
+    """Compile the project in workdir with mvn."""
+    proc = subprocess.run("mvn clean compile".split(), cwd=workdir, capture_output=True)
+    return proc.returncode == 0
+
+
 def create_blob_filename(prefix: str, blob: git.Blob, ext: str = "java") -> str:
     """Create the filename for a blob."""
     return f"{prefix}{BLOB_SHA_SEP}{blob.hexsha}.{ext}"
+
+
+def read_non_empty_lines(path: pathlib.Path) -> List[str]:
+    """Read all non-empty lines from the path, stripping any leading and trailing whitespace."""
+    return [
+        line.strip()
+        for line in path.read_text(encoding=sys.getdefaultencoding()).split("\n")
+        if line.strip()
+    ]
+
+
+def strip_comments(java_code: str) -> str:
+    """Strip inline and block comments from the provided source code."""
+    block_comments_stripped = re.sub(BLOCK_COMMENT_PATTERN, "", java_code)
+    return re.sub(INLINE_COMMENT_PATTERN, "", block_comments_stripped)
+
+def copy_withouth_comments(src: pathlib.Path, dst: pathlib.Path) -> None:
+    """Copy the content in src to dst, stripping any Java comments."""
+    content = src.read_text(sys.getdefaultencoding())
+    stripped = strip_comments(content)
+    dst.touch()
+    dst.write_text(stripped, encoding=sys.getdefaultencoding())
 
 
 def _write_blob_to_file(filepath, blob, strip_comments):
     data = blob.data_stream[-1].read()
     if strip_comments:
         content = data.decode(sys.getdefaultencoding())
-        content = re.sub("//.*", "", content)
-        content = re.sub(r"/\*.*?\*/", "", content, flags=re.DOTALL)
-        data = content.encode(sys.getdefaultencoding())
+        stripped = strip_comments(content)
+        data = stripped.encode(sys.getdefaultencoding())
     filepath.write_bytes(data)
