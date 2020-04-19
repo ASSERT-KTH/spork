@@ -1,7 +1,6 @@
-package se.kth.spork.cli;
+package se.kth.spork.spoon.printer;
 
-import se.kth.spork.base3dm.Revision;
-import se.kth.spork.spoon.SpoonTreeBuilder;
+import se.kth.spork.spoon.pcsinterpreter.SpoonTreeBuilder;
 import se.kth.spork.spoon.StructuralConflict;
 import se.kth.spork.util.Pair;
 import spoon.compiler.Environment;
@@ -14,47 +13,61 @@ import spoon.reflect.visitor.DefaultTokenWriter;
 import spoon.reflect.visitor.PrinterHelper;
 import spoon.reflect.visitor.PrintingContext;
 
-import java.util.ArrayDeque;
-import java.util.Deque;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 public final class SporkPrettyPrinter extends DefaultJavaPrettyPrinter {
     public static final String START_CONFLICT = "<<<<<<< LEFT";
     public static final String MID_CONFLICT = "=======";
     public static final String END_CONFLICT = ">>>>>>> RIGHT";
 
+    private static final Map<String, Pair<String, String>> DEFAULT_CONFLICT_MAP = Collections.emptyMap();
+
     private final SporkPrinterHelper printerHelper;
     private final String lineSeparator = getLineSeparator();
 
-    private Deque<Optional<Map<String, Pair<Revision, String>>>> printerConflictMaps;
+
+    private Map<String, Pair<String, String>> globalContentConflicts;
+
+    private Deque<Optional<Map<String, Pair<String, String>>>> localContentConflictMaps;
 
     public SporkPrettyPrinter(Environment env) {
         super(env);
         printerHelper = new SporkPrinterHelper(env);
-        printerConflictMaps = new ArrayDeque<>();
+        localContentConflictMaps = new ArrayDeque<>();
         setPrinterTokenWriter(new DefaultTokenWriter(printerHelper));
 
         // This is required to avoid NullPointerExceptions when debugging, as the debugger calls toString from time
         // to time
-        printerConflictMaps.push(Optional.empty());
+        localContentConflictMaps.push(Optional.empty());
 
         // this line is SUPER important because without it implicit elements will be printed. For example,
         // instead of just String, it will print java.lang.String. Which isn't great.
         setIgnoreImplicit(false);
+
+        globalContentConflicts = DEFAULT_CONFLICT_MAP;
     }
 
     @Override
     @SuppressWarnings("unchecked")
     protected void enter(CtElement e) {
-        printerConflictMaps.push(Optional.ofNullable(
-                (Map<String, Pair<Revision, String>>) e.getMetadata(PrinterPreprocessor.CONFLICT_MAP_KEY)));
+        localContentConflictMaps.push(Optional.ofNullable(
+                (Map<String, Pair<String, String>>) e.getMetadata(PrinterPreprocessor.LOCAL_CONFLICT_MAP_KEY)));
+
+
+        if (globalContentConflicts == DEFAULT_CONFLICT_MAP) {
+            Map<String, Pair<String, String>> globals = (Map<String, Pair<String, String>>)
+                    e.getMetadata(PrinterPreprocessor.GLOBAL_CONFLICT_MAP_KEY);
+            if (globals != null) {
+                globalContentConflicts = globals;
+            }
+        }
+
         super.enter(e);
     }
 
     @Override
     protected void exit(CtElement e) {
-        printerConflictMaps.pop();
+        localContentConflictMaps.pop();
         super.exit(e);
     }
 
@@ -69,6 +82,7 @@ public final class SporkPrettyPrinter extends DefaultJavaPrettyPrinter {
             printerHelper.writeRawSourceCode(originalSource, SourceExtractor.getIndentation(origNode));
             return this;
         }
+
 
         StructuralConflict structuralConflict = (StructuralConflict) e.getMetadata(StructuralConflict.METADATA_KEY);
 
@@ -120,7 +134,7 @@ public final class SporkPrettyPrinter extends DefaultJavaPrettyPrinter {
 
         @Override
         public SporkPrinterHelper write(String s) {
-            Optional<Map<String, Pair<Revision, String>>> conflictMap = printerConflictMaps.peek();
+            Optional<Map<String, Pair<String, String>>> localConflictMap = localContentConflictMaps.peek();
             String trimmed = s.trim();
             lastWritten = s;
             if (trimmed.startsWith(START_CONFLICT) && trimmed.endsWith(END_CONFLICT)) {
@@ -131,11 +145,13 @@ public final class SporkPrettyPrinter extends DefaultJavaPrettyPrinter {
                 //
                 // All we need to do here is the decrease tabs and enter some appropriate whitespace
                 writelnIfNotPresent().writeAtLeftMargin(s).writeln();
-            } else if (conflictMap.isPresent() && conflictMap.get().containsKey(s)) {
-                Pair<Revision, String> conflict = conflictMap.get().get(s);
-                String left = conflict.first == Revision.RIGHT ? s : conflict.second;
-                String right = conflict.first == Revision.RIGHT ? conflict.second : s;
-                writeConflict(left, right);
+            }
+            if (globalContentConflicts.containsKey(s)) {
+                Pair<String, String> conflict = globalContentConflicts.get(s);
+                writeConflict(conflict.first, conflict.second);
+            } else if (localConflictMap.isPresent() && localConflictMap.get().containsKey(s)) {
+                Pair<String, String> conflict = localConflictMap.get().get(s);
+                writeConflict(conflict.first, conflict.second);
             } else {
                 super.write(s);
             }

@@ -1,7 +1,12 @@
-package se.kth.spork.spoon;
+package se.kth.spork.spoon.pcsinterpreter;
 
 import se.kth.spork.base3dm.ChangeSet;
+import se.kth.spork.spoon.wrappers.NodeFactory;
+import se.kth.spork.spoon.wrappers.RoledValues;
+import se.kth.spork.spoon.matching.SpoonMapping;
+import se.kth.spork.spoon.wrappers.SpoonNode;
 import se.kth.spork.util.Pair;
+import spoon.compiler.Environment;
 import spoon.reflect.declaration.CtElement;
 
 /**
@@ -24,7 +29,11 @@ public class PcsInterpreter {
         SporkTreeBuilder sporkTreeBuilder = new SporkTreeBuilder(delta);
         SporkTree sporkTreeRoot = sporkTreeBuilder.build(NodeFactory.ROOT);
 
-        SpoonTreeBuilder spoonTreeBuilder = new SpoonTreeBuilder(baseLeft, baseRight);
+        // this is a bit of a hack, get any used environment such that the SpoonTreeBuilder can copy environment
+        // details
+        Environment oldEnv = sporkTreeRoot.getChildren().get(0).getNode().getElement().getFactory().getEnvironment();
+
+        SpoonTreeBuilder spoonTreeBuilder = new SpoonTreeBuilder(baseLeft, baseRight, oldEnv);
         CtElement spoonTreeRoot = spoonTreeBuilder.build(sporkTreeRoot);
 
         return Pair.of(spoonTreeRoot, sporkTreeBuilder.hasStructuralConflict() || spoonTreeBuilder.hasContentConflict());

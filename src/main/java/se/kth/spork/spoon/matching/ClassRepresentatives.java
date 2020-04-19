@@ -1,7 +1,9 @@
-package se.kth.spork.spoon;
+package se.kth.spork.spoon.matching;
 
 import se.kth.spork.base3dm.Revision;
 import se.kth.spork.base3dm.TdmMerge;
+import se.kth.spork.spoon.wrappers.SpoonNode;
+import se.kth.spork.spoon.wrappers.NodeFactory;
 import spoon.reflect.declaration.CtElement;
 import spoon.reflect.visitor.CtScanner;
 
@@ -16,7 +18,7 @@ import java.util.Map;
  *
  * @author Simon Larsén
  */
-class ClassRepresentatives {
+public class ClassRepresentatives {
     /**
      * Create the class representatives mapping. The class representatives for the different revisions are defined as:
      *
@@ -40,7 +42,7 @@ class ClassRepresentatives {
      * @param leftRight A matching from left to right.
      * @return The class representatives map.
      */
-    static Map<SpoonNode, SpoonNode> createClassRepresentativesMapping(
+    public static Map<SpoonNode, SpoonNode> createClassRepresentativesMapping(
             CtElement base,
             CtElement left,
             CtElement right,

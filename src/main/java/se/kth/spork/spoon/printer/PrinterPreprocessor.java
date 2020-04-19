@@ -1,9 +1,8 @@
-package se.kth.spork.cli;
+package se.kth.spork.spoon.printer;
 
-import se.kth.spork.base3dm.Revision;
 import se.kth.spork.spoon.ContentConflict;
-import se.kth.spork.spoon.ContentMerger;
-import se.kth.spork.spoon.RoledValue;
+import se.kth.spork.spoon.pcsinterpreter.ContentMerger;
+import se.kth.spork.spoon.wrappers.RoledValue;
 import se.kth.spork.util.LineBasedMerge;
 import se.kth.spork.util.Pair;
 import spoon.reflect.code.CtOperatorAssignment;
@@ -11,7 +10,9 @@ import spoon.reflect.cu.SourcePosition;
 import spoon.reflect.declaration.CtElement;
 import spoon.reflect.declaration.ModifierKind;
 import spoon.reflect.path.CtRole;
+import spoon.reflect.reference.CtArrayTypeReference;
 import spoon.reflect.reference.CtPackageReference;
+import spoon.reflect.reference.CtReference;
 import spoon.reflect.reference.CtTypeReference;
 import spoon.reflect.visitor.CtScanner;
 import spoon.reflect.visitor.printer.CommentOffset;
@@ -26,7 +27,9 @@ import java.util.*;
  */
 public class PrinterPreprocessor extends CtScanner {
     public static final String RAW_COMMENT_CONFLICT_KEY = "spork_comment_conflict";
-    public static final String CONFLICT_MAP_KEY = "spork_conflict_map";
+    public static final String LOCAL_CONFLICT_MAP_KEY = "spork_local_conflict_map";
+    public static final String GLOBAL_CONFLICT_MAP_KEY = "spork_global_conflict_map";
+    public static final String CONTENT_CONFLICT_PREFIX = "__SPORK_CONFLICT_";
 
     // the position key is used to put the original source position of an element as metadata
     // this is necessary e.g. for comments as their original source position may cause them not to be printed
@@ -36,15 +39,29 @@ public class PrinterPreprocessor extends CtScanner {
     private final List<String> importStatements;
     private final String activePackage;
 
+    private final Map<String, Set<CtPackageReference>> refToPack;
+
+    private int currentConflictId;
+
+    // A mapping with content_conflict_id -> (left_side, right_side) mappings that are valid
+    // in the entire source tree
+    // TODO improve the pretty-printer such that this hack is redundant
+    private final Map<String, Pair<String, String>> globalContentConflicts;
+
     public PrinterPreprocessor(List<String> importStatements, String activePackage) {
         this.importStatements = importStatements;
         this.activePackage = activePackage;
+        refToPack = new HashMap<>();
+        currentConflictId = 0;
+        globalContentConflicts = new HashMap<>();
     }
 
     @Override
     public void scan(CtElement element) {
         if (element == null)
             return;
+
+        element.putMetadata(GLOBAL_CONFLICT_MAP_KEY, Collections.unmodifiableMap(globalContentConflicts));
 
         // FIXME Temporary fix for bug in Spoon. See method javadoc. Remove once fixed in Spoon.
         handleIncorrectExplicitPackages(element);
@@ -129,17 +146,20 @@ public class PrinterPreprocessor extends CtScanner {
         Object leftVal = conflict.getLeft().getValue();
         Object rightVal = conflict.getRight().getValue();
 
-        Map<String, Pair<Revision, String>> printerMap = new HashMap<>();
+        // The local printer map, unlike the global printer map, is only valid in the scope of the
+        // current CtElement. It contains conflicts for anything that can't be replaced with a conflict id,
+        // such as operators and modifiers (as these are represented by enums)
+        // TODO improve the pretty-printer such that this hack is redundant
+        Map<String, Pair<String, String>> localPrinterMap = new HashMap<>();
 
-        String lineSep = System.getProperty("line.separator");
         switch (conflict.getRole()) {
             case NAME:
             case VALUE:
-                // embed the conflict directly in the literal value
-                String embedded = SporkPrettyPrinter.START_CONFLICT + lineSep
-                        + leftVal + lineSep + SporkPrettyPrinter.MID_CONFLICT + lineSep
-                        + rightVal + lineSep + SporkPrettyPrinter.END_CONFLICT;
-                element.setValueByRole(conflict.getRole(), embedded);
+                // these need to go into the global conflicts map, as the nodes in question aren't
+                // always scanned separately by the printer (often it just calls `getSimpleName`)
+                String conflictKey = CONTENT_CONFLICT_PREFIX + currentConflictId++;
+                globalContentConflicts.put(conflictKey, Pair.of(leftVal.toString(), rightVal.toString()));
+                element.setValueByRole(conflict.getRole(), conflictKey);
                 break;
             case COMMENT_CONTENT:
                 String rawLeft = (String) conflict.getLeft().getMetadata(RoledValue.Key.RAW_CONTENT);
@@ -154,9 +174,9 @@ public class PrinterPreprocessor extends CtScanner {
                 break;
             case IS_UPPER:
                 if (leftVal.equals(true)) {
-                    printerMap.put("extends", Pair.of(Revision.RIGHT, "super"));
+                    localPrinterMap.put("extends", Pair.of("extends", "super"));
                 } else {
-                    printerMap.put("super", Pair.of(Revision.RIGHT, "extends"));
+                    localPrinterMap.put("super", Pair.of("super", "extends"));
                 }
                 break;
             case MODIFIER:
@@ -171,12 +191,12 @@ public class PrinterPreprocessor extends CtScanner {
                     ModifierKind rightVis = rightVisibilities.iterator().next();
                     mods.add(rightVis);
                     element.setValueByRole(CtRole.MODIFIER, mods);
-                    printerMap.put(rightVis.toString(), Pair.of(Revision.LEFT, ""));
+                    localPrinterMap.put(rightVis.toString(), Pair.of("", rightVis.toString()));
                 } else {
                     String leftVisStr = leftVisibilities.iterator().next().toString();
                     String rightVisStr = rightVisibilities.isEmpty()
                             ? "" : rightVisibilities.iterator().next().toString();
-                    printerMap.put(leftVisStr, Pair.of(Revision.RIGHT, rightVisStr));
+                    localPrinterMap.put(leftVisStr, Pair.of(leftVisStr, rightVisStr));
                 }
                 break;
             case OPERATOR_KIND:
@@ -189,14 +209,14 @@ public class PrinterPreprocessor extends CtScanner {
                     leftStr += "=";
                     rightStr += "=";
                 }
-                printerMap.put(leftStr, Pair.of(Revision.RIGHT, rightStr));
+                localPrinterMap.put(leftStr, Pair.of(leftStr, rightStr));
                 break;
             default:
                 throw new IllegalStateException("Unhandled conflict: " + leftVal + ", " + rightVal);
         }
 
-        if (!printerMap.isEmpty()) {
-            element.putMetadata(CONFLICT_MAP_KEY, printerMap);
+        if (!localPrinterMap.isEmpty()) {
+            element.putMetadata(LOCAL_CONFLICT_MAP_KEY, localPrinterMap);
         }
     }
 }

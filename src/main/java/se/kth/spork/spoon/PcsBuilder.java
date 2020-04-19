@@ -2,6 +2,8 @@ package se.kth.spork.spoon;
 
 import se.kth.spork.base3dm.Pcs;
 import se.kth.spork.base3dm.Revision;
+import se.kth.spork.spoon.wrappers.NodeFactory;
+import se.kth.spork.spoon.wrappers.SpoonNode;
 import spoon.reflect.declaration.CtElement;
 import spoon.reflect.visitor.CtScanner;
 

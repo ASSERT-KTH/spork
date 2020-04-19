@@ -1,4 +1,4 @@
-package se.kth.spork.cli;
+package se.kth.spork.spoon.printer;
 
 import se.kth.spork.util.Pair;
 import spoon.reflect.CtModel;

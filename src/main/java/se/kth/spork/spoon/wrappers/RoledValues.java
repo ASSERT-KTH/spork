@@ -1,4 +1,4 @@
-package se.kth.spork.spoon;
+package se.kth.spork.spoon.wrappers;
 
 import spoon.reflect.declaration.CtElement;
 import spoon.reflect.path.CtRole;
@@ -11,7 +11,7 @@ import java.util.*;
  *
  * @author Simon Larsén
  */
-class RoledValues extends ArrayList<RoledValue> {
+public class RoledValues extends ArrayList<RoledValue> {
     private final CtElement element;
 
     public RoledValues(CtElement element) {

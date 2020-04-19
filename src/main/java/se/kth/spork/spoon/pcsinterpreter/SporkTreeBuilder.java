@@ -1,6 +1,10 @@
-package se.kth.spork.spoon;
+package se.kth.spork.spoon.pcsinterpreter;
 
 import se.kth.spork.base3dm.*;
+import se.kth.spork.spoon.wrappers.NodeFactory;
+import se.kth.spork.spoon.wrappers.RoledValues;
+import se.kth.spork.spoon.wrappers.SpoonNode;
+import se.kth.spork.spoon.StructuralConflict;
 import spoon.reflect.path.CtRole;
 
 import java.util.*;

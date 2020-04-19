@@ -1,11 +1,21 @@
-package se.kth.spork.spoon;
+package se.kth.spork.spoon.pcsinterpreter;
 
 import se.kth.spork.base3dm.Revision;
 import se.kth.spork.base3dm.TdmMerge;
+import se.kth.spork.spoon.*;
+import se.kth.spork.spoon.matching.SpoonMapping;
+import se.kth.spork.spoon.wrappers.NodeFactory;
+import se.kth.spork.spoon.wrappers.RoledValues;
+import se.kth.spork.spoon.wrappers.SpoonNode;
 import se.kth.spork.util.Pair;
+import spoon.Launcher;
+import spoon.compiler.Environment;
+import spoon.reflect.CtModelImpl;
 import spoon.reflect.code.CtExpression;
 import spoon.reflect.declaration.CtAnnotation;
 import spoon.reflect.declaration.CtElement;
+import spoon.reflect.factory.Factory;
+import spoon.reflect.factory.ModuleFactory;
 import spoon.reflect.path.CtRole;
 import spoon.reflect.reference.CtParameterReference;
 import spoon.reflect.reference.CtTypeReference;
@@ -25,17 +35,25 @@ public class SpoonTreeBuilder {
     private SpoonMapping baseRight;
     private boolean hasContentConflict = false;
 
+    private Factory factory;
+
     // A mapping from the original node to its copy in the merged tree
     private Map<SpoonNode, SpoonNode> nodes;
 
     /**
      * @param baseLeft  The base-to-left tree matching.
      * @param baseRight The base-to-right tree matching.
+     * @param oldEnv    Any environment used in the merge. It's needed to copy some values.
      */
-    SpoonTreeBuilder(SpoonMapping baseLeft, SpoonMapping baseRight) {
+    SpoonTreeBuilder(SpoonMapping baseLeft, SpoonMapping baseRight, Environment oldEnv) {
         nodes = new HashMap<>();
         this.baseLeft = baseLeft;
         this.baseRight = baseRight;
+
+        // create a new factory
+        Launcher launcher = new Launcher();
+        factory = launcher.createFactory();
+        Parser.setSporkEnvironment(factory.getEnvironment(), oldEnv.getTabulationSize(), oldEnv.isUsingTabulations());
     }
 
     /**
@@ -44,12 +62,19 @@ public class SpoonTreeBuilder {
      * @param tree A tree to copy.
      * @return A shallow copy of the input tree.
      */
-    private static CtElement shallowCopyTree(CtElement tree) {
+    private CtElement shallowCopyTree(CtElement tree, Factory factory) {
+        if (tree instanceof ModuleFactory.CtUnnamedModule) {
+            return factory.Module().getUnnamedModule();
+        } else if (tree instanceof CtModelImpl.CtRootPackage) {
+            return factory.Package().getRootPackage();
+        }
+
         // FIXME This is super inefficient, cloning the whole tree just to delete all its children
         CtElement treeCopy = tree.clone();
         for (CtElement child : treeCopy.getDirectChildren()) {
             child.delete();
         }
+        treeCopy.setFactory(factory);
         return treeCopy;
     }
 
@@ -103,7 +128,7 @@ public class SpoonTreeBuilder {
             Pair<RoledValues, List<ContentConflict>> mergedContent =
                     ContentMerger.mergedContent(sporkChild.getContent());
 
-            mergeTree = shallowCopyTree(originalTree);
+            mergeTree = shallowCopyTree(originalTree, factory);
             mergedContent.first.forEach(rv -> mergeTree.setValueByRole(rv.getRole(), rv.getValue()));
             if (!mergedContent.second.isEmpty()) {
                 // at least one conflict was not resolved

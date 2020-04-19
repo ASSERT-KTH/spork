@@ -1,6 +1,6 @@
 package se.kth.spork.util;
 
-import se.kth.spork.cli.SporkPrettyPrinter;
+import se.kth.spork.spoon.printer.SporkPrettyPrinter;
 
 import java.util.ArrayList;
 import java.util.Iterator;

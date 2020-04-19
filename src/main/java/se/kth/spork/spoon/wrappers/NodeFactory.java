@@ -1,4 +1,4 @@
-package se.kth.spork.spoon;
+package se.kth.spork.spoon.wrappers;
 
 import se.kth.spork.base3dm.Revision;
 import se.kth.spork.base3dm.TdmMerge;
