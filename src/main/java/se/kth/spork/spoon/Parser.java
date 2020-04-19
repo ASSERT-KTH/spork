@@ -69,19 +69,22 @@ public class Parser {
         });
     }
 
+    public static void setSporkEnvironment(Environment env, int tabulationSize, boolean useTabs) {
+        env.setTabulationSize(tabulationSize);
+        env.useTabulations(useTabs);
+        env.setPrettyPrinterCreator(() -> new SporkPrettyPrinter(env));
+        env.setNoClasspath(true);
+    }
+
     private static CtModule parse(Consumer<Launcher> addResource) {
         Launcher launcher = new Launcher();
-        Environment env = launcher.getEnvironment();
-        env.setPrettyPrinterCreator(
-                () -> new SporkPrettyPrinter(env));
         addResource.accept(launcher);
         CtModel model = launcher.buildModel();
 
         Pair<Integer, Boolean> indentationGuess = SourceExtractor.guessIndentation(model);
         String indentationType = indentationGuess.second ? "tabs" : "spaces";
         LOGGER.info("Using indentation: " + indentationGuess.first + " " + indentationType);
-        env.setTabulationSize(indentationGuess.first);
-        env.useTabulations(indentationGuess.second);
+        setSporkEnvironment(launcher.getEnvironment(), indentationGuess.first, indentationGuess.second);
 
         CtModule module = model.getUnnamedModule();
 

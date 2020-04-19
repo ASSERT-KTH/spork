@@ -7,6 +7,9 @@ import se.kth.spork.spoon.wrappers.NodeFactory;
 import se.kth.spork.spoon.wrappers.RoledValues;
 import se.kth.spork.spoon.wrappers.SpoonNode;
 import se.kth.spork.spoon.StructuralConflict;
+import spoon.reflect.CtModelImpl;
+import spoon.reflect.declaration.CtElement;
+import spoon.reflect.factory.ModuleFactory;
 
 import java.util.*;
 
@@ -75,8 +78,15 @@ public class SporkTree {
         return Collections.unmodifiableList(children);
     }
 
+    /**
+     * @return True if the subtree consists of only a single revision, AND the subtree is not rooted
+     * in the unnamed module or the root package. These should never be considered single revision
+     * as they must be replaced with new elements.
+     */
     public boolean isSingleRevisionSubtree() {
-        return revisions.size() == 1;
+        CtElement element = node.getElement();
+        return !(element instanceof ModuleFactory.CtUnnamedModule || element instanceof CtModelImpl.CtRootPackage)
+                && revisions.size() == 1;
     }
 
     public Revision getSingleRevision() {
