@@ -245,8 +245,11 @@ def clone_repo(
 
     if not repo_path.exists():
         url = f"https://github.com/{qualname}.git"
+        LOGGER.info(f"Cloning repository from {url}")
         repo = git.Repo.clone_from(url, str(repo_path))
+        LOGGER.info(f"Repository cloned to {repo_path}")
     else:
+        LOGGER.info(f"Using existing local repository at {repo_path}")
         repo = git.Repo(str(repo_path))
 
     return repo
