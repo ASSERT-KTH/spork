@@ -11,21 +11,21 @@ from typing import List, Mapping, Tuple, Iterable
 import git
 import daiquiri
 
-from . import gitutils
-
 LOGGER = daiquiri.getLogger(__name__)
 
 BLOB_SHA_SEP = "_"
 
-INLINE_COMMENT_PATTERN = re.compile("//.*")
-# the (?s) flag is equivalent to the re.DOTALL flag
-BLOCK_COMMENT_PATTERN = re.compile("(?s)/\*.*?\*/")
+CONFLICT_BLOCK_PATTERN = re.compile("(?ms)^<{7}.*?>{7}.*?$")
+INLINE_COMMENT_PATTERN = re.compile("(?m)^\s*//.*")
+# (?s) is equivalent to the re.DOTALL flag
+BLOCK_COMMENT_PATTERN = re.compile("(?ms)^\s*/\*.*?\*/")
+# (?m) is equivalent to the re.MULTILINE flag
+BLANK_LINE_PATTERN = re.compile(r"(?m)^\s*\n")
+EMPTY_BLOCK_PATTERN = re.compile(r"{\s+}")
 
 
 def create_merge_dirs(
-    merge_dir_base: pathlib.Path,
-    file_merges: Iterable[gitutils.FileMerge],
-    strip_comments: bool = False,
+    merge_dir_base: pathlib.Path, file_merges, strip_comments: bool = False,
 ) -> List[pathlib.Path]:
     """Create merge directories based on the provided merge scenarios. For each merge scenario A,
     a merge directory A is created. For each file to be merged, a subdirectory with base, left, right and
@@ -76,9 +76,11 @@ def extract_commit_sha(merge_dir: pathlib.Path) -> str:
     """Extract the commit sha from a merge directory path."""
     return list(merge_dir.parents)[0].name
 
+
 def extract_commit_sha_from_filepath(filepath: pathlib.Path) -> str:
     """Extract the commit sha from a Java file in a merge directory."""
     return filepath.name[:-5].split(BLOB_SHA_SEP)[-2]
+
 
 def extract_blob_sha(filepath: pathlib.Path) -> str:
     """Extract the blob commit sha from a Java file in a merge directory."""
@@ -97,7 +99,9 @@ def mvn_compile(workdir: pathlib.Path):
     return proc.returncode == 0
 
 
-def create_blob_filename(prefix: str, blob: git.Blob, commit: git.Commit, ext: str = "java") -> str:
+def create_blob_filename(
+    prefix: str, blob: git.Blob, commit: git.Commit, ext: str = "java"
+) -> str:
     """Create the filename for a blob."""
     return f"{prefix}{BLOB_SHA_SEP}{commit.hexsha}{BLOB_SHA_SEP}{blob.hexsha}.{ext}"
 
@@ -117,12 +121,35 @@ def strip_comments(java_code: str) -> str:
     return re.sub(INLINE_COMMENT_PATTERN, "", block_comments_stripped)
 
 
-def copy_withouth_comments(src: pathlib.Path, dst: pathlib.Path) -> None:
-    """Copy the content in src to dst, stripping any Java comments."""
+def strip_blank_lines(text: str) -> str:
+    """Remove any blank lines from the text."""
+    lines = []
+    for line in text.split("\n"):
+        if line and not line.isspace():
+            lines.append(line)
+    return "\n".join(lines)
+
+
+def normalize_formatting(java_code: str) -> str:
+    """Normalize the formatting by removing comments, blank lines and removing
+    whitespace in empty blocks.
+    """
+    for pattern in [
+        CONFLICT_BLOCK_PATTERN,
+        INLINE_COMMENT_PATTERN,
+        BLOCK_COMMENT_PATTERN,
+        BLANK_LINE_PATTERN,
+    ]:
+        java_code = re.sub(pattern, "", java_code)
+    return re.sub(EMPTY_BLOCK_PATTERN, r"{}", java_code)
+
+
+def copy_normalized(src: pathlib.Path, dst: pathlib.Path) -> None:
+    """Copy the content in src to dst, normalizing the formatting of the copy."""
     content = src.read_text(sys.getdefaultencoding())
-    stripped = strip_comments(content)
+    normalized = normalize_formatting(content)
     dst.touch()
-    dst.write_text(stripped, encoding=sys.getdefaultencoding())
+    dst.write_text(normalized, encoding=sys.getdefaultencoding())
 
 
 def _write_blob_to_file(filepath, blob, strip_comments):

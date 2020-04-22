@@ -214,12 +214,12 @@ def evaluation_result(
         conflict_size = sum(c.num_lines for c in conflicts)
         num_conflicts = len(conflicts)
 
-        # perform rest of analysis with comments stripped
+        # perform rest of analysis with normalized formatting
         with tempfile.TemporaryDirectory() as tmpdir:
             expected = pathlib.Path(tmpdir) / "Expected.java"
             actual = pathlib.Path(tmpdir) / "Merge.java"
-            fileutils.copy_withouth_comments(merge_result.expected_file, expected)
-            fileutils.copy_withouth_comments(merge_result.merge_file, actual)
+            fileutils.copy_normalized(merge_result.expected_file, expected)
+            fileutils.copy_normalized(merge_result.merge_file, actual)
 
             gumtree_diff_size = len(gumtree_edit_script(expected, actual))
             git_diff_size = len(git_diff_edit_script(expected, actual))
