@@ -162,52 +162,48 @@ def evaluation_result(
     merge_result: conts.MergeResult, base_merge_dir: pathlib.Path,
 ):
     """Gather evaluation results from the provided merge result."""
+    git_diff_size_norm = -1
     gumtree_diff_size = -1
     git_diff_size = -1
-    norm_diff_size = -1
+    gumtree_diff_size = -1
     conflict_size = 0
     num_conflicts = 0
 
-    if merge_result.outcome != conts.MergeOutcome.FAIL:
+    expected = merge_result.expected_file
+    replayed = merge_result.merge_file
+
+    if merge_result.outcome == conts.MergeOutcome.SUCCESS:
         # extract conflicts from the original file
-        conflicts = extract_conflicts(merge_result.merge_file)
+        conflicts = extract_conflicts(replayed)
         conflict_size = sum(c.num_lines for c in conflicts)
         num_conflicts = len(conflicts)
 
-        # perform rest of analysis with normalized formatting
-        with tempfile.TemporaryDirectory() as tmpdir:
-            expected = pathlib.Path(tmpdir) / "Expected.java"
-            actual = pathlib.Path(tmpdir) / "Merge.java"
-            fileutils.copy_normalized(merge_result.expected_file, expected)
-            fileutils.copy_normalized(merge_result.merge_file, actual)
+        expected_norm = fileutils.copy_normalized(expected)
+        replayed_norm = fileutils.copy_normalized(replayed)
 
-            gumtree_diff_size = len(gumtree_edit_script(expected, actual))
-            git_diff_size = len(git_diff_edit_script(expected, actual))
-            norm_diff_size = normalized_comparison(expected, actual)
+        git_diff_size = len(git_diff_edit_script(expected, replayed))
+        git_diff_size_norm = len(git_diff_edit_script(expected_norm, replayed_norm))
+        gumtree_diff_size = len(gumtree_edit_script(expected, replayed))
+        gumtree_diff_size_norm = len(gumtree_edit_script(expected_norm, replayed_norm))
 
     merge_dir = merge_result.merge_dir.relative_to(base_merge_dir)
     merge_commit = fileutils.extract_commit_sha(merge_dir)
     return conts.MergeEvaluation(
         merge_dir=merge_dir,
         merge_cmd=merge_result.merge_cmd,
-        outcome=merge_result.outcome
-        if not num_conflicts
-        else conts.MergeOutcome.CONFLICT,
+        outcome=merge_result.outcome,
         gumtree_diff_size=gumtree_diff_size,
+        gumtree_diff_size_norm=gumtree_diff_size_norm,
         git_diff_size=git_diff_size,
-        norm_diff_size=int(norm_diff_size),
+        git_diff_size_norm=git_diff_size_norm,
         conflict_size=conflict_size,
         num_conflicts=num_conflicts,
         runtime=merge_result.runtime,
         merge_commit=merge_commit,
         base_blob=fileutils.extract_blob_sha(merge_result.base_file),
-        base_lines=fileutils.count_lines(merge_result.base_file),
         left_blob=fileutils.extract_blob_sha(merge_result.left_file),
-        left_lines=fileutils.count_lines(merge_result.left_file),
         right_blob=fileutils.extract_blob_sha(merge_result.right_file),
-        right_lines=fileutils.count_lines(merge_result.right_file),
         expected_blob=fileutils.extract_blob_sha(merge_result.expected_file),
-        expected_lines=fileutils.count_lines(merge_result.expected_file),
     )
 
 

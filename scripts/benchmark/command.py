@@ -29,7 +29,7 @@ def run_file_merges(args: argparse.Namespace, eval_func):
         if args.merge_commits
         else None
     )
-    evaluations = _run_file_merges(
+    evaluations, file_merges = _run_file_merges(
         args, eval_func, expected_merge_commit_shas=commit_shas
     )
     reporter.write_csv(
@@ -143,7 +143,7 @@ def _run_file_merges(
     args: argparse.Namespace,
     eval_func,
     expected_merge_commit_shas: Optional[List[str]],
-) -> Iterable[conts.MergeEvaluation]:
+) -> (Iterable[conts.MergeEvaluation], List[conts.FileMerge]):
     assert not args.mpi or mpi.RANK == mpi.MASTER_RANK
 
     repo = _get_repo(args.repo, args.github_user)
@@ -166,7 +166,7 @@ def _run_file_merges(
     else:
         evaluations = eval_func(merge_dirs)
 
-    return evaluations
+    return evaluations, file_merges
 
 
 def _get_repo(repo: str, github_user: Optional[str]) -> git.Repo:

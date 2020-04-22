@@ -42,7 +42,12 @@ def _run_file_merges(file_merge_dirs: List[pathlib.Path], merge_cmd: str) -> Ite
         filenames = [f.name for f in merge_dir.iterdir() if f.is_file()]
 
         def get_filename(prefix: str) -> str:
-            matches = [name for name in filenames if name.startswith(prefix)]
+            matches = [
+                name
+                for name in filenames
+                if name.startswith(prefix)
+                and not name.endswith(fileutils.NORMALIZED_FILE_SUFFIX)
+            ]
             assert len(matches) == 1
             return matches[0]
 

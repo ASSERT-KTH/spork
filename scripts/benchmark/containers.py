@@ -84,25 +84,31 @@ class FileMergeMetainfo:
 
 
 @dataclasses.dataclass(frozen=True, order=True)
+class BlobMetaInfo:
+    blob: str
+    num_lines: int
+    num_lines_norm: int
+    num_nodes: int
+    num_nodes_norm: int
+
+
+@dataclasses.dataclass(frozen=True, order=True)
 class MergeEvaluation:
     merge_dir: pathlib.Path
+    merge_commit: str
+    base_blob: str
+    left_blob: str
+    right_blob: str
+    expected_blob: str
     merge_cmd: str
     outcome: str
-    gumtree_diff_size: int
+    git_diff_size_norm: int
     git_diff_size: int
-    norm_diff_size: int
+    gumtree_diff_size: int
+    gumtree_diff_size_norm: int
     num_conflicts: int
     conflict_size: int
     runtime: float
-    merge_commit: str
-    base_blob: str
-    base_lines: int
-    left_blob: str
-    left_lines: int
-    right_blob: str
-    right_lines: int
-    expected_blob: str
-    expected_lines: int
 
 
 class Revision(enum.Enum):
