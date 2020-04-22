@@ -27,7 +27,7 @@ except ModuleNotFoundError:
 
 
 def master(merge_dirs: List[pathlib.Path]):
-    print("Hello world, I am the master!")
+    LOGGER.info("Master starting ...")
 
     dirs_per_proc = int(len(merge_dirs) / NUM_WORKERS)
     range_starts = [i * dirs_per_proc for i in range(NUM_WORKERS)]
@@ -37,33 +37,34 @@ def master(merge_dirs: List[pathlib.Path]):
         end = range_starts[i + 1] if i < len(range_starts) - 1 else len(merge_dirs)
         proc_dirs = merge_dirs[start:end]
 
-        print(f"Sending dirs to proc {i}")
+        LOGGER.info(f"Master sending jobs to proc {i}")
         COMM.send(proc_dirs, dest=i + 1)
 
-    print(f"Master waiting for results")
+    LOGGER.info(f"Master waiting for results")
     results = []
     for i in range(NUM_PROCS - 1):
         results += COMM.recv(source=MPI.ANY_SOURCE, status=STAT)
-        print(f"Master got results from {STAT.source}")
+        LOGGER.info(f"Master got results from {STAT.source}")
 
+    LOGGER.info("Master exiting")
     return results
 
 
-def worker(evaluation_function, num_merge_commands):
-    print(f"Hello world, I am worker {RANK}")
+def worker(job_func, reps_per_job):
+    LOGGER.info(f"Worker {RANK} starting ...")
 
-    dirs = COMM.recv(source=MASTER_RANK)
-    print(f"Proc {RANK} got {len(dirs)} jobs from master")
+    jobs = COMM.recv(source=MASTER_RANK)
+    LOGGER.info(f"Worker {RANK} got {len(jobs)} jobs from master")
 
     results = []
 
     num_done = 0
-    tot = len(dirs) * num_merge_commands
+    tot = len(jobs) * reps_per_job
 
-    for merge_evaluation in evaluation_function(dirs):
-        results.append(merge_evaluation)
+    for result in job_func(jobs):
+        results.append(result)
         num_done += 1
-        print(f"Proc {RANK} progress: {num_done}/{tot}")
+        LOGGER.info(f"Worker {RANK} progress: {num_done}/{tot}")
 
-    print(f"Proc {RANK} sending results to master")
+    LOGGER.info(f"Worker {RANK} sending results to master")
     COMM.send(results, dest=MASTER_RANK)
