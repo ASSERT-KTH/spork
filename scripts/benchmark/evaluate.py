@@ -15,6 +15,7 @@ import daiquiri
 from . import run
 from . import gitutils
 from . import fileutils
+from . import containers as conts
 
 START_CONFLICT = "<<<<<<<"
 MID_CONFLICT = "======="
@@ -157,49 +158,8 @@ def extract_conflicts(path: pathlib.Path) -> List[MergeConflict]:
     return conflicts
 
 
-class EvalAttrName(enum.Enum):
-    merge_dir = "merge_dir"
-    merge_cmd = "merge_cmd"
-    outcome = "outcome"
-    gumtree_diff_size = "gumtree_diff_size"
-    git_diff_size = "git_diff_size"
-    norm_diff_size = "norm_diff_size"
-    num_conflicts = "num_conflicts"
-    conflict_size = "conflict_size"
-    runtime = "runtime"
-    merge_commit = "merge_commit"
-    base_blob = "base_blob"
-    base_lines = "base_lines"
-    left_blob = "left_blob"
-    left_lines = "left_lines"
-    right_blob = "right_blob"
-    right_lines = "right_lines"
-    expected_blob = "expected_blob"
-    expected_lines = "expected_lines"
-
-
-NUMERICAL_EVAL_ATTR_NAMES = tuple(
-    e.value
-    for e in (
-        EvalAttrName.gumtree_diff_size,
-        EvalAttrName.git_diff_size,
-        EvalAttrName.norm_diff_size,
-        EvalAttrName.num_conflicts,
-        EvalAttrName.conflict_size,
-        EvalAttrName.runtime,
-        EvalAttrName.base_lines,
-        EvalAttrName.left_lines,
-        EvalAttrName.right_lines,
-        EvalAttrName.expected_lines,
-    )
-)
-MergeEvaluation = collections.namedtuple(
-    "MergeEvaluation", [e.value for e in EvalAttrName],
-)
-
-
 def evaluation_result(
-    merge_result: run.MergeResult, base_merge_dir: pathlib.Path,
+    merge_result: conts.MergeResult, base_merge_dir: pathlib.Path,
 ):
     """Gather evaluation results from the provided merge result."""
     gumtree_diff_size = -1
@@ -208,7 +168,7 @@ def evaluation_result(
     conflict_size = 0
     num_conflicts = 0
 
-    if merge_result.outcome != run.MergeOutcome.FAIL:
+    if merge_result.outcome != conts.MergeOutcome.FAIL:
         # extract conflicts from the original file
         conflicts = extract_conflicts(merge_result.merge_file)
         conflict_size = sum(c.num_lines for c in conflicts)
@@ -227,12 +187,12 @@ def evaluation_result(
 
     merge_dir = merge_result.merge_dir.relative_to(base_merge_dir)
     merge_commit = fileutils.extract_commit_sha(merge_dir)
-    return MergeEvaluation(
+    return conts.MergeEvaluation(
         merge_dir=merge_dir,
         merge_cmd=merge_result.merge_cmd,
         outcome=merge_result.outcome
         if not num_conflicts
-        else run.MergeOutcome.CONFLICT,
+        else conts.MergeOutcome.CONFLICT,
         gumtree_diff_size=gumtree_diff_size,
         git_diff_size=git_diff_size,
         norm_diff_size=int(norm_diff_size),
@@ -255,7 +215,7 @@ def run_and_evaluate(
     merge_dirs: Iterable[pathlib.Path],
     merge_commands: Iterable[str],
     base_merge_dir: pathlib.Path,
-) -> Iterable[MergeEvaluation]:
+) -> Iterable[conts.MergeEvaluation]:
     for merge_cmd in merge_commands:
         for merge_result in run.run_file_merges(merge_dirs, merge_cmd):
             yield evaluation_result(merge_result, base_merge_dir)
