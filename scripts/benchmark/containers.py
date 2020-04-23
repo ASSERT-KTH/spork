@@ -158,3 +158,19 @@ class RuntimeResult:
     total_time_ms: int
     merge_cmd: str
 
+@dataclasses.dataclass(frozen=True, order=True)
+class MergeEvaluationStatistics:
+    project: str
+    merge_cmd: str
+    num_file_merges: int
+    num_success: int
+    num_conflict: int
+    num_fail: int
+    git_diff_avg_magn: int
+    git_diff_avg_magn_norm: int
+    git_diff_avg_acc: int
+    git_diff_avg_acc_norm: int
+    gumtree_diff_avg_magn: int
+    gumtree_diff_avg_magn_norm: int
+    gumtree_diff_avg_acc: int
+    gumtree_diff_avg_acc_norm: int

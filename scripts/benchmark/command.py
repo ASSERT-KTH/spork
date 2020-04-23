@@ -4,7 +4,7 @@ import pathlib
 import sys
 import itertools
 
-from typing import List, Optional, Iterable
+from typing import List, Optional, Iterable, Mapping
 
 import daiquiri
 import git
@@ -167,6 +167,31 @@ def runtime_benchmark(args: argparse.Namespace):
     )
     reporter.write_csv(
         data=runtime_results, container=conts.RuntimeResult, dst=args.output
+    )
+
+
+def analyze_file_merges(args: argparse.Namespace):
+    """Analyze results from running file merges."""
+    merge_evaluations = reporter.read_csv(
+        container=conts.MergeEvaluation, csv_file=args.results
+    )
+    blob_metainfo = reporter.read_csv(
+        container=conts.JavaBlobMetainfo, csv_file=args.blob_metainfo
+    )
+
+    blob_line_counts = {
+        blob_meta.hexsha: blob_meta.num_lines for blob_meta in blob_metainfo
+    }
+    blob_node_counts = {
+        blob_meta.hexsha: blob_meta.num_nodes for blob_meta in blob_metainfo
+    }
+
+    eval_stats = analyze.analyze_merge_evaluations(
+        merge_evaluations, blob_line_counts, blob_node_counts
+    )
+
+    reporter.write_csv(
+        data=eval_stats, container=conts.MergeEvaluationStatistics, dst=args.output
     )
 
 

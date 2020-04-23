@@ -212,6 +212,29 @@ def create_cli_parser():
         type=pathlib.Path,
     )
 
+    analyze_file_merges_command = subparsers.add_parser(
+        "analyze-file-merges", help="Analyze results from the run-file-merges command.",
+    )
+    analyze_file_merges_command.add_argument(
+        "--results",
+        help="The primary results files.",
+        required=True,
+        type=pathlib.Path,
+    )
+    analyze_file_merges_command.add_argument(
+        "--blob-metainfo",
+        help="Blob metainfo for all blobs in the primary results file.",
+        required=True,
+        type=pathlib.Path,
+    )
+    analyze_file_merges_command.add_argument(
+        "-o",
+        "--output",
+        help="Path to output file.",
+        default="file_merge_analysis.csv",
+        type=pathlib.Path,
+    )
+
     return parser
 
 
@@ -230,6 +253,9 @@ def main():
         return
     elif args.command == "runtime-benchmark":
         command.runtime_benchmark(args)
+        return
+    elif args.command == "analyze-file-merges":
+        command.analyze_file_merges(args)
         return
 
     eval_func = functools.partial(

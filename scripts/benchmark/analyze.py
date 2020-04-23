@@ -2,7 +2,9 @@
 import dataclasses
 import pathlib
 import functools
-from typing import List, Iterable, Tuple, Any, TypeVar
+import itertools
+
+from typing import List, Iterable, Tuple, Any, TypeVar, Mapping
 
 import daiquiri
 
@@ -107,6 +109,122 @@ class Evaluations:
                 )
 
             yield as_good_or_better
+
+
+def analyze_merge_evaluations(
+    merge_evaluations: List[conts.MergeEvaluation],
+    blob_line_counts: Mapping[str, int],
+    blob_node_counts: Mapping[str, int],
+) -> List[conts.MergeEvaluationStatistics]:
+    stats = []
+
+    merge_evaluations.sort(key=lambda me: me.merge_cmd)
+    for merge_cmd, evals in itertools.groupby(
+        merge_evaluations, key=lambda me: me.merge_cmd
+    ):
+        print()
+        print(f"Merge command: {merge_cmd}")
+        evals = list(evals)
+        git_diff_accuracy, git_diff_magnitude = _calculate_averages(
+            evals, blob_line_counts, "git_diff_size", normalized=False
+        )
+        git_diff_accuracy_norm, git_diff_magnitude_norm = _calculate_averages(
+            evals, blob_line_counts, "git_diff_size", normalized=True
+        )
+        gumtree_diff_accuracy, gumtree_diff_magnitude = _calculate_averages(
+            evals, blob_node_counts, "gumtree_diff_size", normalized=False
+        )
+        gumtree_diff_accuracy_norm, gumtree_diff_magnitude_norm = _calculate_averages(
+            evals, blob_node_counts, "gumtree_diff_size", normalized=True
+        )
+        stats.append(
+            conts.MergeEvaluationStatistics(
+                "rxjava",
+                merge_cmd,
+                git_diff_avg_acc=git_diff_accuracy,
+                git_diff_avg_magn=git_diff_magnitude,
+                git_diff_avg_acc_norm=git_diff_accuracy_norm,
+                git_diff_avg_magn_norm=git_diff_magnitude_norm,
+                gumtree_diff_avg_acc=gumtree_diff_accuracy,
+                gumtree_diff_avg_magn=gumtree_diff_magnitude,
+                gumtree_diff_avg_acc_norm=gumtree_diff_accuracy_norm,
+                gumtree_diff_avg_magn_norm=gumtree_diff_magnitude_norm,
+                num_file_merges=len(evals),
+                num_success=len(
+                    [me for me in evals if me.outcome == conts.MergeOutcome.SUCCESS]
+                ),
+                num_fail=len(
+                    [me for me in evals if me.outcome == conts.MergeOutcome.FAIL]
+                ),
+                num_conflict=len(
+                    [me for me in evals if me.outcome == conts.MergeOutcome.CONFLICT]
+                ),
+            )
+        )
+
+    return stats
+
+
+def _calculate_averages(
+    evals: List[conts.MergeEvaluation],
+    blob_sizes: Mapping[str, int],
+    diff_attr: str,
+    normalized: bool,
+):
+    def _create_attr_name(attr):
+        return attr + ("_norm" if normalized else "")
+
+    expected_blob_attr_name = _create_attr_name("expected_blob")
+    replayed_blob_attr_name = _create_attr_name("replayed_blob")
+    diff_attr_name = _create_attr_name(diff_attr)
+
+    accuracies = []
+    magnitudes = []
+    for merge_eval in evals:
+        expected_blob_sha = getattr(merge_eval, expected_blob_attr_name)
+        replayed_blob_sha = getattr(merge_eval, replayed_blob_attr_name)
+
+        expected_size = blob_sizes[expected_blob_sha]
+        replayed_size = blob_sizes[replayed_blob_sha]
+        diff_size = getattr(merge_eval, diff_attr_name)
+
+        if merge_eval.outcome == conts.MergeOutcome.SUCCESS:
+            magnitudes.append(diff_size)
+            accuracies.append(
+                accuracy(
+                    expected_size=expected_size,
+                    replayed_size=replayed_size,
+                    diff_size=diff_size,
+                )
+            )
+
+    non_successful = len(evals) - len(accuracies)
+    punish_accuracy = min(accuracies) * non_successful
+
+    avg_accuracy = float(sum(accuracies) + punish_accuracy) / len(evals)
+    avg_magnitude = float(sum(magnitudes)) / len(magnitudes)
+    print(f"{diff_attr_name} magnitude avg: {avg_magnitude}")
+    print(f"{diff_attr_name} magnitude max: {max(magnitudes)}")
+    print(f"{diff_attr_name} magnitude min: {min(magnitudes)}")
+    print(f"{diff_attr_name} accuracy avg: {avg_accuracy}")
+    print(f"{diff_attr_name} accuracy max: {max(accuracies)}")
+    print(f"{diff_attr_name} accuracy min: {min(accuracies)}")
+    return avg_accuracy, avg_magnitude
+
+
+def accuracy(expected_size: int, replayed_size: int, diff_size: int):
+    """Calculate the accuracy of a merge tool. The size can be any metric
+    so long all values are the same metric, and the maximum possible diff size
+    is equal to the expected_size plus the replayed_size.
+
+    Args:
+        expected_size: The size of the expected revision.
+        replayed_size: The size of the replayed revision.
+        diff_size: The size of the diff.
+    Returns:
+        The accuracy of this merge.
+    """
+    return 1 - float(diff_size) / (expected_size + replayed_size)
 
 
 def _compare(attr_name: str, compare_val, ref_val) -> bool:
