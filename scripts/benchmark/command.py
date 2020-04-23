@@ -29,24 +29,45 @@ def run_file_merges(args: argparse.Namespace, eval_func):
         if args.merge_commits
         else None
     )
-    evaluations, merge_dirs = _run_file_merges(
+    evaluations, file_merges, merge_dirs = _run_file_merges(
         args, eval_func, expected_merge_commit_shas=commit_shas
     )
     output_file = args.output or pathlib.Path("results.csv")
     reporter.write_csv(
-        data=evaluations,
-        container=conts.MergeEvaluation,
-        dst=output_file,
+        data=evaluations, container=conts.MergeEvaluation, dst=output_file,
     )
 
-    if args.gather_java_blob_metainfo:
-        metainfos_output_file = output_file.parent / (output_file.stem + "_blob_metainfos.csv")
-        metainfos = evaluate.gather_java_blob_metainfos(merge_dirs)
-        reporter.write_csv(
-            data=metainfos,
-            container=conts.JavaBlobMetainfo,
-            dst=metainfos_output_file,
-        )
+    if args.gather_metainfo:
+        _output_java_blob_metainfos(merge_dirs, base_output_file=output_file)
+        _output_file_merge_metainfos(file_merges, base_output_file=output_file)
+
+
+def _output_java_blob_metainfos(merge_dirs, base_output_file):
+    LOGGER.info("Gathering Java blob metainfo")
+    metainfo_output_file = base_output_file.parent / (
+        base_output_file.stem + "_blob_metainfo.csv"
+    )
+    metainfos = evaluate.gather_java_blob_metainfos(merge_dirs)
+    reporter.write_csv(
+        data=metainfos, container=conts.JavaBlobMetainfo, dst=metainfo_output_file,
+    )
+    LOGGER.info(f"Java blob metainfo written to {metainfo_output_file}")
+
+
+def _output_file_merge_metainfos(file_merges, base_output_file):
+    LOGGER.info("Gathering file merge metainfo")
+    metainfo_output_file = base_output_file.parent / (
+        base_output_file.stem + "_file_merge_metainfo.csv"
+    )
+    file_merge_metainfos = list(
+        map(conts.FileMergeMetainfo.from_file_merge, file_merges)
+    )
+    reporter.write_csv(
+        data=file_merge_metainfos,
+        container=conts.FileMergeMetainfo,
+        dst=metainfo_output_file,
+    )
+    LOGGER.info(f"File merge metainfo written to {metainfo_output_file}")
 
 
 def run_merge_and_compare(args: argparse.Namespace, eval_func):
@@ -55,7 +76,9 @@ def run_merge_and_compare(args: argparse.Namespace, eval_func):
         args.compare, container=conts.MergeEvaluation
     )
     commit_shas = [path for path in old_evaluations.extract("merge_commit")]
-    data, _ = _run_file_merges(args, eval_func, expected_merge_commit_shas=commit_shas)
+    data, _, _ = _run_file_merges(
+        args, eval_func, expected_merge_commit_shas=commit_shas
+    )
     new_evaluations = analyze.Evaluations(data=data, container=conts.MergeEvaluation,)
 
     new_evaluations.log_diffs(old_evaluations)
@@ -174,7 +197,7 @@ def _run_file_merges(
     else:
         evaluations = eval_func(merge_dirs)
 
-    return evaluations, merge_dirs
+    return evaluations, file_merges, merge_dirs
 
 
 def _get_repo(repo: str, github_user: Optional[str]) -> git.Repo:

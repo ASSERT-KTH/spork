@@ -125,9 +125,10 @@ def create_cli_parser():
         type=pathlib.Path,
     )
     file_merge_command.add_argument(
-        "--gather-java-blob-metainfo",
-        help="Gather blob metainfo for all Java files in. Outputs to "
-        "<OUTPUT_FILE_STEM>_blob_metainfos.csv.",
+        "--gather-metainfo",
+        help="Gather blob and file merge metainfo for all merge scenarios. Outputs to "
+        "<OUTPUT_FILE_STEM>_blob_metainfo.csv and "
+        "<OUTPUT_FILE_STEM>_file_merge_metainfo.csv.",
         action="store_true",
     )
 
