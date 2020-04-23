@@ -15,7 +15,6 @@ LOGGER = daiquiri.getLogger(__name__)
 
 BLOB_SHA_SEP = "_"
 
-CONFLICT_BLOCK_PATTERN = re.compile("(?ms)^<{7}.*?>{7}.*?$")
 INLINE_COMMENT_PATTERN = re.compile("(?m)^\s*//.*")
 # (?s) is equivalent to the re.DOTALL flag
 BLOCK_COMMENT_PATTERN = re.compile("(?ms)^\s*/\*.*?\*/")
@@ -136,7 +135,6 @@ def normalize_formatting(java_code: str) -> str:
     whitespace in empty blocks.
     """
     for pattern in [
-        CONFLICT_BLOCK_PATTERN,
         INLINE_COMMENT_PATTERN,
         BLOCK_COMMENT_PATTERN,
         BLANK_LINE_PATTERN,
