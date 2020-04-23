@@ -23,6 +23,10 @@ END_CONFLICT = ">>>>>>>"
 
 LOGGER = daiquiri.getLogger(__name__)
 
+GIT_DIFF_BASE_ARGS = tuple("--no-index --numstat --ignore-cr-at-eol".split())
+GIT_DIFF_ARGS = (*GIT_DIFF_BASE_ARGS, "--ignore-space-at-eol")
+GIT_DIFF_NORMALIZED_ARGS = (*GIT_DIFF_BASE_ARGS, "--ignore-all-space")
+
 
 @dataclasses.dataclass(frozen=True)
 class MergeConflict:
@@ -64,6 +68,37 @@ def gumtree_edit_script(base_file: pathlib.Path, dest_file: pathlib.Path,) -> Li
         for line in output.split("\n")
         if not line.startswith("Match") and line.strip()
     ]
+
+
+def git_diff_edit_script_size(
+    base_file: pathlib.Path, dest_file: pathlib.Path, normalized: bool
+) -> int:
+    """Return the edit script size (insertions + deletions) for the diff
+    between the base and destination files, as reported by git-diff. See the
+    module constants for which exact arguments are used.
+
+    Args:
+        base_file: The base version of the file.
+        dest_file: The edited version of the file.
+    Returns:
+        The size of the edit script.
+    """
+    git_diff = [
+        *"git diff".split(),
+        *(GIT_DIFF_NORMALIZED_ARGS if normalized else GIT_DIFF_ARGS),
+    ]
+    cmd = [*git_diff, str(base_file), str(dest_file)]
+    proc = subprocess.run(cmd, capture_output=True)
+
+    if not proc.stdout:
+        return 0
+
+    lines = proc.stdout.decode(sys.getdefaultencoding()).strip().split("\n")
+    assert len(lines) == 1
+
+    line = lines[0]
+    insertions, deletions, *_ = line.split()
+    return int(insertions) + int(deletions)
 
 
 def git_diff_edit_script(
@@ -186,8 +221,10 @@ def evaluation_result(
         expected_norm = fileutils.copy_normalized(expected)
         replayed_norm = fileutils.copy_normalized(replayed)
 
-        git_diff_size = len(git_diff_edit_script(expected, replayed))
-        git_diff_size_norm = len(git_diff_edit_script(expected_norm, replayed_norm))
+        git_diff_size = git_diff_edit_script_size(expected, replayed, normalized=False)
+        git_diff_size_norm = git_diff_edit_script_size(
+            expected_norm, replayed_norm, normalized=True
+        )
         gumtree_diff_size = len(gumtree_edit_script(expected, replayed))
         gumtree_diff_size_norm = len(gumtree_edit_script(expected_norm, replayed_norm))
 
@@ -229,7 +266,10 @@ def run_and_evaluate(
         for merge_result in run.run_file_merges(merge_dirs, merge_cmd):
             yield evaluation_result(merge_result, base_merge_dir)
 
-def gather_java_blob_metainfos(merge_dirs: List[pathlib.Path]) -> List[conts.JavaBlobMetainfo]:
+
+def gather_java_blob_metainfos(
+    merge_dirs: List[pathlib.Path],
+) -> List[conts.JavaBlobMetainfo]:
     """Gather Java blob metainfos from all of the provided merge directories."""
     metainfos = {}
     for merge_dir in merge_dirs:
