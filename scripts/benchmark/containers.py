@@ -10,7 +10,7 @@ from typing import Optional
 
 @dataclasses.dataclass(frozen=True)
 class MergeScenario:
-    result: git.Commit
+    expected: git.Commit
     base: git.Commit
     left: git.Commit
     right: git.Commit
@@ -18,7 +18,7 @@ class MergeScenario:
     @staticmethod
     def from_metainfo(repo: git.Repo, metainfo: "FileMergeMetainfo") -> "MergeScenario":
         return MergeScenario(
-            result=repo.commit(metainfo.merge_commit),
+            expected=repo.commit(metainfo.merge_commit),
             base=repo.commit(metainfo.base_commit),
             left=repo.commit(metainfo.left_commit),
             right=repo.commit(metainfo.right_commit),
@@ -27,7 +27,7 @@ class MergeScenario:
 
 @dataclasses.dataclass(frozen=True)
 class FileMerge:
-    result: git.Blob
+    expected: git.Blob
     base: Optional[git.Blob]
     left: git.Blob
     right: git.Blob
@@ -36,12 +36,12 @@ class FileMerge:
     @staticmethod
     def from_metainfo(repo: git.Repo, metainfo) -> "FileMerge":
         ms = MergeScenario.from_metainfo(repo, metainfo)
-        result = ms.result.tree[str(metainfo.merge_filepath)]
+        expected = ms.expected.tree[str(metainfo.merge_filepath)]
         base = ms.base.tree[str(metainfo.base_filepath)]
         left = ms.left.tree[str(metainfo.left_filepath)]
         right = ms.right.tree[str(metainfo.right_filepath)]
         return FileMerge(
-            result=result, base=base, left=left, right=right, from_merge_scenario=ms
+            expected=expected, base=base, left=left, right=right, from_merge_scenario=ms
         )
 
 
@@ -68,12 +68,12 @@ class FileMergeMetainfo:
         base_filepath = file_merge.base.path if file_merge.base else ""
 
         return FileMergeMetainfo(
-            merge_commit=ms.result.hexsha,
+            merge_commit=ms.expected.hexsha,
             base_commit=ms.base.hexsha,
             left_commit=ms.left.hexsha,
             right_commit=ms.right.hexsha,
-            expected_blob=file_merge.result.hexsha,
-            expected_filepath=str(file_merge.result.path),
+            expected_blob=file_merge.expected.hexsha,
+            expected_filepath=str(file_merge.expected.path),
             base_blob=base_blob,
             base_filepath=base_filepath,
             left_blob=file_merge.left.hexsha,
@@ -84,14 +84,6 @@ class FileMergeMetainfo:
 
 
 @dataclasses.dataclass(frozen=True, order=True)
-class BlobMetaInfo:
-    blob: str
-    num_lines: int
-    num_lines_norm: int
-    num_nodes: int
-    num_nodes_norm: int
-
-
 @dataclasses.dataclass(frozen=True, order=True)
 class MergeEvaluation:
     merge_dir: pathlib.Path
@@ -100,6 +92,9 @@ class MergeEvaluation:
     left_blob: str
     right_blob: str
     expected_blob: str
+    replayed_blob: str
+    expected_blob_norm: str
+    replayed_blob_norm: str
     merge_cmd: str
     outcome: str
     git_diff_size_norm: int

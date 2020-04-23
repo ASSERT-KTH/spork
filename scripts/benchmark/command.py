@@ -29,7 +29,7 @@ def run_file_merges(args: argparse.Namespace, eval_func):
         if args.merge_commits
         else None
     )
-    evaluations, file_merges = _run_file_merges(
+    evaluations = _run_file_merges(
         args, eval_func, expected_merge_commit_shas=commit_shas
     )
     reporter.write_csv(
@@ -75,7 +75,7 @@ def extract_merge_commits(args: argparse.Namespace):
 
     if args.buildable:
         buildable = [
-            ms for ms in merge_scenarios if run.is_buildable(ms.result.hexsha, repo)
+            ms for ms in merge_scenarios if run.is_buildable(ms.expected.hexsha, repo)
         ]
         LOGGER.info(
             f"Filtered {len(merge_scenarios) - len(buildable)} merges that did not build"
@@ -85,7 +85,7 @@ def extract_merge_commits(args: argparse.Namespace):
     LOGGER.info(f"Extracted {len(merge_scenarios)} merge commits")
 
     outpath = args.output or pathlib.Path("merge_scenarios.txt")
-    outpath.write_text("\n".join([merge.result.hexsha for merge in merge_scenarios]))
+    outpath.write_text("\n".join([merge.expected.hexsha for merge in merge_scenarios]))
     LOGGER.info(f"Merge commits saved to {outpath}")
 
 
@@ -166,7 +166,7 @@ def _run_file_merges(
     else:
         evaluations = eval_func(merge_dirs)
 
-    return evaluations, file_merges
+    return evaluations
 
 
 def _get_repo(repo: str, github_user: Optional[str]) -> git.Repo:

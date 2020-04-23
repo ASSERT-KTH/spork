@@ -93,7 +93,7 @@ def _run_file_merge(scenario_dir, merge_cmd, base, left, right, expected, merge)
 
     if not merge.is_file():
         LOGGER.error(
-            f"{merge_cmd} failed to produce a Merge.java file on {scenario_dir.parent.name}/{scenario_dir.name}"
+            f"{merge_cmd} failed to produce a merge file on {scenario_dir.parent.name}/{scenario_dir.name}"
         )
         LOGGER.info(proc.stdout.decode(sys.getdefaultencoding()))
         LOGGER.info(proc.stderr.decode(sys.getdefaultencoding()))
@@ -126,7 +126,7 @@ def run_git_merges(
         An iterable of merge results.
     """
     for ms in merge_scenarios:
-        LOGGER.info(f"Running scenario {ms.result.hexsha}")
+        LOGGER.info(f"Running scenario {ms.expected.hexsha}")
         yield run_git_merge(ms, repo, build)
 
 
@@ -153,7 +153,7 @@ def run_git_merge(
         )
 
     return conts.GitMergeResult(
-        merge_commit=ms.result.hexsha,
+        merge_commit=ms.expected.hexsha,
         merge_ok=merge_ok,
         build_ok=build_ok,
         base_commit=ms.base.hexsha,

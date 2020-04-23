@@ -35,9 +35,9 @@ def create_merge_dirs(merge_dir_base: pathlib.Path, file_merges,) -> List[pathli
     merge_dirs = []
 
     for file_merge in file_merges:
-        result_blob = file_merge.result
+        result_blob = file_merge.expected
         ms = file_merge.from_merge_scenario
-        merge_commit = ms.result
+        merge_commit = ms.expected
 
         left_blob = file_merge.left
         right_blob = file_merge.right

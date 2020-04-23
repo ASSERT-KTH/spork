@@ -7,6 +7,8 @@ import itertools
 import pathlib
 import shutil
 import contextlib
+import subprocess
+
 from typing import List, Optional, Mapping, Sequence, Tuple, Iterable, ContextManager
 
 import git
@@ -88,23 +90,23 @@ def extract_conflicting_files(
     repo: git.Repo, merge_scenario: conts.MergeScenario,
 ) -> List[conts.FileMerge]:
     LOGGER.info(
-        f"Extracting conflicting files for merge {merge_scenario.result.hexsha}"
+        f"Extracting conflicting files for merge {merge_scenario.expected.hexsha}"
     )
 
     left = merge_scenario.left
     right = merge_scenario.right
     base = merge_scenario.base
-    result = merge_scenario.result
+    expected = merge_scenario.expected
     merge_idx: git.IndexFile = repo.index.from_tree(repo, base, left, right)
 
-    left_result_diff = {
-        diff.a_blob.hexsha: diff.b_blob for diff in left.diff(result) if diff.a_blob
+    left_expected_diff = {
+        diff.a_blob.hexsha: diff.b_blob for diff in left.diff(expected) if diff.a_blob
     }
-    right_result_diff = {
-        diff.a_blob.hexsha: diff.b_blob for diff in right.diff(result) if diff.a_blob
+    right_expected_diff = {
+        diff.a_blob.hexsha: diff.b_blob for diff in right.diff(expected) if diff.a_blob
     }
-    base_result_diff = {
-        diff.a_blob.hexsha: diff.b_blob for diff in base.diff(result) if diff.a_blob
+    base_expected_diff = {
+        diff.a_blob.hexsha: diff.b_blob for diff in base.diff(expected) if diff.a_blob
     }
 
     file_merges = []
@@ -113,11 +115,11 @@ def extract_conflicting_files(
         rev_map = {}
         for stage, blob in blobs:
             if stage == 1:
-                insert(blob, conts.Revision.BASE, base_result_diff, rev_map)
+                insert(blob, conts.Revision.BASE, base_expected_diff, rev_map)
             elif stage == 2:
-                insert(blob, conts.Revision.LEFT, left_result_diff, rev_map)
+                insert(blob, conts.Revision.LEFT, left_expected_diff, rev_map)
             elif stage == 3:
-                insert(blob, conts.Revision.RIGHT, right_result_diff, rev_map)
+                insert(blob, conts.Revision.RIGHT, right_expected_diff, rev_map)
             else:
                 raise ValueError("unknown stage " + stage)
 
@@ -131,14 +133,14 @@ def extract_conflicting_files(
 
         file_merge = _to_file_merge(rev_map, merge_scenario)
 
-        if not str(file_merge.result.name).endswith(".java"):
-            LOGGER.warning(f"{file_merge.result.name} is not a Java file, skipping")
+        if not str(file_merge.expected.name).endswith(".java"):
+            LOGGER.warning(f"{file_merge.expected.name} is not a Java file, skipping")
             continue
 
         file_merges.append(file_merge)
 
     if not file_merges:
-        LOGGER.info(f"No file merges required for merge commit {result.hexsha}")
+        LOGGER.info(f"No file merges required for merge commit {expected.hexsha}")
 
     return file_merges
 
@@ -201,21 +203,21 @@ def _to_file_merge(
     base = rev_map[conts.Revision.BASE] if conts.Revision.BASE in rev_map else None
     left = rev_map[conts.Revision.LEFT]
     right = rev_map[conts.Revision.RIGHT]
-    result = rev_map[conts.Revision.ACTUAL_MERGE]
+    expected = rev_map[conts.Revision.ACTUAL_MERGE]
     return conts.FileMerge(
-        base=base, left=left, right=right, result=result, from_merge_scenario=ms
+        base=base, left=left, right=right, expected=expected, from_merge_scenario=ms
     )
 
 
 def insert(blob, rev, diff_map, rev_map):
     rev_map[rev] = blob
     if blob.hexsha in diff_map:
-        result_blob = diff_map[blob.hexsha]
+        expected_blob = diff_map[blob.hexsha]
         assert (
             conts.Revision.ACTUAL_MERGE not in rev_map
-            or rev_map[conts.Revision.ACTUAL_MERGE] == result_blob
+            or rev_map[conts.Revision.ACTUAL_MERGE] == expected_blob
         )
-        rev_map[conts.Revision.ACTUAL_MERGE] = result_blob
+        rev_map[conts.Revision.ACTUAL_MERGE] = expected_blob
 
 
 def clone_repo(
@@ -254,6 +256,23 @@ def clone_repo(
 
     return repo
 
+def hash_object(path: pathlib.Path) -> str:
+    """Compute the SHA1 hash of a blob using Git's hash-object command.
+
+    Args:
+        path: Path to a file.
+    Returns:
+        The SHA1 hash of the content of the file.
+    """
+    if not path.is_file():
+        raise FileNotFoundError(f"Not a file: {path}")
+
+    proc = subprocess.run(["git", "hash-object", str(path)], capture_output=True)
+    if proc.returncode != 0:
+        raise RuntimeError(f"hash-object exited non-zero on {path}")
+
+    return proc.stdout.decode().strip()
+    
 
 def _get_blob(repo: git.Repo, commit_sha: str, blob_sha: str) -> git.Blob:
     commit = repo.commit(commit_sha)

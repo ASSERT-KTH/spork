@@ -172,6 +172,11 @@ def evaluation_result(
     expected = merge_result.expected_file
     replayed = merge_result.merge_file
 
+    expected_blob = ""
+    replayed_blob = ""
+    expected_blob_norm = ""
+    replayed_blob_norm = ""
+
     if merge_result.outcome == conts.MergeOutcome.SUCCESS:
         # extract conflicts from the original file
         conflicts = extract_conflicts(replayed)
@@ -185,6 +190,11 @@ def evaluation_result(
         git_diff_size_norm = len(git_diff_edit_script(expected_norm, replayed_norm))
         gumtree_diff_size = len(gumtree_edit_script(expected, replayed))
         gumtree_diff_size_norm = len(gumtree_edit_script(expected_norm, replayed_norm))
+
+        expected_blob = gitutils.hash_object(expected)
+        replayed_blob = gitutils.hash_object(replayed)
+        expected_blob_norm = gitutils.hash_object(expected_norm)
+        replayed_blob_norm = gitutils.hash_object(replayed_norm)
 
     merge_dir = merge_result.merge_dir.relative_to(base_merge_dir)
     merge_commit = fileutils.extract_commit_sha(merge_dir)
@@ -200,10 +210,13 @@ def evaluation_result(
         num_conflicts=num_conflicts,
         runtime=merge_result.runtime,
         merge_commit=merge_commit,
-        base_blob=fileutils.extract_blob_sha(merge_result.base_file),
-        left_blob=fileutils.extract_blob_sha(merge_result.left_file),
-        right_blob=fileutils.extract_blob_sha(merge_result.right_file),
-        expected_blob=fileutils.extract_blob_sha(merge_result.expected_file),
+        base_blob=gitutils.hash_object(merge_result.base_file),
+        left_blob=gitutils.hash_object(merge_result.left_file),
+        right_blob=gitutils.hash_object(merge_result.right_file),
+        expected_blob=expected_blob,
+        replayed_blob=replayed_blob,
+        expected_blob_norm=expected_blob_norm,
+        replayed_blob_norm=replayed_blob_norm,
     )
 
 
