@@ -26,7 +26,6 @@ EMPTY_BLOCK_PATTERN = re.compile(r"{\s+}")
 NORMALIZED_FILE_SUFFIX = "_normalized.java"
 
 
-
 def create_merge_dirs(merge_dir_base: pathlib.Path, file_merges,) -> List[pathlib.Path]:
     """Create merge directories based on the provided merge scenarios. For each merge scenario A,
     a merge directory A is created. For each file to be merged, a subdirectory with base, left, right and
@@ -85,15 +84,25 @@ def count_lines(filepath: pathlib.Path) -> int:
         return len([1 for _ in f.readlines()])
 
 
+def count_nodes(filepath: pathlib.Path) -> int:
+    """Count the amount of GumTree nodes in the given Java file. Requires
+    count-nodes to be on the path.
+    """
+    proc = subprocess.run(["count-nodes", str(filepath)], capture_output=True)
+
+    if proc.returncode != 0:
+        raise RuntimeError(f"count-nodes exited non-zero on {filepath}")
+
+    return int(proc.stdout.decode().strip())
+
+
 def mvn_compile(workdir: pathlib.Path):
     """Compile the project in workdir with mvn."""
     proc = subprocess.run("mvn clean compile".split(), cwd=workdir)
     return proc.returncode == 0
 
 
-def create_blob_filename(
-    prefix: str, blob: git.Blob, ext: str = "java"
-) -> str:
+def create_blob_filename(prefix: str, blob: git.Blob, ext: str = "java") -> str:
     """Create the filename for a blob."""
     return f"{prefix}{BLOB_SHA_SEP}{blob.hexsha}.{ext}"
 

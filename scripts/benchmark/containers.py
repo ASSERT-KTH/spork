@@ -82,8 +82,13 @@ class FileMergeMetainfo:
             right_filepath=str(file_merge.right.path),
         )
 
-
 @dataclasses.dataclass(frozen=True, order=True)
+class JavaBlobMetainfo:
+    hexsha: str
+    num_lines: int
+    num_nodes: int
+
+
 @dataclasses.dataclass(frozen=True, order=True)
 class MergeEvaluation:
     merge_dir: pathlib.Path

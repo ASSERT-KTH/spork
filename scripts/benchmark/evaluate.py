@@ -228,3 +228,22 @@ def run_and_evaluate(
     for merge_cmd in merge_commands:
         for merge_result in run.run_file_merges(merge_dirs, merge_cmd):
             yield evaluation_result(merge_result, base_merge_dir)
+
+def gather_java_blob_metainfos(merge_dirs: List[pathlib.Path]) -> List[conts.JavaBlobMetainfo]:
+    """Gather Java blob metainfos from all of the provided merge directories."""
+    metainfos = {}
+    for merge_dir in merge_dirs:
+        new_java_files = (
+            (file, sha)
+            for file in merge_dir.iterdir()
+            if file.is_file()
+            and file.name.endswith(".java")
+            and (sha := gitutils.hash_object(file)) not in metainfos
+        )
+        for file, sha in new_java_files:
+            num_lines = fileutils.count_lines(file)
+            num_nodes = fileutils.count_nodes(file)
+            metainfos[sha] = conts.JavaBlobMetainfo(
+                hexsha=sha, num_lines=num_lines, num_nodes=num_nodes
+            )
+    return list(metainfos.values())

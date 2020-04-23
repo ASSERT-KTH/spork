@@ -29,14 +29,24 @@ def run_file_merges(args: argparse.Namespace, eval_func):
         if args.merge_commits
         else None
     )
-    evaluations = _run_file_merges(
+    evaluations, merge_dirs = _run_file_merges(
         args, eval_func, expected_merge_commit_shas=commit_shas
     )
+    output_file = args.output or pathlib.Path("results.csv")
     reporter.write_csv(
         data=evaluations,
         container=conts.MergeEvaluation,
-        dst=args.output or "results.csv",
+        dst=output_file,
     )
+
+    if args.gather_java_blob_metainfo:
+        metainfos_output_file = output_file.parent / (output_file.stem + "_blob_metainfos.csv")
+        metainfos = evaluate.gather_java_blob_metainfos(merge_dirs)
+        reporter.write_csv(
+            data=metainfos,
+            container=conts.JavaBlobMetainfo,
+            dst=metainfos_output_file,
+        )
 
 
 def run_merge_and_compare(args: argparse.Namespace, eval_func):
@@ -45,10 +55,8 @@ def run_merge_and_compare(args: argparse.Namespace, eval_func):
         args.compare, container=conts.MergeEvaluation
     )
     commit_shas = [path for path in old_evaluations.extract("merge_commit")]
-    new_evaluations = analyze.Evaluations(
-        data=_run_file_merges(args, eval_func, expected_merge_commit_shas=commit_shas),
-        container=conts.MergeEvaluation,
-    )
+    data, _ = _run_file_merges(args, eval_func, expected_merge_commit_shas=commit_shas)
+    new_evaluations = analyze.Evaluations(data=data, container=conts.MergeEvaluation,)
 
     new_evaluations.log_diffs(old_evaluations)
 
@@ -166,7 +174,7 @@ def _run_file_merges(
     else:
         evaluations = eval_func(merge_dirs)
 
-    return evaluations
+    return evaluations, merge_dirs
 
 
 def _get_repo(repo: str, github_user: Optional[str]) -> git.Repo:
