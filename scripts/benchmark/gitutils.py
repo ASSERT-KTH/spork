@@ -16,7 +16,12 @@ import daiquiri
 
 from . import containers as conts
 
+START_CONFLICT = "<<<<<<<"
+MID_CONFLICT = "======="
+END_CONFLICT = ">>>>>>>"
+
 LOGGER = daiquiri.getLogger(__name__)
+
 
 def extract_merge_scenarios(
     repo: git.Repo,
@@ -87,7 +92,9 @@ def extract_all_conflicting_files(
 
 
 def extract_conflicting_files(
-    repo: git.Repo, merge_scenario: conts.MergeScenario,
+    repo: git.Repo,
+    merge_scenario: conts.MergeScenario,
+    skip_conflict_markers: bool = True,
 ) -> List[conts.FileMerge]:
     LOGGER.info(
         f"Extracting conflicting files for merge {merge_scenario.expected.hexsha}"
@@ -136,6 +143,11 @@ def extract_conflicting_files(
         if not str(file_merge.expected.name).endswith(".java"):
             LOGGER.warning(f"{file_merge.expected.name} is not a Java file, skipping")
             continue
+        if skip_conflict_markers and _has_conflict_marker(file_merge):
+            LOGGER.warning(
+                f"Found conflict markers in scenario {expected.hexsha}/{file_merge.expected.hexsha}, skipping"
+            )
+            continue
 
         file_merges.append(file_merge)
 
@@ -143,6 +155,29 @@ def extract_conflicting_files(
         LOGGER.info(f"No file merges required for merge commit {expected.hexsha}")
 
     return file_merges
+
+
+def _has_conflict_marker(file_merge: conts.FileMerge) -> bool:
+    return any(
+        map(
+            _contains_conflict_marker,
+            [file_merge.expected, file_merge.base, file_merge.left, file_merge.right],
+        )
+    )
+
+
+def _contains_conflict_marker(blob: git.Blob) -> bool:
+    if blob == None:
+        return False
+
+    lines = blob.data_stream[-1].read().decode(encoding="utf8").split("\n")
+    return any(
+        [
+            line
+            for line in lines
+            if line.startswith(START_CONFLICT) or line.startswith(END_CONFLICT)
+        ]
+    )
 
 
 @contextlib.contextmanager
@@ -256,6 +291,7 @@ def clone_repo(
 
     return repo
 
+
 def hash_object(path: pathlib.Path) -> str:
     """Compute the SHA1 hash of a blob using Git's hash-object command.
 
@@ -272,7 +308,7 @@ def hash_object(path: pathlib.Path) -> str:
         raise RuntimeError(f"hash-object exited non-zero on {path}")
 
     return proc.stdout.decode().strip()
-    
+
 
 def _get_blob(repo: git.Repo, commit_sha: str, blob_sha: str) -> git.Blob:
     commit = repo.commit(commit_sha)

@@ -17,10 +17,6 @@ from . import gitutils
 from . import fileutils
 from . import containers as conts
 
-START_CONFLICT = "<<<<<<<"
-MID_CONFLICT = "======="
-END_CONFLICT = ">>>>>>>"
-
 LOGGER = daiquiri.getLogger(__name__)
 
 GIT_DIFF_BASE_ARGS = tuple("--no-index --numstat --ignore-cr-at-eol".split())
@@ -35,8 +31,8 @@ class MergeConflict:
 
     def pretty_print_conflict(self) -> str:
         return (
-            f"{START_CONFLICT}\n{''.join(self.left)}{MID_CONFLICT}"
-            f"\n{''.join(self.right)}{END_CONFLICT}"
+            f"{gitutils.START_CONFLICT}\n{''.join(self.left)}{gitutils.MID_CONFLICT}"
+            f"\n{''.join(self.right)}{gitutils.END_CONFLICT}"
         )
 
     @property
@@ -174,10 +170,10 @@ def extract_conflicts(path: pathlib.Path) -> List[MergeConflict]:
 
     def _extract_conflict():
         left = list(
-            itertools.takewhile(lambda line: not line.startswith(MID_CONFLICT), lines)
+            itertools.takewhile(lambda line: not line.startswith(gitutils.MID_CONFLICT), lines)
         )
         right = list(
-            itertools.takewhile(lambda line: not line.startswith(END_CONFLICT), lines)
+            itertools.takewhile(lambda line: not line.startswith(gitutils.END_CONFLICT), lines)
         )
         return MergeConflict(left, right)
 
@@ -187,7 +183,7 @@ def extract_conflicts(path: pathlib.Path) -> List[MergeConflict]:
         except StopIteration:
             break
 
-        if line.startswith(START_CONFLICT):
+        if line.startswith(gitutils.START_CONFLICT):
             conflicts.append(_extract_conflict())
 
     return conflicts
