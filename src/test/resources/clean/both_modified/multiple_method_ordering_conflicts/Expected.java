@@ -9,12 +9,6 @@ public class Sum {
         return sum;
     }
 
-    private void checkBounds(int a, int b) {
-        if (b <= a) {
-            throw new IllegalArgumentException("b must be greater than or equal to a");
-        }
-    }
-
     private int sumTo(int to) {
         checkToBound(to);
         int sum = 0;
@@ -22,6 +16,12 @@ public class Sum {
             sum += i;
         }
         return sum;
+    }
+
+    private void checkToBound(int to) {
+        if (to >= 1_000) {
+            throw new IllegalArgumentException("I can't count that high: " + to);
+        }
     }
 
     private int multiplyBetween(int a, int b) {
@@ -35,19 +35,19 @@ public class Sum {
         return prod;
     }
 
-    private void checkToBound(int to) {
-        if (to >= 1_000) {
-            throw new IllegalArgumentException("I can't count that high: " + to);
+    private void checkBounds(int a, int b) {
+        if (b <= a) {
+            throw new IllegalArgumentException("b must be greater than or equal to a");
         }
-    }
-
-    public int sumAndMultiplyBetween(int a, int b) {
-        int sum = sumBetween(a, b);
-        int prod = multiplyBetween(a, b);
-        return sum + prod;
     }
 
     public int sumBetweenUndirected(int a, int b) {
         return a <= b ? sumBetween(a, b) : sumBetween(b, a);
+    }
+
+    public int sumAndMultiplyBetween(int a, int b) {
+        int sum = sumBetween(a, b):
+        int prod = multiplyBetween(a, b);
+        return sum + prod;
     }
 }

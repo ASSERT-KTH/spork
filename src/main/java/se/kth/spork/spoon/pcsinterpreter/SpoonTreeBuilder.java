@@ -12,6 +12,7 @@ import spoon.Launcher;
 import spoon.compiler.Environment;
 import spoon.reflect.CtModelImpl;
 import spoon.reflect.code.CtExpression;
+import spoon.reflect.cu.SourcePosition;
 import spoon.reflect.declaration.CtAnnotation;
 import spoon.reflect.declaration.CtElement;
 import spoon.reflect.factory.Factory;
@@ -19,6 +20,7 @@ import spoon.reflect.factory.ModuleFactory;
 import spoon.reflect.path.CtRole;
 import spoon.reflect.reference.CtParameterReference;
 import spoon.reflect.reference.CtTypeReference;
+import spoon.reflect.visitor.printer.CommentOffset;
 
 import java.util.*;
 
@@ -30,6 +32,10 @@ import java.util.*;
 public class SpoonTreeBuilder {
     public static final String ORIGINAL_NODE_KEY = "spork_original_node";
     public static final String SINGLE_REVISION_KEY = "spork_single_revision";
+    // the position key is used to put the original source position of an element as metadata
+    // this is necessary e.g. for comments as their original source position may cause them not to be printed
+    // in a merged tree
+    public static final String POSITION_KEY = "spork_position";
 
     private SpoonMapping baseLeft;
     private SpoonMapping baseRight;
@@ -54,6 +60,28 @@ public class SpoonTreeBuilder {
         Launcher launcher = new Launcher();
         factory = launcher.createFactory();
         Parser.setSporkEnvironment(factory.getEnvironment(), oldEnv.getTabulationSize(), oldEnv.isUsingTabulations());
+    }
+
+    /**
+     * Some elements are inserted into the Spoon tree based on their position. This applies for example to type members,
+     * as Spoon will try to find the appropriate position for them based on position.
+     *
+     * Comments that come from a different source file than the node they are attached to are also unlikely to actually
+     * get printed, as the position relative to the associated node is taken into account by the pretty-printer.
+     * Setting the position to {@link SourcePosition#NOPOSITION} causes all comments to be printed before the
+     * associated node, but at least they get printed!
+     * <p>
+     * The reason for this can be found in
+     * {@link spoon.reflect.visitor.ElementPrinterHelper#getComments(CtElement, CommentOffset)}.
+     * <p>
+     * If the position is all ready {@link SourcePosition#NOPOSITION}, then do nothing.
+     */
+    private static void unsetSourcePosition(CtElement element) {
+        if (!element.getPosition().isValidPosition())
+            return;
+
+        element.putMetadata(POSITION_KEY, element.getPosition());
+        element.setPosition(SourcePosition.NOPOSITION);
     }
 
     /**
@@ -136,6 +164,8 @@ public class SpoonTreeBuilder {
                 hasContentConflict = true;
             }
         }
+
+        unsetSourcePosition(mergeTree);
 
         // adjust metadata for the merge tree
         Map<String, Object> metadata = new HashMap<>(mergeTree.getAllMetadata());

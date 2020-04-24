@@ -6,16 +6,12 @@ import se.kth.spork.spoon.wrappers.RoledValue;
 import se.kth.spork.util.LineBasedMerge;
 import se.kth.spork.util.Pair;
 import spoon.reflect.code.CtOperatorAssignment;
-import spoon.reflect.cu.SourcePosition;
 import spoon.reflect.declaration.CtElement;
 import spoon.reflect.declaration.ModifierKind;
 import spoon.reflect.path.CtRole;
-import spoon.reflect.reference.CtArrayTypeReference;
 import spoon.reflect.reference.CtPackageReference;
-import spoon.reflect.reference.CtReference;
 import spoon.reflect.reference.CtTypeReference;
 import spoon.reflect.visitor.CtScanner;
-import spoon.reflect.visitor.printer.CommentOffset;
 
 import java.util.*;
 
@@ -30,11 +26,6 @@ public class PrinterPreprocessor extends CtScanner {
     public static final String LOCAL_CONFLICT_MAP_KEY = "spork_local_conflict_map";
     public static final String GLOBAL_CONFLICT_MAP_KEY = "spork_global_conflict_map";
     public static final String CONTENT_CONFLICT_PREFIX = "__SPORK_CONFLICT_";
-
-    // the position key is used to put the original source position of an element as metadata
-    // this is necessary e.g. for comments as their original source position may cause them not to be printed
-    // in a merged tree
-    public static final String POSITION_KEY = "spork_position";
 
     private final List<String> importStatements;
     private final String activePackage;
@@ -72,8 +63,6 @@ public class PrinterPreprocessor extends CtScanner {
         if (conflicts != null) {
             conflicts.forEach(conf -> processConflict(conf, element));
         }
-
-        element.getComments().forEach(PrinterPreprocessor::unsetSourcePosition);
 
         super.scan(element);
     }
@@ -113,25 +102,6 @@ public class PrinterPreprocessor extends CtScanner {
                 }
             }
         }
-    }
-
-    /**
-     * Comments that come from a different source file than the node they are attached to are unlikely to actually
-     * get printed, as the position relative to the associated node is taken into account by the pretty-printer.
-     * Setting the position to {@link SourcePosition#NOPOSITION} causes all comments to be printed before the
-     * associated node, but at least they get printed!
-     * <p>
-     * The reason for this can be found in
-     * {@link spoon.reflect.visitor.ElementPrinterHelper#getComments(CtElement, CommentOffset)}.
-     * <p>
-     * If the position is all ready {@link SourcePosition#NOPOSITION}, then do nothing.
-     */
-    private static void unsetSourcePosition(CtElement element) {
-        if (element.getPosition() == SourcePosition.NOPOSITION)
-            return;
-
-        element.putMetadata(POSITION_KEY, element.getPosition());
-        element.setPosition(SourcePosition.NOPOSITION);
     }
 
     /**

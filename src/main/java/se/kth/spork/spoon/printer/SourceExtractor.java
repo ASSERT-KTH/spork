@@ -1,5 +1,6 @@
 package se.kth.spork.spoon.printer;
 
+import se.kth.spork.spoon.pcsinterpreter.SpoonTreeBuilder;
 import se.kth.spork.util.Pair;
 import spoon.reflect.CtModel;
 import spoon.reflect.cu.CompilationUnit;
@@ -160,7 +161,7 @@ public class SourceExtractor {
      * metadata to circumvent the pretty-printers reliance on positional information (e.g. when printing comments).
      */
     private static SourcePosition getSourcePos(CtElement elem) {
-        SourcePosition pos = (SourcePosition) elem.getMetadata(PrinterPreprocessor.POSITION_KEY);
+        SourcePosition pos = (SourcePosition) elem.getMetadata(SpoonTreeBuilder.POSITION_KEY);
         if (pos == null) {
             pos = elem.getPosition();
         }
