@@ -1,7 +1,7 @@
 #! /bin/bash
 
 echo "Compiling spork"
-mvn clean compile assembly:single
+mvn clean compile package -DskipTests
 spork_jar_path="$PWD/$(ls target/spork*.jar)"
 
 echo "Creating spork executable"

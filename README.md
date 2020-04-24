@@ -41,7 +41,7 @@ wget https://raw.githubusercontent.com/KTH/spork/fe906f537d1bb7205256d1fe81fda9f
 diff3 Left.java Base.java Right.java -m -A
 
 # an AST-merge with Spork does
-java -jar spork.jar Left.java Base.java Right.java
+java -jar spork.jar merge Left.java Base.java Right.java
 ```
 
 It should print the result of the merge to stdout. See `Base.java` for the
@@ -76,11 +76,11 @@ Maven can be used to build the latest version of Spork.
 > **Note:** Requires JDK8+ to build.
 
 ```
-mvn clean compile assembly:single
+mvn clean compile package -DskipTests
 ```
 
 This will produce a jar-file in the `target` directory called something along the lines of
-`spork-x.x.x-jar-with-dependencies.jar`. Run the jar with `java -jar path/to/spork/jar`.
+`spork-x.x.x-SNAPSHOT.jar`. Run the jar with `java -jar path/to/spork/jar`.
 
 ## Configure as a Git merge driver
 When Git performs a merge and encounters a file that has been edited in both revisions under merge, it will invoke a
