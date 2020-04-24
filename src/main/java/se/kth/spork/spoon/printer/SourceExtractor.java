@@ -157,6 +157,14 @@ public class SourceExtractor {
     }
 
     /**
+     * @param elem A Spoon element.
+     * @return true if the element has a valid source position.
+     */
+    public static boolean hasSourcePos(CtElement elem) {
+        return getSourcePos(elem).isValidPosition();
+    }
+
+    /**
      * Get the source file position from a CtElement, taking care that Spork sometimes stores position information as
      * metadata to circumvent the pretty-printers reliance on positional information (e.g. when printing comments).
      */
@@ -165,8 +173,6 @@ public class SourceExtractor {
         if (pos == null) {
             pos = elem.getPosition();
         }
-        assert pos != null && pos != SourcePosition.NOPOSITION;
-
         return pos;
     }
 

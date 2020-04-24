@@ -4,7 +4,11 @@ import se.kth.spork.spoon.pcsinterpreter.SpoonTreeBuilder;
 import se.kth.spork.spoon.StructuralConflict;
 import se.kth.spork.util.Pair;
 import spoon.compiler.Environment;
+import spoon.reflect.code.CtCatchVariable;
 import spoon.reflect.code.CtComment;
+import spoon.reflect.code.CtExpression;
+import spoon.reflect.code.CtLocalVariable;
+import spoon.reflect.code.CtStatement;
 import spoon.reflect.declaration.CtElement;
 import spoon.reflect.declaration.CtField;
 import spoon.reflect.declaration.CtMethod;
@@ -47,6 +51,25 @@ public final class SporkPrettyPrinter extends DefaultJavaPrettyPrinter {
         globalContentConflicts = DEFAULT_CONFLICT_MAP;
     }
 
+    /**
+     * Check if the element is a multi declaration (i.e. something like `int a, b, c;`.
+     */
+    private static boolean isMultiDeclaration(CtElement e, String declarationSource) {
+        if (!(e instanceof CtField || e instanceof CtLocalVariable || e instanceof CtCatchVariable))
+            return false;
+
+        boolean encounteredComma = false;
+        for (char c : declarationSource.toCharArray()) {
+            if (c == ',') {
+                encounteredComma = true;
+                break;
+            } else if (c == '=' || c == ';') {
+                break;
+            }
+        }
+        return encounteredComma;
+    }
+
     @Override
     @SuppressWarnings("unchecked")
     protected void enter(CtElement e) {
@@ -76,10 +99,27 @@ public final class SporkPrettyPrinter extends DefaultJavaPrettyPrinter {
         if (e == null) {
             return this;
         } else if (e.getMetadata(SpoonTreeBuilder.SINGLE_REVISION_KEY) != null &&
-                (e instanceof CtMethod || e instanceof CtField)) {
+                (e instanceof CtMethod
+                        || e instanceof CtField
+                        || e instanceof CtStatement
+                        || e instanceof CtExpression
+                )
+                && SourceExtractor.hasSourcePos(e)) {
             CtElement origNode = (CtElement) e.getMetadata(SpoonTreeBuilder.ORIGINAL_NODE_KEY);
             String originalSource = SourceExtractor.getOriginalSource(origNode);
-            if (!(e instanceof CtField) || !isMultiDeclaration(originalSource)) {
+            if (!isMultiDeclaration(e, originalSource)) {
+                if (!(e instanceof CtMethod)) {
+                    // inline comments are not included in the source code fragment
+                    e.getComments().stream()
+                            .filter(comment -> comment.getCommentType() == CtComment.CommentType.INLINE)
+                            .forEach(comment -> {
+                                        String source = SourceExtractor.getOriginalSource(comment);
+                                        int indent = SourceExtractor.getIndentation(comment);
+                                        printerHelper.writeRawSourceCode(source, indent).writeln();
+                                    }
+                            );
+                }
+
                 printerHelper.writeRawSourceCode(originalSource, SourceExtractor.getIndentation(origNode));
                 return this;
             }
@@ -105,19 +145,6 @@ public final class SporkPrettyPrinter extends DefaultJavaPrettyPrinter {
         }
 
         return this;
-    }
-
-    private boolean isMultiDeclaration(String declarationSource) {
-        boolean encounteredComma = false;
-        for (char c : declarationSource.toCharArray()) {
-            if (c == ',') {
-                encounteredComma = true;
-                break;
-            } else if (c == '=' || c == ';') {
-                break;
-            }
-        }
-        return encounteredComma;
     }
 
     @Override
