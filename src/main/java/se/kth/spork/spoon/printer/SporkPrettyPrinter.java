@@ -79,8 +79,10 @@ public final class SporkPrettyPrinter extends DefaultJavaPrettyPrinter {
                 (e instanceof CtMethod || e instanceof CtField)) {
             CtElement origNode = (CtElement) e.getMetadata(SpoonTreeBuilder.ORIGINAL_NODE_KEY);
             String originalSource = SourceExtractor.getOriginalSource(origNode);
-            printerHelper.writeRawSourceCode(originalSource, SourceExtractor.getIndentation(origNode));
-            return this;
+            if (!(e instanceof CtField) || !isMultiDeclaration(originalSource)) {
+                printerHelper.writeRawSourceCode(originalSource, SourceExtractor.getIndentation(origNode));
+                return this;
+            }
         }
 
 
@@ -103,6 +105,19 @@ public final class SporkPrettyPrinter extends DefaultJavaPrettyPrinter {
         }
 
         return this;
+    }
+
+    private boolean isMultiDeclaration(String declarationSource) {
+        boolean encounteredComma = false;
+        for (char c : declarationSource.toCharArray()) {
+            if (c == ',') {
+                encounteredComma = true;
+                break;
+            } else if (c == '=' || c == ';') {
+                break;
+            }
+        }
+        return encounteredComma;
     }
 
     @Override
