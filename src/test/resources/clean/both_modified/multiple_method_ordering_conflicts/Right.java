@@ -27,7 +27,7 @@ public class Sum {
     }
 
     public int sumAndMultiplyBetween(int a, int b) {
-        int sum = sumBetween(a, b):
+        int sum = sumBetween(a, b);
         int prod = multiplyBetween(a, b);
         return sum + prod;
     }

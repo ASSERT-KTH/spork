@@ -40,13 +40,9 @@ class Spoon3dmMergeTest {
         CtModule mergeTree = merged.first;
         Object mergedImports = mergeTree.getMetadata(Parser.IMPORT_STATEMENTS);
 
-        // FIXME There should be no need to sort output elements, but resolutions to ordering conflicts can cause strange method ordering
-        Compare.sortUnorderedElements(expected);
-        Compare.sortUnorderedElements(mergeTree);
-
         // this assert is just to give a better overview of obvious errors, but it relies on the pretty printer's
         // correctness
-        //assertEquals(Cli.prettyPrint(expected), Cli.prettyPrint(mergeTree));
+        // assertEquals(Cli.prettyPrint(expected), Cli.prettyPrint(mergeTree));
 
         // these asserts are what actually matters
         assertEquals(expected, mergeTree);
