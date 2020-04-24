@@ -13,8 +13,6 @@ import daiquiri
 
 LOGGER = daiquiri.getLogger(__name__)
 
-BLOB_SHA_SEP = "_"
-
 INLINE_COMMENT_PATTERN = re.compile("(?m)^\s*//.*")
 # (?s) is equivalent to the re.DOTALL flag
 BLOCK_COMMENT_PATTERN = re.compile("(?ms)^\s*/\*.*?\*/")
@@ -40,9 +38,9 @@ def create_merge_dirs(merge_dir_base: pathlib.Path, file_merges,) -> List[pathli
         left_blob = file_merge.left
         right_blob = file_merge.right
 
-        left_filename = create_blob_filename("Left", left_blob)
-        right_filename = create_blob_filename("Right", right_blob)
-        result_filename = create_blob_filename("Expected", result_blob)
+        left_filename = "Left.java"
+        right_filename = "Right.java"
+        result_filename = "Expected.java"
 
         merge_dir = merge_dir_base / merge_commit.hexsha / result_blob.name
         merge_dir.mkdir(parents=True)
@@ -52,15 +50,14 @@ def create_merge_dirs(merge_dir_base: pathlib.Path, file_merges,) -> List[pathli
         _write_blob_to_file(merge_dir / right_filename, right_blob)
         if file_merge.base:
             _write_blob_to_file(
-                merge_dir / create_blob_filename("Base", file_merge.base),
-                file_merge.base,
+                merge_dir / "Base.java", file_merge.base,
             )
         else:
             # If left and right added the same file, there will be no base blob
             LOGGER.warning(
                 f"No base blob for merge commit {merge_commit.hexsha} and result blob {result_blob.hexsha}"
             )
-            (merge_dir / f"Base{BLOB_SHA_SEP}{BLOB_SHA_SEP}.java").write_bytes(b"")
+            (merge_dir / "Base.java").write_bytes(b"")
 
         merge_dirs.append(merge_dir)
 
@@ -70,11 +67,6 @@ def create_merge_dirs(merge_dir_base: pathlib.Path, file_merges,) -> List[pathli
 def extract_commit_sha(merge_dir: pathlib.Path) -> str:
     """Extract the commit sha from a merge directory path."""
     return list(merge_dir.parents)[0].name
-
-
-def extract_blob_sha(filepath: pathlib.Path) -> str:
-    """Extract the blob commit sha from a Java file in a merge directory."""
-    return filepath.name[:-5].split(BLOB_SHA_SEP)[-1]
 
 
 def count_lines(filepath: pathlib.Path) -> int:
@@ -99,11 +91,6 @@ def mvn_compile(workdir: pathlib.Path):
     """Compile the project in workdir with mvn."""
     proc = subprocess.run("mvn clean compile".split(), cwd=workdir)
     return proc.returncode == 0
-
-
-def create_blob_filename(prefix: str, blob: git.Blob, ext: str = "java") -> str:
-    """Create the filename for a blob."""
-    return f"{prefix}{BLOB_SHA_SEP}{blob.hexsha}.{ext}"
 
 
 def read_non_empty_lines(path: pathlib.Path) -> List[str]:

@@ -170,10 +170,14 @@ def extract_conflicts(path: pathlib.Path) -> List[MergeConflict]:
 
     def _extract_conflict():
         left = list(
-            itertools.takewhile(lambda line: not line.startswith(gitutils.MID_CONFLICT), lines)
+            itertools.takewhile(
+                lambda line: not line.startswith(gitutils.MID_CONFLICT), lines
+            )
         )
         right = list(
-            itertools.takewhile(lambda line: not line.startswith(gitutils.END_CONFLICT), lines)
+            itertools.takewhile(
+                lambda line: not line.startswith(gitutils.END_CONFLICT), lines
+            )
         )
         return MergeConflict(left, right)
 
@@ -195,39 +199,41 @@ def evaluation_result(
     """Gather evaluation results from the provided merge result."""
     git_diff_size_norm = -1
     gumtree_diff_size = -1
+    gumtree_diff_size_norm = -1
     git_diff_size = -1
     gumtree_diff_size = -1
     conflict_size = 0
     num_conflicts = 0
 
     expected = merge_result.expected_file
+    expected_blob = gitutils.hash_object(expected)
+    expected_norm = fileutils.copy_normalized(expected)
+    expected_blob_norm = gitutils.hash_object(expected_norm)
     replayed = merge_result.merge_file
 
-    expected_blob = ""
     replayed_blob = ""
-    expected_blob_norm = ""
     replayed_blob_norm = ""
 
-    if merge_result.outcome == conts.MergeOutcome.SUCCESS:
-        # extract conflicts from the original file
-        conflicts = extract_conflicts(replayed)
-        conflict_size = sum(c.num_lines for c in conflicts)
-        num_conflicts = len(conflicts)
-
-        expected_norm = fileutils.copy_normalized(expected)
+    if merge_result.outcome != conts.MergeOutcome.FAIL:
         replayed_norm = fileutils.copy_normalized(replayed)
-
-        git_diff_size = git_diff_edit_script_size(expected, replayed, normalized=False)
-        git_diff_size_norm = git_diff_edit_script_size(
-            expected_norm, replayed_norm, normalized=True
-        )
-        gumtree_diff_size = len(gumtree_edit_script(expected, replayed))
-        gumtree_diff_size_norm = len(gumtree_edit_script(expected_norm, replayed_norm))
-
-        expected_blob = gitutils.hash_object(expected)
         replayed_blob = gitutils.hash_object(replayed)
-        expected_blob_norm = gitutils.hash_object(expected_norm)
         replayed_blob_norm = gitutils.hash_object(replayed_norm)
+
+        if merge_result.outcome == conts.MergeOutcome.SUCCESS:
+            conflicts = extract_conflicts(replayed)
+            conflict_size = sum(c.num_lines for c in conflicts)
+            num_conflicts = len(conflicts)
+
+            git_diff_size = git_diff_edit_script_size(
+                expected, replayed, normalized=False
+            )
+            git_diff_size_norm = git_diff_edit_script_size(
+                expected_norm, replayed_norm, normalized=True
+            )
+            gumtree_diff_size = len(gumtree_edit_script(expected, replayed))
+            gumtree_diff_size_norm = len(
+                gumtree_edit_script(expected_norm, replayed_norm)
+            )
 
     merge_dir = merge_result.merge_dir.relative_to(base_merge_dir)
     merge_commit = fileutils.extract_commit_sha(merge_dir)
