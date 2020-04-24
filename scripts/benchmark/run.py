@@ -172,7 +172,7 @@ def is_buildable(commit_sha: str, repo: git.Repo) -> bool:
         True if the build was successful.
     """
     with gitutils.saved_git_head(repo):
-        repo.git.switch(commit_sha, "--detach", "--quiet", "--force")
+        repo.git.checkout(commit_sha, "--force")
         return fileutils.mvn_compile(workdir=repo.working_tree_dir)
 
 

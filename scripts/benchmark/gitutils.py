@@ -196,7 +196,7 @@ def merge_no_commit(
         A context manager that yields True on a merge without conflicts.
     """
     with saved_git_head(repo):
-        repo.git.switch(left_sha, "--force", "--detach", "--quiet")
+        repo.git.checkout(left_sha, "--force")
         try:
             repo.git.merge(right_sha, "--no-commit")
             success = True
