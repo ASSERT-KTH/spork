@@ -14,16 +14,29 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
     </properties>
 
+    <repositories>
+        <repository>
+            <id>jitpack.io</id>
+            <url>https://jitpack.io</url>
+        </repository>
+    </repositories>
+
     <dependencies>
         <dependency>
-            <groupId>fr.inria.gforge.spoon</groupId>
-            <artifactId>spoon-core</artifactId>
-            <version>8.2.0-beta-4</version>
+            <groupId>com.github.slarse</groupId>
+            <artifactId>spoon</artifactId>
+            <version>4f6d834</version>
         </dependency>
         <dependency>
             <groupId>fr.inria.gforge.spoon.labs</groupId>
             <artifactId>gumtree-spoon-ast-diff</artifactId>
             <version>1.23</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>fr.inria.gforge.spoon</groupId>
+                    <artifactId>spoon-core</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>org.junit.jupiter</groupId>
