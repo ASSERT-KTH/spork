@@ -1,7 +1,11 @@
 package se.kth.spork.cli;
 
+import ch.qos.logback.classic.LoggerContext;
+import ch.qos.logback.classic.joran.JoranConfigurator;
+import ch.qos.logback.core.joran.spi.JoranException;
 import gumtree.spoon.AstComparator;
 import gumtree.spoon.diff.Diff;
+import org.slf4j.LoggerFactory;
 import picocli.CommandLine;
 import se.kth.spork.spoon.Compare;
 import se.kth.spork.spoon.Parser;
@@ -146,13 +150,23 @@ public class Cli {
         File out;
 
         @CommandLine.Option(
-                names = {"--git-mode"},
+                names = {"-g", "--git-mode"},
                 description = "Enable Git compatibility mode. Required to use Spork as a Git merge driver."
         )
         boolean gitMode;
 
+        @CommandLine.Option(
+                names = {"-l", "--logging"},
+                description = "Enable logging output"
+        )
+        boolean logging;
+
         @Override
         public Integer call() throws IOException {
+            if (logging) {
+                setLogLevel("DEBUG");
+            }
+
             long start = System.nanoTime();
 
             Path basePath = base.toPath();
@@ -244,6 +258,19 @@ public class Cli {
     private static boolean containsTypes(CtElement elem) {
         List<CtType<?>> types = elem.getElements(e -> true);
         return types.size() > 0;
+    }
+
+    private static void setLogLevel(String level) {
+        LoggerContext context = (LoggerContext) LoggerFactory.getILoggerFactory();
+        JoranConfigurator jc = new JoranConfigurator();
+        jc.setContext(context);
+        context.reset();
+        context.putProperty("root-level", "level");
+        try {
+            jc.doConfigure(Objects.requireNonNull(Cli.class.getClassLoader().getResource("logback.xml")));
+        } catch (JoranException e) {
+            LOGGER.error(() -> "Failed to set log level");
+        }
     }
 }
 
