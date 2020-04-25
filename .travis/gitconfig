@@ -1,0 +1,6 @@
+[core]
+	attributesfile = ~/.gitattributes
+
+[merge "spork"]
+    name = spork
+    driver = ~/spork merge --git-mode %A %O %B -o %A
