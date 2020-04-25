@@ -3,11 +3,22 @@ git:
 
 matrix:
   include:
-    - language: python
+    - name: "File merge benchmark"
+      language: python
       os: linux
       python: 3.8
       script: ".travis/run_benchmark.sh"
-    - language: java
+    - name: "Merge-and-build benchmark"
+      language: python
+      os: linux
+      python: 3.8
+      script: ".travis/run_build_benchmark.sh"
+      addons:
+         apt:
+            packages:
+               - openjdk-8-jdk
+    - name: "Unit tests"
+      language: java
       os: linux
       jdk: openjdk8
       after_success: bash <(curl -s https://codecov.io/bash)
