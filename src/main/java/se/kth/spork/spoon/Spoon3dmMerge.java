@@ -4,8 +4,6 @@ import com.github.gumtreediff.matchers.Matcher;
 import com.github.gumtreediff.matchers.Matchers;
 import com.github.gumtreediff.tree.ITree;
 import gumtree.spoon.builder.SpoonGumTreeBuilder;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import se.kth.spork.base3dm.*;
 import se.kth.spork.spoon.matching.ClassRepresentatives;
 import se.kth.spork.spoon.matching.MappingRemover;
@@ -13,6 +11,7 @@ import se.kth.spork.spoon.matching.SpoonMapping;
 import se.kth.spork.spoon.pcsinterpreter.PcsInterpreter;
 import se.kth.spork.spoon.wrappers.RoledValues;
 import se.kth.spork.spoon.wrappers.SpoonNode;
+import se.kth.spork.util.LazyLogger;
 import se.kth.spork.util.Pair;
 import spoon.reflect.declaration.*;
 
@@ -25,7 +24,7 @@ import java.util.*;
  * @author Simon Larsén
  */
 public class Spoon3dmMerge {
-    private static final Logger LOGGER = LoggerFactory.getLogger(Spoon3dmMerge.class);
+    private static final LazyLogger LOGGER = new LazyLogger(Spoon3dmMerge.class);
 
     /**
      * Merge the left and right revisions with an AST-based merge.
@@ -39,14 +38,14 @@ public class Spoon3dmMerge {
         long start = System.nanoTime();
 
         // PARSING PHASE
-        LOGGER.info("Parsing files to Spoon trees");
+        LOGGER.info(() -> "Parsing files to Spoon trees");
         CtModule baseTree = Parser.parse(base);
         CtModule leftTree = Parser.parse(left);
         CtModule rightTree = Parser.parse(right);
 
         long end = System.nanoTime();
         double timeDelta = (double) (end - start) / 1e9;
-        LOGGER.info("Parsed files in " + timeDelta + " seconds");
+        LOGGER.info(() -> "Parsed files in " + timeDelta + " seconds");
 
         return merge(baseTree, leftTree, rightTree);
     }
@@ -64,68 +63,68 @@ public class Spoon3dmMerge {
         long start = System.nanoTime();
 
         // MATCHING PHASE
-        LOGGER.info("Converting to GumTree trees");
+        LOGGER.info(() -> "Converting to GumTree trees");
         ITree baseGumtree = new SpoonGumTreeBuilder().getTree(base);
         ITree leftGumtree = new SpoonGumTreeBuilder().getTree(left);
         ITree rightGumtree = new SpoonGumTreeBuilder().getTree(right);
 
-        LOGGER.info("Matching trees with GumTree");
+        LOGGER.info(() -> "Matching trees with GumTree");
         Matcher baseLeftGumtreeMatch = matchTrees(baseGumtree, leftGumtree);
         Matcher baseRightGumtreeMatch = matchTrees(baseGumtree, rightGumtree);
         Matcher leftRightGumtreeMatch = matchTreesTopDown(leftGumtree, rightGumtree);
 
-        LOGGER.info("Converting GumTree matches to Spoon matches");
+        LOGGER.info(() -> "Converting GumTree matches to Spoon matches");
         SpoonMapping baseLeft = SpoonMapping.fromGumTreeMapping(baseLeftGumtreeMatch.getMappings());
         SpoonMapping baseRight = SpoonMapping.fromGumTreeMapping(baseRightGumtreeMatch.getMappings());
         SpoonMapping leftRight = SpoonMapping.fromGumTreeMapping(leftRightGumtreeMatch.getMappings());
 
         // 3DM PHASE
-        LOGGER.info("Mapping nodes to class representatives");
+        LOGGER.info(() -> "Mapping nodes to class representatives");
         Map<SpoonNode, SpoonNode> classRepMap = ClassRepresentatives.createClassRepresentativesMapping(
                 base, left, right, baseLeft, baseRight, leftRight);
 
-        LOGGER.info("Converting Spoon trees to PCS triples");
+        LOGGER.info(() -> "Converting Spoon trees to PCS triples");
         Set<Pcs<SpoonNode>> t0 = PcsBuilder.fromSpoon(base, Revision.BASE);
         Set<Pcs<SpoonNode>> t1 = PcsBuilder.fromSpoon(left, Revision.LEFT);
         Set<Pcs<SpoonNode>> t2 = PcsBuilder.fromSpoon(right, Revision.RIGHT);
 
-        LOGGER.info("Computing raw PCS merge");
+        LOGGER.info(() -> "Computing raw PCS merge");
         ChangeSet<SpoonNode, RoledValues> delta = new ChangeSet<>(classRepMap, new ContentResolver(), t0, t1, t2);
         ChangeSet<SpoonNode, RoledValues> t0Star = new ChangeSet<>(classRepMap, new ContentResolver(), t0);
 
-        LOGGER.info("Resolving final PCS merge");
+        LOGGER.info(() -> "Resolving final PCS merge");
         TdmMerge.resolveRawMerge(t0Star, delta);
 
         Set<SpoonNode> rootConflictingNodes = StructuralConflict.extractRootConflictingNodes(delta.getStructuralConflicts());
         if (!rootConflictingNodes.isEmpty()) {
-            LOGGER.info("Root conflicts detected, restarting merge");
-            LOGGER.info("Removing root conflicting nodes from tree matchings");
+            LOGGER.info(() -> "Root conflicts detected, restarting merge");
+            LOGGER.info(() -> "Removing root conflicting nodes from tree matchings");
             MappingRemover.removeFromMappings(rootConflictingNodes, baseLeft, baseRight, leftRight);
 
-            LOGGER.info("Mapping nodes to class representatives");
+            LOGGER.info(() -> "Mapping nodes to class representatives");
             classRepMap = ClassRepresentatives.createClassRepresentativesMapping(
                     base, left, right, baseLeft, baseRight, leftRight);
 
-            LOGGER.info("Computing raw PCS merge");
+            LOGGER.info(() -> "Computing raw PCS merge");
             delta = new ChangeSet<>(classRepMap, new ContentResolver(), t0, t1, t2);
 
-            LOGGER.info("Resolving final PCS merge");
+            LOGGER.info(() -> "Resolving final PCS merge");
             TdmMerge.resolveRawMerge(t0Star, delta);
         }
 
         // INTERPRETER PHASE
-        LOGGER.info("Interpreting resolved PCS merge");
+        LOGGER.info(() -> "Interpreting resolved PCS merge");
         Pair<CtElement, Boolean> merge = PcsInterpreter.fromMergedPcs(delta, baseLeft, baseRight);
         // we can be certain that the merge tree has the same root type as the three constituents, so this cast is safe
         @SuppressWarnings("unchecked")
         T mergeTree = (T) merge.first;
         boolean hasConflicts = merge.second;
 
-        LOGGER.info("Merging import statements");
+        LOGGER.info(() -> "Merging import statements");
         List<CtImport> mergedImports = mergeImportStatements(base, left, right);
         mergeTree.putMetadata(Parser.IMPORT_STATEMENTS, mergedImports);
 
-        LOGGER.info("Merged in " + (double) (System.nanoTime() - start) / 1e9 + " seconds");
+        LOGGER.info(() -> "Merged in " + (double) (System.nanoTime() - start) / 1e9 + " seconds");
 
         return Pair.of(mergeTree, hasConflicts);
     }

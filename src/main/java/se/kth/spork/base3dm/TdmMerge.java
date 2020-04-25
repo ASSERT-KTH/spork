@@ -1,7 +1,6 @@
 package se.kth.spork.base3dm;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import se.kth.spork.util.LazyLogger;
 
 import java.util.*;
 
@@ -14,7 +13,7 @@ import java.util.*;
 public class TdmMerge {
     public static final String REV = "rev";
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(TdmMerge.class);
+    private static final LazyLogger LOGGER = new LazyLogger(TdmMerge.class);
 
     /**
      * Attempt to resolve a raw merge by incrementally removing inconsistencies. The input delta is the raw merge, which
@@ -59,7 +58,7 @@ public class TdmMerge {
 
         Map<Pcs<T>, Set<Pcs<T>>> structuralConflicts = delta.getStructuralConflicts();
         if (!structuralConflicts.isEmpty()) {
-            LOGGER.warn("STRUCTURAL CONFLICTS DETECTED: " + structuralConflicts);
+            LOGGER.warn(() -> "STRUCTURAL CONFLICTS DETECTED: " + structuralConflicts);
         }
     }
 
@@ -113,7 +112,7 @@ public class TdmMerge {
             Content<T,V> first = it.next();
             Content<T,V> second = it.next();
 
-            LOGGER.warn("Content conflict: " + first + ", " + second);
+            LOGGER.warn(() -> "Content conflict: " + first + ", " + second);
 
             // the reason all content is returned is that further processing of conflicts may be done after the base
             // 3DM merge has finished, which may require the content of all revisions

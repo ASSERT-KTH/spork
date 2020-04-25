@@ -1,9 +1,8 @@
 package se.kth.spork.spoon;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import se.kth.spork.spoon.printer.SourceExtractor;
 import se.kth.spork.spoon.printer.SporkPrettyPrinter;
+import se.kth.spork.util.LazyLogger;
 import se.kth.spork.util.Pair;
 import spoon.Launcher;
 import spoon.compiler.Environment;
@@ -26,7 +25,7 @@ import java.util.function.Consumer;
 public class Parser {
     public static final String IMPORT_STATEMENTS = "spork_import_statements";
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(Parser.class);
+    private static final LazyLogger LOGGER = new LazyLogger(Parser.class);
 
     /**
      * Parse a Java file to a Spoon tree. Any import statements in the file are attached to the returned module's
@@ -83,7 +82,7 @@ public class Parser {
 
         Pair<Integer, Boolean> indentationGuess = SourceExtractor.guessIndentation(model);
         String indentationType = indentationGuess.second ? "tabs" : "spaces";
-        LOGGER.info("Using indentation: " + indentationGuess.first + " " + indentationType);
+        LOGGER.info(() -> "Using indentation: " + indentationGuess.first + " " + indentationType);
         setSporkEnvironment(launcher.getEnvironment(), indentationGuess.first, indentationGuess.second);
 
         CtModule module = model.getUnnamedModule();

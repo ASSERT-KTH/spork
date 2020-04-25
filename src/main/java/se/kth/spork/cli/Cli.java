@@ -2,13 +2,12 @@ package se.kth.spork.cli;
 
 import gumtree.spoon.AstComparator;
 import gumtree.spoon.diff.Diff;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import picocli.CommandLine;
 import se.kth.spork.spoon.Compare;
 import se.kth.spork.spoon.Parser;
 import se.kth.spork.spoon.Spoon3dmMerge;
 import se.kth.spork.spoon.printer.PrinterPreprocessor;
+import se.kth.spork.util.LazyLogger;
 import se.kth.spork.util.LineBasedMerge;
 import se.kth.spork.util.Pair;
 import spoon.reflect.declaration.*;
@@ -30,7 +29,7 @@ import java.util.stream.Stream;
  * @author Simon Larsén
  */
 public class Cli {
-    private static final Logger LOGGER = LoggerFactory.getLogger(Spoon3dmMerge.class);
+    private static final LazyLogger LOGGER = new LazyLogger(Spoon3dmMerge.class);
 
     public static void main(String[] args) {
         int exitCode = new CommandLine(new TopCmd()).execute(args);
@@ -44,7 +43,7 @@ public class Cli {
      * @return A pretty-printed string representing the merged output.
      */
     public static String prettyPrint(CtModule spoonRoot) {
-        LOGGER.info("Pre-processing tree for pretty-printing");
+        LOGGER.info(() -> "Pre-processing tree for pretty-printing");
         CtPackage activePackage = spoonRoot.getRootPackage();
         while (!activePackage.getPackages().isEmpty()) {
             Set<CtPackage> subPkgs = activePackage.getPackages();
@@ -175,14 +174,14 @@ public class Cli {
             boolean hasConflicts = merged.second;
 
             if (out != null) {
-                LOGGER.info("Writing merge to " + out);
+                LOGGER.info(() -> "Writing merge to " + out);
                 Files.write(out.toPath(), pretty.getBytes(Charset.defaultCharset()),
                         StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING);
             } else {
                 System.out.println(pretty);
             }
 
-            LOGGER.info("Total time elapsed: " + (double) (System.nanoTime() - start) / 1e9 + " seconds");
+            LOGGER.info(() -> "Total time elapsed: " + (double) (System.nanoTime() - start) / 1e9 + " seconds");
             return hasConflicts ? 1 : 0;
         }
 
@@ -197,21 +196,21 @@ public class Cli {
      * @return A pair on the form (prettyPrint, hasConflicts)
      */
     public static Pair<String, Boolean> merge(Path base, Path left, Path right) {
-        LOGGER.info("Parsing input files");
+        LOGGER.info(() -> "Parsing input files");
         CtModule baseModule = Parser.parse(base);
         CtModule leftModule = Parser.parse(left);
         CtModule rightModule = Parser.parse(right);
 
-        LOGGER.info("Initiating merge");
+        LOGGER.info(() -> "Initiating merge");
         Pair<CtElement, Boolean> merge = Spoon3dmMerge.merge(baseModule, leftModule, rightModule);
         CtModule mergeTree = (CtModule) merge.first;
         boolean hasConflicts = merge.second;
 
-        LOGGER.info("Pretty-printing");
+        LOGGER.info(() -> "Pretty-printing");
         if (containsTypes(mergeTree)) {
             return Pair.of(prettyPrint(mergeTree), hasConflicts);
         } else {
-            LOGGER.warn("Merge contains no types (i.e. classes, interfaces, etc), reverting to line-based merge");
+            LOGGER.warn(() -> "Merge contains no types (i.e. classes, interfaces, etc), reverting to line-based merge");
             String baseStr = Parser.read(base);
             String leftStr = Parser.read(left);
             String rightStr = Parser.read(right);
