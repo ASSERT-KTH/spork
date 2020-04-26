@@ -217,14 +217,11 @@ def create_cli_parser():
     )
     analyze_file_merges_command.add_argument(
         "--results",
-        help="The primary results files.",
+        help="One or more file merge benchmark results files. Each file called "
+        "<something>.csv is expected to have an accompanying "
+        "<something>_blob_metainfo.csv in the same directory",
         required=True,
-        type=pathlib.Path,
-    )
-    analyze_file_merges_command.add_argument(
-        "--blob-metainfo",
-        help="Blob metainfo for all blobs in the primary results file.",
-        required=True,
+        nargs="+",
         type=pathlib.Path,
     )
     analyze_file_merges_command.add_argument(
