@@ -36,8 +36,8 @@ class FileMerge:
     @staticmethod
     def from_metainfo(repo: git.Repo, metainfo) -> "FileMerge":
         ms = MergeScenario.from_metainfo(repo, metainfo)
-        expected = ms.expected.tree[str(metainfo.merge_filepath)]
-        base = ms.base.tree[str(metainfo.base_filepath)]
+        expected = ms.expected.tree[str(metainfo.expected_filepath)]
+        base = ms.base.tree[str(metainfo.base_filepath)] if metainfo.base_filepath else None
         left = ms.left.tree[str(metainfo.left_filepath)]
         right = ms.right.tree[str(metainfo.right_filepath)]
         return FileMerge(

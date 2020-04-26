@@ -186,7 +186,7 @@ def runtime_benchmark(
 
             merge_commit = fileutils.extract_commit_sha(ms.merge_dir)
             base_blob, left_blob, right_blob = [
-                fileutils.extract_blob_sha(fp)
+                gitutils.hash_object(fp)
                 for fp in [ms.base_file, ms.left_file, ms.right_file]
             ]
 

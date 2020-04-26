@@ -3,6 +3,7 @@ import dataclasses
 import pathlib
 import functools
 import itertools
+import pandas
 
 from typing import List, Iterable, Tuple, Any, TypeVar, Mapping
 
@@ -111,58 +112,74 @@ class Evaluations:
             yield as_good_or_better
 
 
+def _dataclass_to_dataframe(data, container):
+    headers = [f.name for f in dataclasses.fields(container)]
+    tuples = map(dataclasses.astuple, data)
+    return pandas.DataFrame(data=tuples, columns=headers)
+
+
+_EXPECTED_BLOB = "expected_blob"
+_REPLAYED_BLOB = "replayed_blob"
+_DIFF_SIZE = "diff_size"
+
+
 def analyze_merge_evaluations(
-    merge_evaluations: List[conts.MergeEvaluation],
+    merge_evaluations: pandas.DataFrame,
     blob_line_counts: Mapping[str, int],
     blob_node_counts: Mapping[str, int],
 ) -> List[conts.MergeEvaluationStatistics]:
-    stats = []
+    def _id(v):
+        return v
 
-    merge_evaluations.sort(key=lambda me: me.merge_cmd)
-    for merge_cmd, evals in itertools.groupby(
-        merge_evaluations, key=lambda me: me.merge_cmd
-    ):
-        print()
-        print(f"Merge command: {merge_cmd}")
-        evals = list(evals)
-        git_diff_accuracy, git_diff_magnitude = _calculate_averages(
-            evals, blob_line_counts, "git_diff_size", normalized=False
-        )
-        git_diff_accuracy_norm, git_diff_magnitude_norm = _calculate_averages(
-            evals, blob_line_counts, "git_diff_size", normalized=True
-        )
-        gumtree_diff_accuracy, gumtree_diff_magnitude = _calculate_averages(
-            evals, blob_node_counts, "gumtree_diff_size", normalized=False
-        )
-        gumtree_diff_accuracy_norm, gumtree_diff_magnitude_norm = _calculate_averages(
-            evals, blob_node_counts, "gumtree_diff_size", normalized=True
-        )
-        stats.append(
-            conts.MergeEvaluationStatistics(
-                "rxjava",
-                merge_cmd,
-                git_diff_avg_acc=git_diff_accuracy,
-                git_diff_avg_magn=git_diff_magnitude,
-                git_diff_avg_acc_norm=git_diff_accuracy_norm,
-                git_diff_avg_magn_norm=git_diff_magnitude_norm,
-                gumtree_diff_avg_acc=gumtree_diff_accuracy,
-                gumtree_diff_avg_magn=gumtree_diff_magnitude,
-                gumtree_diff_avg_acc_norm=gumtree_diff_accuracy_norm,
-                gumtree_diff_avg_magn_norm=gumtree_diff_magnitude_norm,
-                num_file_merges=len(evals),
-                num_success=len(
-                    [me for me in evals if me.outcome == conts.MergeOutcome.SUCCESS]
-                ),
-                num_fail=len(
-                    [me for me in evals if me.outcome == conts.MergeOutcome.FAIL]
-                ),
-                num_conflict=len(
-                    [me for me in evals if me.outcome == conts.MergeOutcome.CONFLICT]
-                ),
-            )
-        )
+    line_measure_transform = {
+        _EXPECTED_BLOB: lambda sha: blob_line_counts.get(sha) or -1,
+        _REPLAYED_BLOB: lambda sha: blob_line_counts.get(sha) or -1,
+        _DIFF_SIZE: _id,
+    }
+    node_measure_transform = {
+        _EXPECTED_BLOB: lambda sha: blob_node_counts.get(sha) or -1,
+        _REPLAYED_BLOB: lambda sha: blob_node_counts.get(sha) or -1,
+        _DIFF_SIZE: _id,
+    }
 
-    return stats
+    git_diff = _create_result(merge_evaluations, line_measure_transform, "git_diff_size")
+    git_diff_norm = _create_result(merge_evaluations, line_measure_transform, "git_diff_size_norm")
+    gumtree_diff = _create_result(merge_evaluations, node_measure_transform, "gumtree_diff_size")
+    gumtree_diff_norm = _create_result(
+        merge_evaluations, node_measure_transform, "gumtree_diff_size_norm"
+    )
+
+    _print_stats(git_diff, "git_diff")
+    _print_stats(git_diff_norm, "git_diff_norm")
+    _print_stats(gumtree_diff, "gumtree_diff")
+    _print_stats(gumtree_diff_norm, "gumtree_diff_norm")
+
+    return None
+
+
+def _print_stats(df: pandas.DataFrame, title: str):
+    _print_min_max_mean(df.diff_size, f"{title} magnitude")
+    accuracies = df.apply(
+        lambda row: accuracy(row.expected_size, row.replayed_size, row.diff_size),
+        axis=1,
+    )
+    _print_min_max_mean(accuracies, f"{title} accuracy")
+
+
+def _print_min_max_mean(df: pandas.Series, title: str):
+    print(f"{title} min: {df.min()}")
+    print(f"{title} max: {df.max()}")
+    print(f"{title} mean: {df.mean()}")
+
+
+def _create_result(
+    df: pandas.DataFrame, measure_transform: Mapping[str, int], size_column: str
+):
+    data_subset = df[[_EXPECTED_BLOB, _REPLAYED_BLOB, size_column]]
+    data_subset.columns = [_EXPECTED_BLOB, _REPLAYED_BLOB, _DIFF_SIZE]
+    transformed = data_subset.agg(measure_transform)
+    transformed.columns = ["expected_size", "replayed_size", _DIFF_SIZE]
+    return transformed
 
 
 def _calculate_averages(
@@ -181,6 +198,9 @@ def _calculate_averages(
     accuracies = []
     magnitudes = []
     for merge_eval in evals:
+        if merge_eval.outcome != conts.MergeOutcome.SUCCESS:
+            continue
+
         expected_blob_sha = getattr(merge_eval, expected_blob_attr_name)
         replayed_blob_sha = getattr(merge_eval, replayed_blob_attr_name)
 
@@ -188,15 +208,14 @@ def _calculate_averages(
         replayed_size = blob_sizes[replayed_blob_sha]
         diff_size = getattr(merge_eval, diff_attr_name)
 
-        if merge_eval.outcome == conts.MergeOutcome.SUCCESS:
-            magnitudes.append(diff_size)
-            accuracies.append(
-                accuracy(
-                    expected_size=expected_size,
-                    replayed_size=replayed_size,
-                    diff_size=diff_size,
-                )
+        magnitudes.append(diff_size)
+        accuracies.append(
+            accuracy(
+                expected_size=expected_size,
+                replayed_size=replayed_size,
+                diff_size=diff_size,
             )
+        )
 
     non_successful = len(evals) - len(accuracies)
     punish_accuracy = min(accuracies) * non_successful

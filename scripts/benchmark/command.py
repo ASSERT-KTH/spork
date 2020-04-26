@@ -172,9 +172,9 @@ def runtime_benchmark(args: argparse.Namespace):
 
 def analyze_file_merges(args: argparse.Namespace):
     """Analyze results from running file merges."""
-    merge_evaluations = reporter.read_csv(
-        container=conts.MergeEvaluation, csv_file=args.results
-    )
+    import pandas
+
+    merge_evaluations = pandas.read_csv(args.results, skipinitialspace=True)
     blob_metainfo = reporter.read_csv(
         container=conts.JavaBlobMetainfo, csv_file=args.blob_metainfo
     )
@@ -188,10 +188,6 @@ def analyze_file_merges(args: argparse.Namespace):
 
     eval_stats = analyze.analyze_merge_evaluations(
         merge_evaluations, blob_line_counts, blob_node_counts
-    )
-
-    reporter.write_csv(
-        data=eval_stats, container=conts.MergeEvaluationStatistics, dst=args.output
     )
 
 
