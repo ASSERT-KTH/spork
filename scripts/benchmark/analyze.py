@@ -201,66 +201,18 @@ def _create_result(
     acc_max = accuracies.max()
 
     return pandas.DataFrame(
-        columns="project merge_cmd min max mean".split(),
+        columns="project merge_cmd acc_mean magn_mean".split(),
         data=[
             [
                 project,
                 merge_cmd,
-                acc_min,
-                acc_max,
                 acc_mean,
+                full_result.diff_size.mean(),
             ]
         ],
     )
 
 
-def _calculate_averages(
-    evals: List[conts.MergeEvaluation],
-    blob_sizes: Mapping[str, int],
-    diff_attr: str,
-    normalized: bool,
-):
-    def _create_attr_name(attr):
-        return attr + ("_norm" if normalized else "")
-
-    expected_blob_attr_name = _create_attr_name("expected_blob")
-    replayed_blob_attr_name = _create_attr_name("replayed_blob")
-    diff_attr_name = _create_attr_name(diff_attr)
-
-    accuracies = []
-    magnitudes = []
-    for merge_eval in evals:
-        if merge_eval.outcome != conts.MergeOutcome.SUCCESS:
-            continue
-
-        expected_blob_sha = getattr(merge_eval, expected_blob_attr_name)
-        replayed_blob_sha = getattr(merge_eval, replayed_blob_attr_name)
-
-        expected_size = blob_sizes[expected_blob_sha]
-        replayed_size = blob_sizes[replayed_blob_sha]
-        diff_size = getattr(merge_eval, diff_attr_name)
-
-        magnitudes.append(diff_size)
-        accuracies.append(
-            accuracy(
-                expected_size=expected_size,
-                replayed_size=replayed_size,
-                diff_size=diff_size,
-            )
-        )
-
-    non_successful = len(evals) - len(accuracies)
-    punish_accuracy = min(accuracies) * non_successful
-
-    avg_accuracy = float(sum(accuracies) + punish_accuracy) / len(evals)
-    avg_magnitude = float(sum(magnitudes)) / len(magnitudes)
-    print(f"{diff_attr_name} magnitude avg: {avg_magnitude}")
-    print(f"{diff_attr_name} magnitude max: {max(magnitudes)}")
-    print(f"{diff_attr_name} magnitude min: {min(magnitudes)}")
-    print(f"{diff_attr_name} accuracy avg: {avg_accuracy}")
-    print(f"{diff_attr_name} accuracy max: {max(accuracies)}")
-    print(f"{diff_attr_name} accuracy min: {min(accuracies)}")
-    return avg_accuracy, avg_magnitude
 
 
 def accuracy(expected_size: int, replayed_size: int, diff_size: int):

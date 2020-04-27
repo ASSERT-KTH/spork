@@ -4,6 +4,7 @@ import pathlib
 import sys
 import itertools
 import dataclasses
+import re
 
 
 from typing import List, Optional, Iterable, Mapping
@@ -224,14 +225,56 @@ def analyze_file_merges(args: argparse.Namespace):
 
     titled_frames = zip(
         [
-            "Git diff accuracy",
-            "Git diff accuracy (normalized)",
-            "GumTree diff accuracy",
-            "GumTree diff accuracy (normalized)",
+            "Git diff {}",
+            "Git diff {} (normalized)",
+            "GumTree diff {}",
+            "GumTree diff {} (normalized)",
         ],
         [git_diffs, git_diffs_norm, gumtree_diffs, gumtree_diffs_norm],
     )
-    _print_latex_tables(titled_frames)
+
+    for title, frames in titled_frames:
+        concat = pandas.concat(frames).sort_values(by="merge_cmd")
+        _print_latex_table(
+            title.format("accuracy"),
+            concat[["project", "merge_cmd", "acc_mean"]].rename(
+                columns={"acc_mean": "mean"}
+            ),
+        )
+        _print_latex_table(
+            title.format("magnitude"),
+            concat[["project", "merge_cmd", "magn_mean"]].rename(
+                columns={"magn_mean": "mean"}
+            ),
+        )
+
+
+def _print_latex_table(title, concat):
+    merge_commands = {merge_cmd for merge_cmd in concat.merge_cmd}
+    projects = {project for project in concat.project}
+
+    result_frame = pandas.DataFrame(columns=["project"], data=sorted(projects))
+
+    for merge_cmd, df in concat.groupby("merge_cmd"):
+        result_frame = result_frame.merge(
+            df.rename(columns={"mean": merge_cmd})[["project", merge_cmd]], on="project"
+        )
+
+    means = result_frame.mean()
+    means["project"] = "Total"
+    result_frame.loc["mean"] = means
+
+    result_frame.reset_index()
+    safe_title = re.sub("[^a-z_]", "", title.replace(" ", "_").lower())
+    latex = result_frame.to_latex(
+        float_format="%.3f", caption=title, label=f"tab:res:{safe_title}", index=False,
+    )
+
+    filename = f"{safe_title}.tex"
+    pathlib.Path(
+        f"{safe_title}.tex", mode="w", encoding=sys.getdefaultencoding()
+    ).write_text(latex)
+    LOGGER.info(f"Wrote table to {filename}")
 
 
 def _print_latex_tables(titled_frames):
