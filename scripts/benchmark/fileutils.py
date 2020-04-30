@@ -64,6 +64,11 @@ def create_merge_dirs(merge_dir_base: pathlib.Path, file_merges,) -> List[pathli
     return merge_dirs
 
 
+def _write_blob_to_file(filepath, blob):
+    data = blob.data_stream[-1].read()
+    filepath.write_bytes(data)
+
+
 def extract_commit_sha(merge_dir: pathlib.Path) -> str:
     """Extract the commit sha from a merge directory path."""
     return list(merge_dir.parents)[0].name
@@ -87,9 +92,15 @@ def count_nodes(filepath: pathlib.Path) -> int:
     return int(proc.stdout.decode().strip())
 
 
-def mvn_compile(workdir: pathlib.Path):
-    """Compile the project in workdir with mvn."""
-    proc = subprocess.run("mvn clean compile".split(), cwd=workdir)
+def mvn_compile(workdir: pathlib.Path) -> bool:
+    """Compile the project in workdir with Maven's test-compile command."""
+    proc = subprocess.run("mvn clean test-compile".split(), cwd=workdir)
+    return proc.returncode == 0
+
+
+def mvn_test(workdir: pathlib.Path):
+    """Run the project's test suite."""
+    proc = subprocess.run("mvn clean test".split(), cwd=workdir)
     return proc.returncode == 0
 
 
@@ -100,21 +111,6 @@ def read_non_empty_lines(path: pathlib.Path) -> List[str]:
         for line in path.read_text(encoding=sys.getdefaultencoding()).split("\n")
         if line.strip()
     ]
-
-
-def strip_comments(java_code: str) -> str:
-    """Strip inline and block comments from the provided source code."""
-    block_comments_stripped = re.sub(BLOCK_COMMENT_PATTERN, "", java_code)
-    return re.sub(INLINE_COMMENT_PATTERN, "", block_comments_stripped)
-
-
-def strip_blank_lines(text: str) -> str:
-    """Remove any blank lines from the text."""
-    lines = []
-    for line in text.split("\n"):
-        if line and not line.isspace():
-            lines.append(line)
-    return "\n".join(lines)
 
 
 def normalize_formatting(java_code: str) -> str:
@@ -151,8 +147,3 @@ def copy_normalized(
     dst.touch()
     dst.write_text(normalized, encoding=sys.getdefaultencoding())
     return dst
-
-
-def _write_blob_to_file(filepath, blob):
-    data = blob.data_stream[-1].read()
-    filepath.write_bytes(data)

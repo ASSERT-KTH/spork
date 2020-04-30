@@ -4,6 +4,7 @@ import pathlib
 import functools
 import itertools
 import pandas
+import scipy.stats
 
 from typing import List, Iterable, Tuple, Any, TypeVar, Mapping
 
@@ -195,24 +196,15 @@ def _create_result(
         lambda row: accuracy(row.expected_size, row.replayed_size, row.diff_size),
         axis=1,
     )
+
     merge_cmd = full_result.merge_cmd.iloc[0]
     acc_mean = accuracies.mean()
-    acc_min = accuracies.min()
-    acc_max = accuracies.max()
+    print(merge_cmd, size_column, scipy.stats.normaltest(accuracies.to_numpy()))
 
     return pandas.DataFrame(
         columns="project merge_cmd acc_mean magn_mean".split(),
-        data=[
-            [
-                project,
-                merge_cmd,
-                acc_mean,
-                full_result.diff_size.mean(),
-            ]
-        ],
+        data=[[project, merge_cmd, acc_mean, full_result.diff_size.mean()]],
     )
-
-
 
 
 def accuracy(expected_size: int, replayed_size: int, diff_size: int):

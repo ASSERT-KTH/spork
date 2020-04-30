@@ -175,6 +175,19 @@ def is_buildable(commit_sha: str, repo: git.Repo) -> bool:
         repo.git.checkout(commit_sha, "--force")
         return fileutils.mvn_compile(workdir=repo.working_tree_dir)
 
+def is_testable(commit_sha: str, repo: git.Repo) -> bool:
+    """Try to run the project's test suite with Maven.
+
+    Args:
+        commit_sha: A commit hexsha.
+        repo: The related Git repo.
+    Returns:
+        True if the build was successful.
+    """
+    with gitutils.saved_git_head(repo):
+        repo.git.checkout(commit_sha, "--force")
+        return fileutils.mvn_test(workdir=repo.working_tree_dir)
+
 
 def runtime_benchmark(
     file_merge_dirs: List[pathlib.Path], merge_cmd: str, repeats: int

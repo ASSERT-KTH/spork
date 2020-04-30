@@ -161,6 +161,11 @@ def create_cli_parser():
         help="Try to build the project with Maven after the merge.",
         action="store_true",
     )
+    git_merge_command.add_argument(
+        "--test",
+        help="Run the projects test suite. Implies --build.",
+        action="store_true",
+    )
 
     runtime_bench_command = subparsers.add_parser(
         "runtime-benchmark",
@@ -196,7 +201,14 @@ def create_cli_parser():
     )
     merge_extractor_command.add_argument(
         "--buildable",
-        help="Only extract merge scenarios if they can be built with maven",
+        help="Only extract merge scenarios if every commit involved, "
+        "including the merge commit, can be built with maven",
+        action="store_true",
+    )
+    merge_extractor_command.add_argument(
+        "--testable",
+        help="Only extract merge scenarios all invovled commits are buildable, "
+        "and the merge commit passes the test suit. Implies --buildable.",
         action="store_true",
     )
 

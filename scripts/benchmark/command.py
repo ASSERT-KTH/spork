@@ -108,14 +108,27 @@ def extract_merge_commits(args: argparse.Namespace):
         repo, non_trivial=args.non_trivial
     )
 
-    if args.buildable:
+    if args.buildable or args.testable:
         buildable = [
-            ms for ms in merge_scenarios if run.is_buildable(ms.expected.hexsha, repo)
+            ms
+            for ms in merge_scenarios
+            if all(
+                run.is_buildable(commit.hexsha, repo)
+                for commit in [ms.base, ms.left, ms.right, ms.expected]
+            )
         ]
         LOGGER.info(
             f"Filtered {len(merge_scenarios) - len(buildable)} merges that did not build"
         )
         merge_scenarios = buildable
+        if args.testable:
+            testable = [
+                ms
+                for ms in merge_scenarios
+                if run.is_testable(ms.expected.hexsha, repo)
+            ]
+            LOGGER.info(f"Filtered {len(merge_scenarios) - len(testable)} merges that could not be tested")
+            merge_scenarios = testable
 
     LOGGER.info(f"Extracted {len(merge_scenarios)} merge commits")
 
