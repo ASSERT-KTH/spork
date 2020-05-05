@@ -131,7 +131,9 @@ def extract_conflicting_files(
                 raise ValueError("unknown stage " + stage)
 
         if rev_map.get(conts.Revision.ACTUAL_MERGE) is None:
-            LOGGER.warning("Could not find expected revision, skipping: " + str(rev_map))
+            LOGGER.warning(
+                "Could not find expected revision, skipping: " + str(rev_map)
+            )
             continue
         if conts.Revision.LEFT not in rev_map or conts.Revision.RIGHT not in rev_map:
             # this is a delete file/edit file conflict, we can't do much about that
@@ -248,10 +250,12 @@ def saved_git_head(repo: git.Repo) -> ContextManager[None]:
         if exc is not None:
             raise exc
 
+
 def checkout_clean(repo: git.Repo, commitish: str) -> None:
     """Checkout to a commit and clean any untracked files and directories."""
     repo.git.checkout(commitish, "--force")
     repo.git.clean("-xfd")
+
 
 def _to_file_merge(
     rev_map: Mapping[conts.Revision, git.Blob], ms: conts.MergeScenario

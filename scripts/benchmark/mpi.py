@@ -19,11 +19,9 @@ try:
     MASTER_RANK = 0
     NUM_WORKERS = NUM_PROCS - 1
 
-
     MPI_ENABLED = True
 except ModuleNotFoundError:
     LOGGER.warning("MPI not installed, will not be able to run in MPI-mode")
-
 
 
 def master(merge_dirs: List[pathlib.Path]):

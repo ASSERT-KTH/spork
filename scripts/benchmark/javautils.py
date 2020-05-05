@@ -173,4 +173,3 @@ def extract_java_package(path: pathlib.Path) -> str:
         .stdout.decode(encoding=sys.getdefaultencoding())
         .strip()
     )
-

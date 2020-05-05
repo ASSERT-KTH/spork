@@ -37,7 +37,11 @@ class FileMerge:
     def from_metainfo(repo: git.Repo, metainfo) -> "FileMerge":
         ms = MergeScenario.from_metainfo(repo, metainfo)
         expected = ms.expected.tree[str(metainfo.expected_filepath)]
-        base = ms.base.tree[str(metainfo.base_filepath)] if metainfo.base_filepath else None
+        base = (
+            ms.base.tree[str(metainfo.base_filepath)]
+            if metainfo.base_filepath
+            else None
+        )
         left = ms.left.tree[str(metainfo.left_filepath)]
         right = ms.right.tree[str(metainfo.right_filepath)]
         return FileMerge(
@@ -82,11 +86,11 @@ class FileMergeMetainfo:
             right_filepath=str(file_merge.right.path),
         )
 
+
 @dataclasses.dataclass(frozen=True, order=True)
 class JavaBlobMetainfo:
     hexsha: str
     num_lines: int
-    num_nodes: int
 
 
 @dataclasses.dataclass(frozen=True, order=True)
@@ -98,14 +102,9 @@ class MergeEvaluation:
     right_blob: str
     expected_blob: str
     replayed_blob: str
-    expected_blob_norm: str
-    replayed_blob_norm: str
     merge_cmd: str
     outcome: str
-    git_diff_size_norm: int
     git_diff_size: int
-    gumtree_diff_size: int
-    gumtree_diff_size_norm: int
     num_conflicts: int
     conflict_size: int
     runtime: float
@@ -159,6 +158,7 @@ class RuntimeResult:
     total_time_ms: int
     merge_cmd: str
 
+
 @dataclasses.dataclass(frozen=True, order=True)
 class MergeEvaluationStatistics:
     project: str
@@ -168,10 +168,4 @@ class MergeEvaluationStatistics:
     num_conflict: int
     num_fail: int
     git_diff_avg_magn: int
-    git_diff_avg_magn_norm: int
     git_diff_avg_acc: int
-    git_diff_avg_acc_norm: int
-    gumtree_diff_avg_magn: int
-    gumtree_diff_avg_magn_norm: int
-    gumtree_diff_avg_acc: int
-    gumtree_diff_avg_acc_norm: int

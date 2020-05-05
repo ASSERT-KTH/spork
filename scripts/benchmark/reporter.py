@@ -30,14 +30,10 @@ def read_csv(csv_file: pathlib.Path, container: T) -> List[T]:
     if not dataclasses.is_dataclass(container):
         raise TypeError(f"{container} is not a dataclass")
 
-    return _read_csv(
-        container=container,
-        csv_file=csv_file,
-    )
+    return _read_csv(container=container, csv_file=csv_file,)
 
-def _read_csv(
-    container: Callable[..., T], csv_file: pathlib.Path
-) -> Callable[..., T]:
+
+def _read_csv(container: Callable[..., T], csv_file: pathlib.Path) -> Callable[..., T]:
     fields = dataclasses.fields(container)
     expected_headers = [field.name for field in fields]
     with open(str(csv_file), mode="r") as file:

@@ -50,7 +50,6 @@ def _run_file_merges(file_merge_dirs: List[pathlib.Path], merge_cmd: str) -> Ite
                 name
                 for name in filenames
                 if name.startswith(prefix)
-                and not name.endswith(fileutils.NORMALIZED_FILE_SUFFIX)
             ]
             assert len(matches) == 1
             return matches[0]
@@ -115,7 +114,10 @@ def _run_file_merge(scenario_dir, merge_cmd, base, left, right, expected, merge)
 
 
 def run_git_merges(
-    merge_scenarios: List[conts.MergeScenario], repo: git.Repo, build: bool, evaluate: bool
+    merge_scenarios: List[conts.MergeScenario],
+    repo: git.Repo,
+    build: bool,
+    evaluate: bool,
 ) -> Iterable[conts.GitMergeResult]:
     """Replay the provided merge scenarios using git-merge. Assumes that the
     merge scenarios belong to the provided repo. The merge tool to use must be
@@ -131,15 +133,14 @@ def run_git_merges(
         An iterable of merge results.
     """
     for ms in merge_scenarios:
-        LOGGER.info(f"Replaying merge commit {ms.expected.hexsha}: base={ms.base.hexsha}, left={ms.left.hexsha}, right={ms.right.hexsha}")
+        LOGGER.info(
+            f"Replaying merge commit {ms.expected.hexsha}: base={ms.base.hexsha}, left={ms.left.hexsha}, right={ms.right.hexsha}"
+        )
         yield run_git_merge(ms, repo, build, evaluate)
 
 
 def run_git_merge(
-    merge_scenario: conts.MergeScenario,
-    repo: git.Repo,
-    build: bool,
-    evaluate: bool,
+    merge_scenario: conts.MergeScenario, repo: git.Repo, build: bool, evaluate: bool,
 ) -> conts.GitMergeResult:
     """Replay a single merge scenario. Assumes that the merge scenario belongs
     to the provided repo. The merge tool to use must be configured in

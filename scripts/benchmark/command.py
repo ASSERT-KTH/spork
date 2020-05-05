@@ -127,7 +127,9 @@ def extract_merge_commits(args: argparse.Namespace):
                 for ms in merge_scenarios
                 if run.is_testable(ms.expected.hexsha, repo)
             ]
-            LOGGER.info(f"Filtered {len(merge_scenarios) - len(testable)} merges that could not be tested")
+            LOGGER.info(
+                f"Filtered {len(merge_scenarios) - len(testable)} merges that could not be tested"
+            )
             merge_scenarios = testable
 
     LOGGER.info(f"Extracted {len(merge_scenarios)} merge commits")
@@ -146,7 +148,9 @@ def extract_file_merge_metainfo(args: argparse.Namespace):
         else None
     )
 
-    merge_scenarios = gitutils.extract_merge_scenarios(repo, merge_commit_shas=commit_shas)
+    merge_scenarios = gitutils.extract_merge_scenarios(
+        repo, merge_commit_shas=commit_shas
+    )
     file_merges = gitutils.extract_all_conflicting_files(repo, merge_scenarios)
     file_merge_metainfos = list(
         map(conts.FileMergeMetainfo.from_file_merge, file_merges)
@@ -201,9 +205,6 @@ def analyze_file_merges(args: argparse.Namespace):
         return pandas.DataFrame(data=tuples, columns=headers)
 
     git_diffs = []
-    git_diffs_norm = []
-    gumtree_diffs = []
-    gumtree_diffs_norm = []
 
     for results_file in args.results:
         project = results_file.name.split("_")[0]
@@ -224,32 +225,12 @@ def analyze_file_merges(args: argparse.Namespace):
         blob_line_counts = {
             blob_meta.hexsha: blob_meta.num_lines for blob_meta in blob_metainfo
         }
-        blob_node_counts = {
-            blob_meta.hexsha: blob_meta.num_nodes for blob_meta in blob_metainfo
-        }
-
-        (
-            git_diff,
-            git_diff_norm,
-            gumtree_diff,
-            gumtree_diff_norm,
-        ) = analyze.analyze_merge_evaluations(
-            merge_evaluations, project, blob_line_counts, blob_node_counts
+        git_diff = analyze.analyze_merge_evaluations(
+            merge_evaluations, project, blob_line_counts
         )
         git_diffs.append(git_diff)
-        git_diffs_norm.append(git_diff_norm)
-        gumtree_diffs.append(gumtree_diff)
-        gumtree_diffs_norm.append(gumtree_diff_norm)
 
-    titled_frames = zip(
-        [
-            "Git diff {}",
-            "Git diff {} (normalized)",
-            "GumTree diff {}",
-            "GumTree diff {} (normalized)",
-        ],
-        [git_diffs, git_diffs_norm, gumtree_diffs, gumtree_diffs_norm],
-    )
+    titled_frames = zip(["Git diff {}",], [git_diffs],)
 
     for title, frames in titled_frames:
         concat = pandas.concat(frames).sort_values(by="merge_cmd")
@@ -268,7 +249,6 @@ def analyze_file_merges(args: argparse.Namespace):
 
 
 def _print_latex_table(title, concat):
-    merge_commands = {merge_cmd for merge_cmd in concat.merge_cmd}
     projects = {project for project in concat.project}
 
     result_frame = pandas.DataFrame(columns=["project"], data=sorted(projects))
@@ -357,4 +337,3 @@ def _get_repo(repo: str, github_user: Optional[str]) -> git.Repo:
         return gitutils.clone_repo(repo, github_user)
     else:
         return git.Repo(repo)
-

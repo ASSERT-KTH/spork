@@ -122,8 +122,7 @@ def analyze_merge_evaluations(
     merge_evaluations: pandas.DataFrame,
     project: str,
     blob_line_counts: Mapping[str, int],
-    blob_node_counts: Mapping[str, int],
-) -> List[conts.MergeEvaluationStatistics]:
+) -> pandas.DataFrame:
     def _id(v):
         return v
 
@@ -133,46 +132,16 @@ def analyze_merge_evaluations(
         _REPLAYED_BLOB: lambda sha: blob_line_counts.get(sha) or -1,
         _DIFF_SIZE: _id,
     }
-    node_measure_transform = {
-        "merge_cmd": _id,
-        _EXPECTED_BLOB: lambda sha: blob_node_counts.get(sha) or -1,
-        _REPLAYED_BLOB: lambda sha: blob_node_counts.get(sha) or -1,
-        _DIFF_SIZE: _id,
-    }
 
     git_diffs = []
-    git_diffs_norm = []
-    gumtree_diffs = []
-    gumtree_diffs_norm = []
 
     for _, df in merge_evaluations.groupby("merge_cmd"):
         git_diff = _create_result(df, line_measure_transform, "git_diff_size", project)
-        git_diff_norm = _create_result(
-            df, line_measure_transform, "git_diff_size_norm", project
-        )
-        gumtree_diff = _create_result(
-            df, node_measure_transform, "gumtree_diff_size", project
-        )
-        gumtree_diff_norm = _create_result(
-            df, node_measure_transform, "gumtree_diff_size_norm", project
-        )
-
         git_diffs.append(git_diff)
-        git_diffs_norm.append(git_diff_norm)
-        gumtree_diffs.append(gumtree_diff)
-        gumtree_diffs_norm.append(gumtree_diff_norm)
 
     git_diff_frame = pandas.concat(git_diffs)
-    git_diff_norm_frame = pandas.concat(git_diffs_norm)
-    gumtree_diff_frame = pandas.concat(gumtree_diffs)
-    gumtree_diff_norm_frame = pandas.concat(gumtree_diffs_norm)
 
-    return (
-        git_diff_frame,
-        git_diff_norm_frame,
-        gumtree_diff_frame,
-        gumtree_diff_norm_frame,
-    )
+    return git_diff_frame
 
 
 def _create_result(

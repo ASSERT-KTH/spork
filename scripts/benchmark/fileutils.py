@@ -15,15 +15,6 @@ import daiquiri
 
 LOGGER = daiquiri.getLogger(__name__)
 
-INLINE_COMMENT_PATTERN = re.compile("(?m)^\s*//.*")
-# (?s) is equivalent to the re.DOTALL flag
-BLOCK_COMMENT_PATTERN = re.compile("(?ms)^\s*/\*.*?\*/")
-# (?m) is equivalent to the re.MULTILINE flag
-BLANK_LINE_PATTERN = re.compile(r"(?m)^\s*\n")
-EMPTY_BLOCK_PATTERN = re.compile(r"{\s+}")
-
-NORMALIZED_FILE_SUFFIX = "_normalized.java"
-
 
 def create_merge_dirs(merge_dir_base: pathlib.Path, file_merges,) -> List[pathlib.Path]:
     """Create merge directories based on the provided merge scenarios. For each merge scenario A,
@@ -82,18 +73,6 @@ def count_lines(filepath: pathlib.Path) -> int:
         return len([1 for _ in f.readlines()])
 
 
-def count_nodes(filepath: pathlib.Path) -> int:
-    """Count the amount of GumTree nodes in the given Java file. Requires
-    count-nodes to be on the path.
-    """
-    proc = subprocess.run(["count-nodes", str(filepath)], capture_output=True)
-
-    if proc.returncode != 0:
-        raise RuntimeError(f"count-nodes exited non-zero on {filepath}")
-
-    return int(proc.stdout.decode().strip())
-
-
 def mvn_compile(workdir: pathlib.Path) -> bool:
     """Compile the project in workdir with Maven's test-compile command."""
     proc = subprocess.run(
@@ -115,39 +94,3 @@ def read_non_empty_lines(path: pathlib.Path) -> List[str]:
         for line in path.read_text(encoding=sys.getdefaultencoding()).split("\n")
         if line.strip()
     ]
-
-
-def normalize_formatting(java_code: str) -> str:
-    """Normalize the formatting by removing comments, blank lines and removing
-    whitespace in empty blocks.
-    """
-    for pattern in [
-        INLINE_COMMENT_PATTERN,
-        BLOCK_COMMENT_PATTERN,
-        BLANK_LINE_PATTERN,
-    ]:
-        java_code = re.sub(pattern, "", java_code)
-    return re.sub(EMPTY_BLOCK_PATTERN, r"{}", java_code)
-
-
-def copy_normalized(
-    src: pathlib.Path, overwrite_existing: bool = False
-) -> pathlib.Path:
-    """Copy the content in src, normalize it and write it to a new file with
-    the NORMALIZED_FILE_SUFFIX extension.
-
-    Args:
-        src: source Java file.
-        overwrite_existing: If True, existing files are overwritten.
-    Returns:
-        The path to the normalized file.
-    """
-    dst = src.parent / (src.stem + NORMALIZED_FILE_SUFFIX)
-    if not overwrite_existing and dst.exists():
-        return dst
-
-    content = src.read_text(sys.getdefaultencoding())
-    normalized = normalize_formatting(content)
-    dst.touch()
-    dst.write_text(normalized, encoding=sys.getdefaultencoding())
-    return dst
