@@ -161,9 +161,7 @@ class RuntimeResult:
     base_blob: str
     left_blob: str
     right_blob: str
-    parse_time_ms: int
-    merge_time_ms: int
-    total_time_ms: int
+    runtime_ms: int
     merge_cmd: str
 
 

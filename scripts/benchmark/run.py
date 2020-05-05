@@ -26,7 +26,8 @@ LOGGER = daiquiri.getLogger(__name__)
 def run_file_merges(
     file_merge_dirs: List[pathlib.Path], merge_cmd: str
 ) -> Iterable[conts.MergeResult]:
-    """Run the file merges in the provided directories and put the output in a file called `merge_cmd`.java.
+    """Run the file merges in the provided directories and put the output in a
+    file called `merge_cmd`.java.
 
     Args:
         file_merge_dirs: A list of directories with file merge scenarios. Each
@@ -311,7 +312,6 @@ def runtime_benchmark(
     for _ in range(repeats):
         for ms, proc in _run_file_merges(file_merge_dirs, merge_cmd):
             assert ms.outcome != conts.MergeOutcome.FAIL
-            parse_time, merge_time, total_time = _parse_runtimes(proc.stdout)
 
             merge_commit = fileutils.extract_commit_sha(ms.merge_dir)
             base_blob, left_blob, right_blob = [
@@ -325,28 +325,5 @@ def runtime_benchmark(
                 left_blob=left_blob,
                 right_blob=right_blob,
                 merge_cmd=merge_cmd,
-                parse_time_ms=parse_time,
-                merge_time_ms=merge_time,
-                total_time_ms=total_time,
+                runtime_ms=ms.runtime,
             )
-
-
-def _parse_runtimes(stdout: bytes) -> Tuple[float]:
-    decoded = stdout.decode(sys.getdefaultencoding())
-    parse_line, merge_line, total_line = decoded.strip().split("\n")[-3:]
-
-    return (
-        _parse_runtime(parse_line, "Parse:"),
-        _parse_runtime(merge_line, "Merge:"),
-        _parse_runtime(total_line, "Total:"),
-    )
-
-
-def _parse_runtime(line: str, expected_prefix: str) -> float:
-    line = line.strip()
-    if not line.startswith(expected_prefix):
-        raise RuntimeError(
-            f"Expected line to start with {expected_prefix}: {line}"
-        )
-
-    return float(line.split()[-1])

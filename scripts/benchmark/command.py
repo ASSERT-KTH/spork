@@ -205,8 +205,10 @@ def runtime_benchmark(args: argparse.Namespace):
         run.runtime_benchmark(merge_dirs, merge_cmd, args.num_runs)
         for merge_cmd in args.merge_commands
     )
+
+    output_file = args.output or pathlib.Path("runtimes.csv")
     reporter.write_csv(
-        data=runtime_results, container=conts.RuntimeResult, dst=args.output
+        data=runtime_results, container=conts.RuntimeResult, dst=output_file
     )
 
 
