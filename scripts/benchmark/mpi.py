@@ -32,7 +32,11 @@ def master(merge_dirs: List[pathlib.Path]):
 
     for i in range(NUM_PROCS - 1):
         start = range_starts[i]
-        end = range_starts[i + 1] if i < len(range_starts) - 1 else len(merge_dirs)
+        end = (
+            range_starts[i + 1]
+            if i < len(range_starts) - 1
+            else len(merge_dirs)
+        )
         proc_dirs = merge_dirs[start:end]
 
         LOGGER.info(f"Master sending jobs to proc {i}")

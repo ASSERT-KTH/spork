@@ -33,7 +33,9 @@ def read_csv(csv_file: pathlib.Path, container: T) -> List[T]:
     return _read_csv(container=container, csv_file=csv_file,)
 
 
-def _read_csv(container: Callable[..., T], csv_file: pathlib.Path) -> Callable[..., T]:
+def _read_csv(
+    container: Callable[..., T], csv_file: pathlib.Path
+) -> Callable[..., T]:
     fields = dataclasses.fields(container)
     expected_headers = [field.name for field in fields]
     with open(str(csv_file), mode="r") as file:
@@ -48,7 +50,9 @@ def _read_csv(container: Callable[..., T], csv_file: pathlib.Path) -> Callable[.
 
         def instantiate_container(line: List[str]) -> container:
             assert len(line) == len(fields)
-            kwargs = {field.name: field.type(v) for v, field in zip(line, fields)}
+            kwargs = {
+                field.name: field.type(v) for v, field in zip(line, fields)
+            }
             return container(**kwargs)
 
         return [instantiate_container(line) for line in reader]
@@ -66,7 +70,8 @@ def _write_csv(headers: List[str], body: List[List[str]], dst: str):
 def _format_for_csv(results: List[List[str]]) -> List[List[str]]:
     column_widths = [largest + 1 for largest in _largest_cells(results)]
     return [
-        [cell.rjust(column_widths[i]) for i, cell in enumerate(row)] for row in results
+        [cell.rjust(column_widths[i]) for i, cell in enumerate(row)]
+        for row in results
     ]
 
 

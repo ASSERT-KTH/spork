@@ -53,7 +53,9 @@ def _output_java_blob_metainfos(merge_dirs, base_output_file):
     )
     metainfos = evaluate.gather_java_blob_metainfos(merge_dirs)
     reporter.write_csv(
-        data=metainfos, container=conts.JavaBlobMetainfo, dst=metainfo_output_file,
+        data=metainfos,
+        container=conts.JavaBlobMetainfo,
+        dst=metainfo_output_file,
     )
     LOGGER.info(f"Java blob metainfo written to {metainfo_output_file}")
 
@@ -83,13 +85,17 @@ def run_merge_and_compare(args: argparse.Namespace, eval_func):
     data, _, _ = _run_file_merges(
         args, eval_func, expected_merge_commit_shas=commit_shas
     )
-    new_evaluations = analyze.Evaluations(data=data, container=conts.MergeEvaluation,)
+    new_evaluations = analyze.Evaluations(
+        data=data, container=conts.MergeEvaluation,
+    )
 
     new_evaluations.log_diffs(old_evaluations)
 
     if args.output is not None:
         reporter.write_csv(
-            data=new_evaluations.data, container=conts.MergeEvaluation, dst=args.output
+            data=new_evaluations.data,
+            container=conts.MergeEvaluation,
+            dst=args.output,
         )
 
     if new_evaluations.at_least_as_good_as(old_evaluations):
@@ -135,7 +141,9 @@ def extract_merge_commits(args: argparse.Namespace):
     LOGGER.info(f"Extracted {len(merge_scenarios)} merge commits")
 
     outpath = args.output or pathlib.Path("merge_scenarios.txt")
-    outpath.write_text("\n".join([merge.expected.hexsha for merge in merge_scenarios]))
+    outpath.write_text(
+        "\n".join([merge.expected.hexsha for merge in merge_scenarios])
+    )
     LOGGER.info(f"Merge commits saved to {outpath}")
 
 
@@ -166,7 +174,9 @@ def git_merge(args: argparse.Namespace):
     """Run git merge on all scenarios."""
     repo = _get_repo(args.repo, args.github_user)
 
-    commit_shas = fileutils.read_non_empty_lines(args.merge_commits)[: args.num_merges]
+    commit_shas = fileutils.read_non_empty_lines(args.merge_commits)[
+        : args.num_merges
+    ]
     merge_scenarios = gitutils.extract_merge_scenarios(
         repo, merge_commit_shas=commit_shas
     )
@@ -184,7 +194,9 @@ def runtime_benchmark(args: argparse.Namespace):
     file_merge_metainfo = reporter.read_csv(
         csv_file=args.file_merge_metainfo, container=conts.FileMergeMetainfo
     )
-    file_merges = (conts.FileMerge.from_metainfo(repo, m) for m in file_merge_metainfo)
+    file_merges = (
+        conts.FileMerge.from_metainfo(repo, m) for m in file_merge_metainfo
+    )
     merge_dirs = fileutils.create_merge_dirs(args.base_merge_dir, file_merges)[
         : args.num_merges
     ]
@@ -225,7 +237,8 @@ def analyze_file_merges(args: argparse.Namespace):
         )
 
         blob_line_counts = {
-            blob_meta.hexsha: blob_meta.num_lines for blob_meta in blob_metainfo
+            blob_meta.hexsha: blob_meta.num_lines
+            for blob_meta in blob_metainfo
         }
         git_diff = analyze.analyze_merge_evaluations(
             merge_evaluations, project, blob_line_counts
@@ -257,7 +270,8 @@ def _print_latex_table(title, concat):
 
     for merge_cmd, df in concat.groupby("merge_cmd"):
         result_frame = result_frame.merge(
-            df.rename(columns={"mean": merge_cmd})[["project", merge_cmd]], on="project"
+            df.rename(columns={"mean": merge_cmd})[["project", merge_cmd]],
+            on="project",
         )
 
     means = result_frame.mean()
@@ -267,7 +281,10 @@ def _print_latex_table(title, concat):
     result_frame.reset_index()
     safe_title = re.sub("[^a-z_]", "", title.replace(" ", "_").lower())
     latex = result_frame.to_latex(
-        float_format="%.3f", caption=title, label=f"tab:res:{safe_title}", index=False,
+        float_format="%.3f",
+        caption=title,
+        label=f"tab:res:{safe_title}",
+        index=False,
     )
 
     filename = f"{safe_title}.tex"
@@ -285,7 +302,9 @@ def _print_latex_tables(titled_frames):
         for merge_cmd, df in concat.groupby("merge_cmd"):
             if merge_cmd not in files:
                 files[merge_cmd] = open(
-                    merge_cmd + ".tex", mode="a", encoding=sys.getdefaultencoding()
+                    merge_cmd + ".tex",
+                    mode="a",
+                    encoding=sys.getdefaultencoding(),
                 )
 
             df_without_cmd = df.loc[:, df.columns != "merge_cmd"]
@@ -313,15 +332,17 @@ def _run_file_merges(
 
     repo = _get_repo(args.repo, args.github_user)
 
-    merge_scenarios = gitutils.extract_merge_scenarios(repo, expected_merge_commit_shas)
+    merge_scenarios = gitutils.extract_merge_scenarios(
+        repo, expected_merge_commit_shas
+    )
 
     LOGGER.info(f"Found {len(merge_scenarios)} merge scenarios")
 
     merge_base_dir = pathlib.Path("merge_directory")
     merge_base_dir.mkdir(parents=True, exist_ok=True)
-    file_merges = list(gitutils.extract_all_conflicting_files(repo, merge_scenarios))[
-        : args.num_merges
-    ]
+    file_merges = list(
+        gitutils.extract_all_conflicting_files(repo, merge_scenarios)
+    )[: args.num_merges]
     merge_dirs = fileutils.create_merge_dirs(merge_base_dir, file_merges)
 
     LOGGER.info(f"Extracted {len(merge_dirs)} file merges")

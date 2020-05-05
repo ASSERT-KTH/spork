@@ -16,7 +16,8 @@ LOGGER = daiquiri.getLogger(__name__)
 
 
 def compare_compiled_bytecode(
-    replayed_compile_basedir: pathlib.Path, expected_classfiles: List[pathlib.Path],
+    replayed_compile_basedir: pathlib.Path,
+    expected_classfiles: List[pathlib.Path],
 ):
     """Run the bytecode comparison evaluation.
 
@@ -33,10 +34,14 @@ def compare_compiled_bytecode(
     )
     for pair in classfile_pairs:
         if pair.replayed is None:
-            LOGGER.warning(f"No replayed classfile corresponding to {pair.expected.name}")
+            LOGGER.warning(
+                f"No replayed classfile corresponding to {pair.expected.name}"
+            )
             continue
 
-        LOGGER.info(f"Removing duplicate checkcasts from replayed revision of {pair.replayed.name}")
+        LOGGER.info(
+            f"Removing duplicate checkcasts from replayed revision of {pair.replayed.name}"
+        )
         remove_duplicate_checkcasts(pair.replayed)
 
         LOGGER.info(f"Comparing {pair.replayed.name} revisions ...")
@@ -61,7 +66,9 @@ def compare_classfiles(pair: conts.ClassfilePair) -> bool:
     ref = pair.expected
     other = pair.replayed
     if ref.name != other.name:
-        raise ValueError("Cannot compare two classfiles from different classes")
+        raise ValueError(
+            "Cannot compare two classfiles from different classes"
+        )
 
     ref_pkg = extract_java_package(ref)
     other_pkg = extract_java_package(other)
@@ -99,7 +106,9 @@ def compare_classfiles(pair: conts.ClassfilePair) -> bool:
         return proc.returncode == 0
 
 
-def locate_classfiles(src: pathlib.Path, basedir: pathlib.Path) -> List[pathlib.Path]:
+def locate_classfiles(
+    src: pathlib.Path, basedir: pathlib.Path
+) -> List[pathlib.Path]:
     """Locate the classfiles corresponding to the source file. Requires the
     pkgextractor utility to be on the path.
 
@@ -126,9 +135,13 @@ def locate_classfiles(src: pathlib.Path, basedir: pathlib.Path) -> List[pathlib.
     ]
 
     if not classfiles:
-        raise RuntimeError(f"Unable to locate classfile corresponding to {src}")
+        raise RuntimeError(
+            f"Unable to locate classfile corresponding to {src}"
+        )
     if len(classfiles) > 1:
-        raise RuntimeError(f"Found multiple matching classfiles to {src}: {classfiles}")
+        raise RuntimeError(
+            f"Found multiple matching classfiles to {src}: {classfiles}"
+        )
 
     return sorted(classfiles, key=lambda path: path.name)
 
@@ -157,7 +170,8 @@ def generate_classfile_pairs(
             replayed
             for replayed in potential_replayed_matches
             if replayed.name == expected.name
-            and extract_java_package(replayed) == extract_java_package(expected)
+            and extract_java_package(replayed)
+            == extract_java_package(expected)
         ]
         assert len(matches) <= 1
         replayed = matches[0] if matches else None
@@ -184,7 +198,9 @@ def remove_duplicate_checkcasts(path: pathlib.Path) -> None:
 
     proc = subprocess.run(["duplicate-checkcast-remover", str(path)])
     if proc.returncode != 0:
-        raise RuntimeError(f"Failed to run duplicate-checkast-remover on {path}")
+        raise RuntimeError(
+            f"Failed to run duplicate-checkast-remover on {path}"
+        )
 
 
 def extract_java_package(path: pathlib.Path) -> str:

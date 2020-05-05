@@ -17,7 +17,9 @@ class MergeScenario:
     right: git.Commit
 
     @staticmethod
-    def from_metainfo(repo: git.Repo, metainfo: "FileMergeMetainfo") -> "MergeScenario":
+    def from_metainfo(
+        repo: git.Repo, metainfo: "FileMergeMetainfo"
+    ) -> "MergeScenario":
         return MergeScenario(
             expected=repo.commit(metainfo.merge_commit),
             base=repo.commit(metainfo.base_commit),
@@ -46,7 +48,11 @@ class FileMerge:
         left = ms.left.tree[str(metainfo.left_filepath)]
         right = ms.right.tree[str(metainfo.right_filepath)]
         return FileMerge(
-            expected=expected, base=base, left=left, right=right, from_merge_scenario=ms
+            expected=expected,
+            base=base,
+            left=left,
+            right=right,
+            from_merge_scenario=ms,
         )
 
 
@@ -171,6 +177,7 @@ class MergeEvaluationStatistics:
     num_fail: int
     git_diff_avg_magn: int
     git_diff_avg_acc: int
+
 
 @dataclasses.dataclass
 class ClassfilePair:

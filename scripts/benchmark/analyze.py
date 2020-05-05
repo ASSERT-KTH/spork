@@ -38,7 +38,9 @@ class Evaluations:
         if not attr_name in [
             field.name for field in dataclasses.fields(self.container)
         ]:
-            raise ValueError(f"no attribute {attr_name} in {self.container.__name__}")
+            raise ValueError(
+                f"no attribute {attr_name} in {self.container.__name__}"
+            )
 
     @staticmethod
     def from_path(path: pathlib.Path, container: T) -> "Evaluations":
@@ -136,7 +138,9 @@ def analyze_merge_evaluations(
     git_diffs = []
 
     for _, df in merge_evaluations.groupby("merge_cmd"):
-        git_diff = _create_result(df, line_measure_transform, "git_diff_size", project)
+        git_diff = _create_result(
+            df, line_measure_transform, "git_diff_size", project
+        )
         git_diffs.append(git_diff)
 
     git_diff_frame = pandas.concat(git_diffs)
@@ -157,18 +161,25 @@ def _create_result(
         .rename(columns={size_column: "diff_size"})
         .agg(measure_transform)
         .rename(
-            columns={_EXPECTED_BLOB: "expected_size", _REPLAYED_BLOB: "replayed_size"}
+            columns={
+                _EXPECTED_BLOB: "expected_size",
+                _REPLAYED_BLOB: "replayed_size",
+            }
         )
     )
 
     accuracies = full_result.apply(
-        lambda row: accuracy(row.expected_size, row.replayed_size, row.diff_size),
+        lambda row: accuracy(
+            row.expected_size, row.replayed_size, row.diff_size
+        ),
         axis=1,
     )
 
     merge_cmd = full_result.merge_cmd.iloc[0]
     acc_mean = accuracies.mean()
-    print(merge_cmd, size_column, scipy.stats.normaltest(accuracies.to_numpy()))
+    print(
+        merge_cmd, size_column, scipy.stats.normaltest(accuracies.to_numpy())
+    )
 
     return pandas.DataFrame(
         columns="project merge_cmd acc_mean magn_mean".split(),
@@ -193,7 +204,9 @@ def accuracy(expected_size: int, replayed_size: int, diff_size: int):
 
 def _compare(attr_name: str, compare_val, ref_val) -> bool:
     if attr_name == "runtime":
-        return not _significantly_greater_than(compare_val, ref_val, tol_fraction=1.2)
+        return not _significantly_greater_than(
+            compare_val, ref_val, tol_fraction=1.2
+        )
     elif attr_name == "outcome":
         return compare_val == ref_val or compare_val != conts.MergeOutcome.FAIL
     else:
@@ -201,7 +214,10 @@ def _compare(attr_name: str, compare_val, ref_val) -> bool:
 
 
 def _significantly_greater_than(
-    compare: float, reference: float, min_value: float = 2.0, tol_fraction: float = 1.2,
+    compare: float,
+    reference: float,
+    min_value: float = 2.0,
+    tol_fraction: float = 1.2,
 ) -> bool:
     """Return true if compare is significantly larger than reference, and at least one is larger than min_value."""
     if compare < min_value and reference < min_value:

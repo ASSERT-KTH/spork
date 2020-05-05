@@ -50,7 +50,8 @@ LOGGER = daiquiri.getLogger(__name__)
 
 def create_cli_parser():
     parser = argparse.ArgumentParser(
-        "Spork merge tester", description="A little program to help develop Spork!"
+        "Spork merge tester",
+        description="A little program to help develop Spork!",
     )
 
     base_parser = argparse.ArgumentParser(add_help=False)
@@ -95,7 +96,9 @@ def create_cli_parser():
         action="store_true",
     )
 
-    base_merge_parser = argparse.ArgumentParser(add_help=False, parents=[base_parser])
+    base_merge_parser = argparse.ArgumentParser(
+        add_help=False, parents=[base_parser]
+    )
     base_merge_parser.add_argument(
         "--base-merge-dir",
         help="Base directory to perform the merges in.",
@@ -206,7 +209,9 @@ def create_cli_parser():
         parents=[base_parser],
     )
     merge_extractor_command.add_argument(
-        "--non-trivial", help="Extract only non-trivial merges", action="store_true"
+        "--non-trivial",
+        help="Extract only non-trivial merges",
+        action="store_true",
     )
     merge_extractor_command.add_argument(
         "--buildable",
@@ -234,7 +239,8 @@ def create_cli_parser():
     )
 
     analyze_file_merges_command = subparsers.add_parser(
-        "analyze-file-merges", help="Analyze results from the run-file-merges command.",
+        "analyze-file-merges",
+        help="Analyze results from the run-file-merges command.",
     )
     analyze_file_merges_command.add_argument(
         "--results",

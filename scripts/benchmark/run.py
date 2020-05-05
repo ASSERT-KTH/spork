@@ -41,7 +41,9 @@ def run_file_merges(
         yield merge_result
 
 
-def _run_file_merges(file_merge_dirs: List[pathlib.Path], merge_cmd: str) -> Iterable:
+def _run_file_merges(
+    file_merge_dirs: List[pathlib.Path], merge_cmd: str
+) -> Iterable:
     sanitized_merge_cmd = pathlib.Path(merge_cmd).name.replace(" ", "_")
     for merge_dir in file_merge_dirs:
         filenames = [f.name for f in merge_dir.iterdir() if f.is_file()]
@@ -84,10 +86,13 @@ def _run_file_merges(file_merge_dirs: List[pathlib.Path], merge_cmd: str) -> Ite
         ), proc
 
 
-def _run_file_merge(scenario_dir, merge_cmd, base, left, right, expected, merge):
+def _run_file_merge(
+    scenario_dir, merge_cmd, base, left, right, expected, merge
+):
     start = time.perf_counter()
     proc = subprocess.run(
-        f"{merge_cmd} {left} {base} {right} -o {merge}".split(), capture_output=True,
+        f"{merge_cmd} {left} {base} {right} -o {merge}".split(),
+        capture_output=True,
     )
     runtime = time.perf_counter() - start
 
@@ -134,9 +139,9 @@ def run_git_merges(
     """
     for ms in merge_scenarios:
         LOGGER.info(
-                f"Replaying merge commit {ms.expected.hexsha}, "
-                f"base: {ms.base.hexsha} left: {ms.left.hexsha} "
-                f"right: {ms.right.hexsha}"
+            f"Replaying merge commit {ms.expected.hexsha}, "
+            f"base: {ms.base.hexsha} left: {ms.left.hexsha} "
+            f"right: {ms.right.hexsha}"
         )
         yield from run_git_merge(ms, merge_drivers, repo, build, evaluate)
 
@@ -165,12 +170,16 @@ def run_git_merge(
     """
     ms = merge_scenario  # alias for less verbosity
 
-    with (tempfile.TemporaryDirectory() if evaluate else _nop_context()) as ctx:
+    with (
+        tempfile.TemporaryDirectory() if evaluate else _nop_context()
+    ) as ctx:
         if evaluate:
             with gitutils.saved_git_head(repo):
                 gitutils.checkout_clean(repo, ms.expected.hexsha)
                 LOGGER.info("Building expected revision")
-                expected_build_ok = fileutils.mvn_compile(workdir=repo.working_tree_dir)
+                expected_build_ok = fileutils.mvn_compile(
+                    workdir=repo.working_tree_dir
+                )
                 if not expected_build_ok:
                     raise RuntimeError(
                         f"Failed to build expected revision {ms.expected.hexsha}"
@@ -201,7 +210,9 @@ def run_git_merge(
             ) as merge_stat:
                 merge_ok, auto_merged = merge_stat
                 _log_cond(
-                    "Merge replay OK", "Merge conflict or failure", use_info=merge_ok
+                    "Merge replay OK",
+                    "Merge conflict or failure",
+                    use_info=merge_ok,
                 )
 
                 expected_classfiles = list(
@@ -227,9 +238,13 @@ def run_git_merge(
 
                 if build or evaluate:
                     LOGGER.info("Building replayed revision")
-                    build_ok = fileutils.mvn_compile(workdir=repo.working_tree_dir)
+                    build_ok = fileutils.mvn_compile(
+                        workdir=repo.working_tree_dir
+                    )
                     _log_cond(
-                        "Replayed build OK", "Replayed build failed", use_info=build_ok
+                        "Replayed build OK",
+                        "Replayed build failed",
+                        use_info=build_ok,
                     )
 
                     if build_ok and evaluate:
@@ -330,6 +345,8 @@ def _parse_runtimes(stdout: bytes) -> Tuple[float]:
 def _parse_runtime(line: str, expected_prefix: str) -> float:
     line = line.strip()
     if not line.startswith(expected_prefix):
-        raise RuntimeError(f"Expected line to start with {expected_prefix}: {line}")
+        raise RuntimeError(
+            f"Expected line to start with {expected_prefix}: {line}"
+        )
 
     return float(line.split()[-1])

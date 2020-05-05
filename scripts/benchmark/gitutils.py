@@ -9,7 +9,15 @@ import shutil
 import contextlib
 import subprocess
 
-from typing import List, Optional, Mapping, Sequence, Tuple, Iterable, ContextManager
+from typing import (
+    List,
+    Optional,
+    Mapping,
+    Sequence,
+    Tuple,
+    Iterable,
+    ContextManager,
+)
 
 import git
 import daiquiri
@@ -107,13 +115,19 @@ def extract_conflicting_files(
     merge_idx: git.IndexFile = repo.index.from_tree(repo, base, left, right)
 
     left_expected_diff = {
-        diff.a_blob.hexsha: diff.b_blob for diff in left.diff(expected) if diff.a_blob
+        diff.a_blob.hexsha: diff.b_blob
+        for diff in left.diff(expected)
+        if diff.a_blob
     }
     right_expected_diff = {
-        diff.a_blob.hexsha: diff.b_blob for diff in right.diff(expected) if diff.a_blob
+        diff.a_blob.hexsha: diff.b_blob
+        for diff in right.diff(expected)
+        if diff.a_blob
     }
     base_expected_diff = {
-        diff.a_blob.hexsha: diff.b_blob for diff in base.diff(expected) if diff.a_blob
+        diff.a_blob.hexsha: diff.b_blob
+        for diff in base.diff(expected)
+        if diff.a_blob
     }
 
     file_merges = []
@@ -126,7 +140,9 @@ def extract_conflicting_files(
             elif stage == 2:
                 insert(blob, conts.Revision.LEFT, left_expected_diff, rev_map)
             elif stage == 3:
-                insert(blob, conts.Revision.RIGHT, right_expected_diff, rev_map)
+                insert(
+                    blob, conts.Revision.RIGHT, right_expected_diff, rev_map
+                )
             else:
                 raise ValueError("unknown stage " + stage)
 
@@ -135,15 +151,22 @@ def extract_conflicting_files(
                 "Could not find expected revision, skipping: " + str(rev_map)
             )
             continue
-        if conts.Revision.LEFT not in rev_map or conts.Revision.RIGHT not in rev_map:
+        if (
+            conts.Revision.LEFT not in rev_map
+            or conts.Revision.RIGHT not in rev_map
+        ):
             # this is a delete file/edit file conflict, we can't do much about that
-            LOGGER.warning("Skipping delete/edit file conflict: " + str(rev_map))
+            LOGGER.warning(
+                "Skipping delete/edit file conflict: " + str(rev_map)
+            )
             continue
 
         file_merge = _to_file_merge(rev_map, merge_scenario)
 
         if not str(file_merge.expected.name).endswith(".java"):
-            LOGGER.warning(f"{file_merge.expected.name} is not a Java file, skipping")
+            LOGGER.warning(
+                f"{file_merge.expected.name} is not a Java file, skipping"
+            )
             continue
         if skip_conflict_markers and _has_conflict_marker(file_merge):
             LOGGER.warning(
@@ -154,7 +177,9 @@ def extract_conflicting_files(
         file_merges.append(file_merge)
 
     if not file_merges:
-        LOGGER.info(f"No file merges required for merge commit {expected.hexsha}")
+        LOGGER.info(
+            f"No file merges required for merge commit {expected.hexsha}"
+        )
 
     return file_merges
 
@@ -163,7 +188,12 @@ def _has_conflict_marker(file_merge: conts.FileMerge) -> bool:
     return any(
         map(
             _contains_conflict_marker,
-            [file_merge.expected, file_merge.base, file_merge.left, file_merge.right],
+            [
+                file_merge.expected,
+                file_merge.base,
+                file_merge.left,
+                file_merge.right,
+            ],
         )
     )
 
@@ -268,12 +298,20 @@ def checkout_clean(repo: git.Repo, commitish: str) -> None:
 def _to_file_merge(
     rev_map: Mapping[conts.Revision, git.Blob], ms: conts.MergeScenario
 ) -> conts.FileMerge:
-    base = rev_map[conts.Revision.BASE] if conts.Revision.BASE in rev_map else None
+    base = (
+        rev_map[conts.Revision.BASE]
+        if conts.Revision.BASE in rev_map
+        else None
+    )
     left = rev_map[conts.Revision.LEFT]
     right = rev_map[conts.Revision.RIGHT]
     expected = rev_map[conts.Revision.ACTUAL_MERGE]
     return conts.FileMerge(
-        base=base, left=left, right=right, expected=expected, from_merge_scenario=ms
+        base=base,
+        left=left,
+        right=right,
+        expected=expected,
+        from_merge_scenario=ms,
     )
 
 
@@ -308,7 +346,9 @@ def clone_repo(
     """
     qualname = f"{github_user}/{repo_name}"
 
-    output_dir = output_dir if output_dir is not None else pathlib.Path(os.getcwd())
+    output_dir = (
+        output_dir if output_dir is not None else pathlib.Path(os.getcwd())
+    )
     repo_path = output_dir / github_user / repo_name
 
     if not output_dir.exists():
@@ -337,14 +377,18 @@ def hash_object(path: pathlib.Path) -> str:
     if not path.is_file():
         raise FileNotFoundError(f"Not a file: {path}")
 
-    proc = subprocess.run(["git", "hash-object", str(path)], capture_output=True)
+    proc = subprocess.run(
+        ["git", "hash-object", str(path)], capture_output=True
+    )
     if proc.returncode != 0:
         raise RuntimeError(f"hash-object exited non-zero on {path}")
 
     return proc.stdout.decode().strip()
 
 
-def set_merge_driver(repo: git.Repo, driver_name: str, file_pattern: str) -> None:
+def set_merge_driver(
+    repo: git.Repo, driver_name: str, file_pattern: str
+) -> None:
     """Set the merge driver for the given pattern by overwriting the repo-local .gitattributes file.
 
     Args:
@@ -354,7 +398,8 @@ def set_merge_driver(repo: git.Repo, driver_name: str, file_pattern: str) -> Non
         file_pattern: A filename pattern to associate the driver with.
     """
     (pathlib.Path(repo.working_tree_dir) / ".gitattributes").write_text(
-        f"{file_pattern} merge={driver_name}", encoding=sys.getdefaultencoding()
+        f"{file_pattern} merge={driver_name}",
+        encoding=sys.getdefaultencoding(),
     )
 
 

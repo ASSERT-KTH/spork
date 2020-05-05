@@ -41,7 +41,9 @@ class MergeConflict:
         return len(self.left) + len(self.right)
 
 
-def git_diff_edit_script_size(base_file: pathlib.Path, dest_file: pathlib.Path) -> int:
+def git_diff_edit_script_size(
+    base_file: pathlib.Path, dest_file: pathlib.Path
+) -> int:
     """Return the edit script size (insertions + deletions) for the diff
     between the base and destination files, as reported by git-diff. See the
     module constants for which exact arguments are used.
@@ -67,7 +69,9 @@ def git_diff_edit_script_size(base_file: pathlib.Path, dest_file: pathlib.Path) 
 
 
 def git_diff_edit_script(
-    base_file: pathlib.Path, dest_file: pathlib.Path, strip_metadata: bool = False
+    base_file: pathlib.Path,
+    dest_file: pathlib.Path,
+    strip_metadata: bool = False,
 ) -> List[str]:
     """Return the edit script produced by git diff. Requires that the `git`
     program is on the path.
@@ -206,5 +210,7 @@ def gather_java_blob_metainfos(
         )
         for file, sha in new_java_files:
             num_lines = fileutils.count_lines(file)
-            metainfos[sha] = conts.JavaBlobMetainfo(hexsha=sha, num_lines=num_lines)
+            metainfos[sha] = conts.JavaBlobMetainfo(
+                hexsha=sha, num_lines=num_lines
+            )
     return list(metainfos.values())

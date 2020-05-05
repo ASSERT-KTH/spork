@@ -16,7 +16,9 @@ import daiquiri
 LOGGER = daiquiri.getLogger(__name__)
 
 
-def create_merge_dirs(merge_dir_base: pathlib.Path, file_merges,) -> List[pathlib.Path]:
+def create_merge_dirs(
+    merge_dir_base: pathlib.Path, file_merges,
+) -> List[pathlib.Path]:
     """Create merge directories based on the provided merge scenarios. For each merge scenario A,
     a merge directory A is created. For each file to be merged, a subdirectory with base, left, right and
     expected merge revisions are created.
@@ -91,6 +93,8 @@ def read_non_empty_lines(path: pathlib.Path) -> List[str]:
     """Read all non-empty lines from the path, stripping any leading and trailing whitespace."""
     return [
         line.strip()
-        for line in path.read_text(encoding=sys.getdefaultencoding()).split("\n")
+        for line in path.read_text(encoding=sys.getdefaultencoding()).split(
+            "\n"
+        )
         if line.strip()
     ]
