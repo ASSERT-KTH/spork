@@ -130,8 +130,8 @@ def extract_conflicting_files(
             else:
                 raise ValueError("unknown stage " + stage)
 
-        if rev_map[conts.Revision.ACTUAL_MERGE] == None:
-            LOGGER.warning("Could not find actual merge, skipping: " + str(rev_map))
+        if rev_map.get(conts.Revision.ACTUAL_MERGE) is None:
+            LOGGER.warning("Could not find expected revision, skipping: " + str(rev_map))
             continue
         if conts.Revision.LEFT not in rev_map or conts.Revision.RIGHT not in rev_map:
             # this is a delete file/edit file conflict, we can't do much about that
@@ -195,17 +195,34 @@ def merge_no_commit(
     Returns:
         A context manager that yields True on a merge without conflicts.
     """
-    with saved_git_head(repo):
-        repo.git.checkout(left_sha, "--force")
-        try:
-            repo.git.merge(right_sha, "--no-commit")
-            success = True
-        except git.CommandError:
-            success = False
+    try:
+        with saved_git_head(repo):
+            checkout_clean(repo, left_sha)
+            try:
+                LOGGER.info(f"Merging: left={left_sha} right={right_sha}")
+                output = repo.git.merge(right_sha, "--no-commit")
+                success = True
+            except git.CommandError:
+                success = False
 
-        yield success
+            yield success, extract_automerged_files(
+                output, pathlib.Path(repo.working_tree_dir)
+            ) if success else []
+    finally:
+        repo.git.merge("--quit")
 
-        repo.git.merge("--abort")
+
+def extract_automerged_files(
+    git_merge_output: str, worktree_root: pathlib.Path, ext=".java"
+) -> List[pathlib.Path]:
+    """Extract a list of automerged files from the output of a git merge. Must
+    run `git merge` with at least info level 2 (which is the default).
+    """
+    auto_merged = []
+    for line in git_merge_output.strip().split("\n"):
+        if line.startswith("Auto-merging") and (not ext or line.endswith(ext)):
+            auto_merged.append(worktree_root / line[len("Auto-merging ") :])
+    return auto_merged
 
 
 @contextlib.contextmanager
@@ -226,11 +243,15 @@ def saved_git_head(repo: git.Repo) -> ContextManager[None]:
     except BaseException as e:
         exc = e
     finally:
-        repo.git.checkout(saved_head, "--force")
+        checkout_clean(repo, saved_head)
         LOGGER.info(f"Restored repo HEAD to {saved_head}")
         if exc is not None:
             raise exc
 
+def checkout_clean(repo: git.Repo, commitish: str) -> None:
+    """Checkout to a commit and clean any untracked files and directories."""
+    repo.git.checkout(commitish, "--force")
+    repo.git.clean("-xfd")
 
 def _to_file_merge(
     rev_map: Mapping[conts.Revision, git.Blob], ms: conts.MergeScenario
@@ -252,7 +273,8 @@ def insert(blob, rev, diff_map, rev_map):
             conts.Revision.ACTUAL_MERGE not in rev_map
             or rev_map[conts.Revision.ACTUAL_MERGE] == expected_blob
         )
-        rev_map[conts.Revision.ACTUAL_MERGE] = expected_blob
+        if expected_blob != None:
+            rev_map[conts.Revision.ACTUAL_MERGE] = expected_blob
 
 
 def clone_repo(

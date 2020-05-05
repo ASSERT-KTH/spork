@@ -140,8 +140,13 @@ def extract_merge_commits(args: argparse.Namespace):
 def extract_file_merge_metainfo(args: argparse.Namespace):
     """Extract metainfo about the file merges."""
     repo = _get_repo(args.repo, args.github_user)
+    commit_shas = (
+        fileutils.read_non_empty_lines(args.merge_commits)
+        if args.merge_commits
+        else None
+    )
 
-    merge_scenarios = gitutils.extract_merge_scenarios(repo)
+    merge_scenarios = gitutils.extract_merge_scenarios(repo, merge_commit_shas=commit_shas)
     file_merges = gitutils.extract_all_conflicting_files(repo, merge_scenarios)
     file_merge_metainfos = list(
         map(conts.FileMergeMetainfo.from_file_merge, file_merges)
@@ -161,7 +166,7 @@ def git_merge(args: argparse.Namespace):
     merge_scenarios = gitutils.extract_merge_scenarios(
         repo, merge_commit_shas=commit_shas
     )
-    merge_results = run.run_git_merges(merge_scenarios, repo, args.build)
+    merge_results = run.run_git_merges(merge_scenarios, repo, args.build, args.evaluate)
     reporter.write_csv(
         data=merge_results, container=conts.GitMergeResult, dst=args.output
     )

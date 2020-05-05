@@ -6,6 +6,9 @@ import pathlib
 import dataclasses
 import collections
 import enum
+import contextlib
+import tempfile
+import shutil
 from typing import List, Generator, Iterable, Tuple
 
 import git
@@ -14,6 +17,7 @@ import daiquiri
 from . import gitutils
 from . import fileutils
 from . import containers as conts
+from . import javautils
 
 LOGGER = daiquiri.getLogger(__name__)
 
@@ -111,7 +115,7 @@ def _run_file_merge(scenario_dir, merge_cmd, base, left, right, expected, merge)
 
 
 def run_git_merges(
-    merge_scenarios: List[conts.MergeScenario], repo: git.Repo, build: bool = False
+    merge_scenarios: List[conts.MergeScenario], repo: git.Repo, build: bool, evaluate: bool
 ) -> Iterable[conts.GitMergeResult]:
     """Replay the provided merge scenarios using git-merge. Assumes that the
     merge scenarios belong to the provided repo. The merge tool to use must be
@@ -122,16 +126,20 @@ def run_git_merges(
         merge_scenarios: A list of merge scenarios.
         repo: The related repository.
         build: If True, try to build the project with Maven after merge.
+        evaluate: Run the Java-specific bytecode evaluation.
     Returns:
         An iterable of merge results.
     """
     for ms in merge_scenarios:
-        LOGGER.info(f"Running scenario {ms.expected.hexsha}")
-        yield run_git_merge(ms, repo, build)
+        LOGGER.info(f"Replaying merge commit {ms.expected.hexsha}: base={ms.base.hexsha}, left={ms.left.hexsha}, right={ms.right.hexsha}")
+        yield run_git_merge(ms, repo, build, evaluate)
 
 
 def run_git_merge(
-    merge_scenario: conts.MergeScenario, repo: git.Repo, build: bool
+    merge_scenario: conts.MergeScenario,
+    repo: git.Repo,
+    build: bool,
+    evaluate: bool,
 ) -> conts.GitMergeResult:
     """Replay a single merge scenario. Assumes that the merge scenario belongs
     to the provided repo. The merge tool to use must be configured in
@@ -142,24 +150,76 @@ def run_git_merge(
         merge_scenario: A merge scenario.
         repo: The related repository.
         build: If True, try to build the project with Maven after merge.
+        evaluate: Run the Java bytecode evaluation. Implies build.
     Returns:
         Result on the merge and potential build.
     """
     ms = merge_scenario  # alias for less verbosity
 
-    with gitutils.merge_no_commit(repo, ms.left.hexsha, ms.right.hexsha) as merge_ok:
-        build_ok = (
-            fileutils.mvn_compile(workdir=repo.working_tree_dir) if build else False
-        )
+    with (tempfile.TemporaryDirectory() if evaluate else _nop_context()) as ctx:
+        if evaluate:
+            with gitutils.saved_git_head(repo):
+                gitutils.checkout_clean(repo, ms.expected.hexsha)
+                LOGGER.info("Building expected revision")
+                expected_build_ok = fileutils.mvn_compile(workdir=repo.working_tree_dir)
+                if not expected_build_ok:
+                    raise RuntimeError(
+                        f"Failed to build expected revision {ms.expected.hexsha}"
+                    )
+
+                LOGGER.info("Making temporary copy of expected build")
+                shutil.copytree(
+                    pathlib.Path(repo.working_tree_dir) / "target",
+                    pathlib.Path(ctx) / "target",
+                )
+
+        build_ok = False
+        eval_ok = False
+
+        with gitutils.merge_no_commit(
+            repo, ms.left.hexsha, ms.right.hexsha
+        ) as merge_stat:
+            merge_ok, auto_merged = merge_stat
+            _log_cond("Merge replay OK", "Merge conflict or failure", use_info=merge_ok)
+
+            if build or evaluate:
+                LOGGER.info("Building replayed revision")
+                build_ok = fileutils.mvn_compile(workdir=repo.working_tree_dir)
+                _log_cond(
+                    "Replayed build OK", "Replayed build failed", use_info=build_ok
+                )
+
+                if build_ok:
+                    if evaluate:
+                        eval_ok = javautils.compare_compiled_bytecode(
+                            pathlib.Path(ctx) / "target",
+                            pathlib.Path(repo.working_tree_dir) / "target",
+                            auto_merged,
+                        )
+                else:
+                    LOGGER.warning("Replayed revision failed to build")
 
     return conts.GitMergeResult(
         merge_commit=ms.expected.hexsha,
         merge_ok=merge_ok,
         build_ok=build_ok,
+        eval_ok=eval_ok,
         base_commit=ms.base.hexsha,
         left_commit=ms.left.hexsha,
         right_commit=ms.right.hexsha,
     )
+
+
+def _log_cond(info: str, warning: str, use_info: bool):
+    if use_info:
+        LOGGER.info(info)
+    else:
+        LOGGER.warning(warning)
+
+
+@contextlib.contextmanager
+def _nop_context():
+    yield
 
 
 def is_buildable(commit_sha: str, repo: git.Repo) -> bool:
@@ -174,6 +234,7 @@ def is_buildable(commit_sha: str, repo: git.Repo) -> bool:
     with gitutils.saved_git_head(repo):
         repo.git.checkout(commit_sha, "--force")
         return fileutils.mvn_compile(workdir=repo.working_tree_dir)
+
 
 def is_testable(commit_sha: str, repo: git.Repo) -> bool:
     """Try to run the project's test suite with Maven.

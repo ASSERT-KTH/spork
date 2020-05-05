@@ -162,8 +162,8 @@ def create_cli_parser():
         action="store_true",
     )
     git_merge_command.add_argument(
-        "--test",
-        help="Run the projects test suite. Implies --build.",
+        "--evaluate",
+        help="Run the bytecode comparison evaluation. Only for Java projects. Implies --build.",
         action="store_true",
     )
 

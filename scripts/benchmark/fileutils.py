@@ -1,11 +1,13 @@
 """Utility functions for files and directories."""
 import collections
 import pathlib
+import shutil
 import sys
 import re
 import dataclasses
 import subprocess
 import re
+import tempfile
 from typing import List, Mapping, Tuple, Iterable
 
 import git
@@ -94,7 +96,9 @@ def count_nodes(filepath: pathlib.Path) -> int:
 
 def mvn_compile(workdir: pathlib.Path) -> bool:
     """Compile the project in workdir with Maven's test-compile command."""
-    proc = subprocess.run("mvn clean test-compile".split(), cwd=workdir)
+    proc = subprocess.run(
+        "mvn clean test-compile".split(), cwd=workdir, capture_output=True
+    )
     return proc.returncode == 0
 
 

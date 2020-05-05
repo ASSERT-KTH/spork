@@ -145,6 +145,7 @@ class GitMergeResult:
     right_commit: str
     merge_ok: bool
     build_ok: bool
+    eval_ok: bool
 
 
 @dataclasses.dataclass(frozen=True, order=True)

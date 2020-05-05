@@ -1,4 +1,4 @@
-"""Module for evaluating the quality of a merge."""
+"""Module for evaluating the quality of individual file merges."""
 import enum
 import pathlib
 import subprocess
