@@ -170,7 +170,9 @@ def git_merge(args: argparse.Namespace):
     merge_scenarios = gitutils.extract_merge_scenarios(
         repo, merge_commit_shas=commit_shas
     )
-    merge_results = run.run_git_merges(merge_scenarios, repo, args.build, args.evaluate)
+    merge_results = run.run_git_merges(
+        merge_scenarios, args.merge_drivers, repo, args.build, args.evaluate
+    )
     reporter.write_csv(
         data=merge_results, container=conts.GitMergeResult, dst=args.output
     )

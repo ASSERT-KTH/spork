@@ -1,4 +1,5 @@
 import subprocess
+import itertools
 import os
 import sys
 import time
@@ -46,11 +47,7 @@ def _run_file_merges(file_merge_dirs: List[pathlib.Path], merge_cmd: str) -> Ite
         filenames = [f.name for f in merge_dir.iterdir() if f.is_file()]
 
         def get_filename(prefix: str) -> str:
-            matches = [
-                name
-                for name in filenames
-                if name.startswith(prefix)
-            ]
+            matches = [name for name in filenames if name.startswith(prefix)]
             assert len(matches) == 1
             return matches[0]
 
@@ -115,17 +112,20 @@ def _run_file_merge(scenario_dir, merge_cmd, base, left, right, expected, merge)
 
 def run_git_merges(
     merge_scenarios: List[conts.MergeScenario],
+    merge_drivers: List[str],
     repo: git.Repo,
     build: bool,
     evaluate: bool,
 ) -> Iterable[conts.GitMergeResult]:
     """Replay the provided merge scenarios using git-merge. Assumes that the
-    merge scenarios belong to the provided repo. The merge tool to use must be
-    configured in .gitattributes and .gitconfig, see the README at
-    https://github.com/kth/spork for details on that.
+    merge scenarios belong to the provided repo. The merge drivers must be
+    defined in the global .gitconfig file, https://github.com/kth/spork for
+    details on that.
 
     Args:
         merge_scenarios: A list of merge scenarios.
+        merge_drivers: A list of merge driver names to execute the merge with.
+            Each driver must be defined in the global .gitconfig file.
         repo: The related repository.
         build: If True, try to build the project with Maven after merge.
         evaluate: Run the Java-specific bytecode evaluation.
@@ -134,13 +134,19 @@ def run_git_merges(
     """
     for ms in merge_scenarios:
         LOGGER.info(
-            f"Replaying merge commit {ms.expected.hexsha}: base={ms.base.hexsha}, left={ms.left.hexsha}, right={ms.right.hexsha}"
+                f"Replaying merge commit {ms.expected.hexsha}, "
+                f"base: {ms.base.hexsha} left: {ms.left.hexsha} "
+                f"right: {ms.right.hexsha}"
         )
-        yield run_git_merge(ms, repo, build, evaluate)
+        yield from run_git_merge(ms, merge_drivers, repo, build, evaluate)
 
 
 def run_git_merge(
-    merge_scenario: conts.MergeScenario, repo: git.Repo, build: bool, evaluate: bool,
+    merge_scenario: conts.MergeScenario,
+    merge_drivers: List[str],
+    repo: git.Repo,
+    build: bool,
+    evaluate: bool,
 ) -> conts.GitMergeResult:
     """Replay a single merge scenario. Assumes that the merge scenario belongs
     to the provided repo. The merge tool to use must be configured in
@@ -149,11 +155,13 @@ def run_git_merge(
 
     Args:
         merge_scenario: A merge scenario.
+        merge_drivers: One or more merge driver names. Each merge driver must
+            be defined in the global .gitconfig file.
         repo: The related repository.
         build: If True, try to build the project with Maven after merge.
         evaluate: Run the Java bytecode evaluation. Implies build.
     Returns:
-        Result on the merge and potential build.
+        An iterable of GitMergeResults, one for each driver
     """
     ms = merge_scenario  # alias for less verbosity
 
@@ -177,38 +185,69 @@ def run_git_merge(
         build_ok = False
         eval_ok = False
 
-        with gitutils.merge_no_commit(
-            repo, ms.left.hexsha, ms.right.hexsha
-        ) as merge_stat:
-            merge_ok, auto_merged = merge_stat
-            _log_cond("Merge replay OK", "Merge conflict or failure", use_info=merge_ok)
+        expected_compile_basedir = pathlib.Path(ctx) / "target"
 
-            if build or evaluate:
-                LOGGER.info("Building replayed revision")
-                build_ok = fileutils.mvn_compile(workdir=repo.working_tree_dir)
+        # used to assert that the expected classfiles don't change across merge tools
+        # they shouldn't as Git decides which source files need to be processed, and
+        # the expected compile output is never changed, but just in case
+        used_expected_classfiles = None
+
+        for merge_driver in merge_drivers:
+            with gitutils.merge_no_commit(
+                repo,
+                ms.left.hexsha,
+                ms.right.hexsha,
+                driver_config=(merge_driver, "*.java"),
+            ) as merge_stat:
+                merge_ok, auto_merged = merge_stat
                 _log_cond(
-                    "Replayed build OK", "Replayed build failed", use_info=build_ok
+                    "Merge replay OK", "Merge conflict or failure", use_info=merge_ok
                 )
 
-                if build_ok:
-                    if evaluate:
-                        eval_ok = javautils.compare_compiled_bytecode(
-                            pathlib.Path(ctx) / "target",
-                            pathlib.Path(repo.working_tree_dir) / "target",
-                            auto_merged,
+                expected_classfiles = list(
+                    itertools.chain.from_iterable(
+                        javautils.locate_classfiles(
+                            src, basedir=expected_compile_basedir
                         )
-                else:
-                    LOGGER.warning("Replayed revision failed to build")
+                        for src in auto_merged
+                    )
+                )
 
-    return conts.GitMergeResult(
-        merge_commit=ms.expected.hexsha,
-        merge_ok=merge_ok,
-        build_ok=build_ok,
-        eval_ok=eval_ok,
-        base_commit=ms.base.hexsha,
-        left_commit=ms.left.hexsha,
-        right_commit=ms.right.hexsha,
-    )
+                if used_expected_classfiles is None:
+                    used_expected_classfiles = expected_classfiles
+                    for classfile in expected_classfiles:
+                        LOGGER.info(
+                            f"Removing duplicate checkcasts from expected revision of {classfile.name}"
+                        )
+                        javautils.remove_duplicate_checkcasts(classfile)
+                elif used_expected_classfiles != expected_classfiles:
+                    raise RuntimeError(
+                        "Expected classfiles changed between merge tools"
+                    )
+
+                if build or evaluate:
+                    LOGGER.info("Building replayed revision")
+                    build_ok = fileutils.mvn_compile(workdir=repo.working_tree_dir)
+                    _log_cond(
+                        "Replayed build OK", "Replayed build failed", use_info=build_ok
+                    )
+
+                    if build_ok and evaluate:
+                        eval_ok = javautils.compare_compiled_bytecode(
+                            pathlib.Path(repo.working_tree_dir) / "target",
+                            expected_classfiles,
+                        )
+
+            yield conts.GitMergeResult(
+                merge_commit=ms.expected.hexsha,
+                merge_driver=merge_driver,
+                merge_ok=merge_ok,
+                build_ok=build_ok,
+                eval_ok=eval_ok,
+                base_commit=ms.base.hexsha,
+                left_commit=ms.left.hexsha,
+                right_commit=ms.right.hexsha,
+            )
 
 
 def _log_cond(info: str, warning: str, use_info: bool):

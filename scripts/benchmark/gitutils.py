@@ -184,7 +184,10 @@ def _contains_conflict_marker(blob: git.Blob) -> bool:
 
 @contextlib.contextmanager
 def merge_no_commit(
-    repo: git.Repo, left_sha: str, right_sha: str
+    repo: git.Repo,
+    left_sha: str,
+    right_sha: str,
+    driver_config: Optional[Tuple[str, str]],
 ) -> ContextManager[bool]:
     """Returns a context manager that on enter performs the desired merge
     without committing, and on exit aborts the merge and restores the repo HEAD to
@@ -194,12 +197,17 @@ def merge_no_commit(
         repo: A git repo to merge in.
         left_sha: The hexsha of the left commit (the "current" version).
         right_sha: The hexsha of the right commit (the "other" version).
+        driver_config: An optional tuple with (merge_driver_name, file_pattern)
+            used to set the merge driver for the merge.
     Returns:
         A context manager that yields True on a merge without conflicts.
     """
     try:
         with saved_git_head(repo):
             checkout_clean(repo, left_sha)
+            if driver_config:
+                LOGGER.info(f"Using merge driver config {driver_config}")
+                set_merge_driver(repo, *driver_config)
             try:
                 LOGGER.info(f"Merging: left={left_sha} right={right_sha}")
                 output = repo.git.merge(right_sha, "--no-commit")
@@ -334,6 +342,20 @@ def hash_object(path: pathlib.Path) -> str:
         raise RuntimeError(f"hash-object exited non-zero on {path}")
 
     return proc.stdout.decode().strip()
+
+
+def set_merge_driver(repo: git.Repo, driver_name: str, file_pattern: str) -> None:
+    """Set the merge driver for the given pattern by overwriting the repo-local .gitattributes file.
+
+    Args:
+        repo: A git repo.
+        driver_name: Name of the merge driver to use. Must be configured in the
+            global .gitconfig file.
+        file_pattern: A filename pattern to associate the driver with.
+    """
+    (pathlib.Path(repo.working_tree_dir) / ".gitattributes").write_text(
+        f"{file_pattern} merge={driver_name}", encoding=sys.getdefaultencoding()
+    )
 
 
 def _get_blob(repo: git.Repo, commit_sha: str, blob_sha: str) -> git.Blob:

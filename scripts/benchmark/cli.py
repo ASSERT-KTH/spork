@@ -147,8 +147,17 @@ def create_cli_parser():
 
     git_merge_command = subparsers.add_parser(
         "run-git-merges",
-        help="Replay the merge commits provided using Git and the currently configured merge driver.",
+        help="Replay the merge commits provided using Git and the currently "
+        "configured merge driver.",
         parents=[base_parser],
+    )
+    git_merge_command.add_argument(
+        "--merge-drivers",
+        help="Names of merge drivers. Each driver must be configured in the "
+        "global .gitconfig file.",
+        required=True,
+        nargs="+",
+        type=pathlib.Path,
     )
     git_merge_command.add_argument(
         "--merge-commits",

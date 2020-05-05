@@ -1,73 +1,65 @@
 """Utility functions for interacting with .class and .java files."""
 
 import pathlib
+import collections
 import tempfile
 import subprocess
 import shutil
 import sys
-from typing import List
+from typing import List, Iterable
 
 import daiquiri
+
+from . import containers as conts
 
 LOGGER = daiquiri.getLogger(__name__)
 
 
 def compare_compiled_bytecode(
-    expected_compile: pathlib.Path,
-    replayed_compile: pathlib.Path,
-    changed_sourcefiles: List[pathlib.Path],
+    replayed_compile_basedir: pathlib.Path, expected_classfiles: List[pathlib.Path],
 ):
     """Run the bytecode comparison evaluation.
 
     Args:
-        expected_compile: Root directory of the compiled output from the
-            expected revision.
-        replayed_compile: Root directory of the compiled output from the
-            replayed revision.
-        changed_sourcefiles: Paths to source files that were changed during the
-            replay, i.e. source files part in non-trivial merging.
+        expected_classfiles: Classfiles from the expected revision.
     Returns:
-        True if the classfiles corresponding to all changed sourcefiles in the
-        expected and replayed compile outputs are equal.
+        True if each of the expected classfiles are present in the replayed
+        compile output, and each pair of classfiles are equal.
     """
-    num_classfiles = 0
     num_equal = 0
-    for src in changed_sourcefiles:
-        refs = locate_classfiles(src, basedir=expected_compile)
-        others = locate_classfiles(src, basedir=replayed_compile)
 
-        if [p.name for p in refs] != [p.name for p in others]:
-            raise RuntimeError(
-                f"Discrepancy between classfile lists. refs={refs}, others={others}"
-            )
+    classfile_pairs = generate_classfile_pairs(
+        expected_classfiles, replayed_compile_basedir
+    )
+    for pair in classfile_pairs:
+        if pair.replayed is None:
+            LOGGER.warning(f"No replayed classfile corresponding to {pair.expected.name}")
+            continue
 
-        num_classfiles += len(refs)
+        LOGGER.info(f"Removing duplicate checkcasts from replayed revision of {pair.replayed.name}")
+        remove_duplicate_checkcasts(pair.replayed)
 
-        for ref, other in zip(refs, others):
-            LOGGER.info(f"Removing duplicate checkcasts from {ref.name} revisions ...")
-            remove_duplicate_checkcasts(ref)
-            remove_duplicate_checkcasts(other)
+        LOGGER.info(f"Comparing {pair.replayed.name} revisions ...")
+        if compare_classfiles(pair):
+            LOGGER.info(f"{pair.replayed.name} revision are equal")
+            num_equal += 1
+        else:
+            LOGGER.warning(f"{pair.replayed.name} revisions not equal")
 
-            LOGGER.info(f"Comparing {ref.name} revisions ...")
-            if compare_classfiles(ref, other):
-                LOGGER.info(f"{ref.name} revision are equal")
-                num_equal += 1
-            else:
-                LOGGER.warning(f"{ref.name} revisions not equal")
-
-    return num_equal == num_classfiles
+    return num_equal == len(expected_classfiles)
 
 
-def compare_classfiles(ref: pathlib.Path, other: pathlib.Path) -> bool:
+def compare_classfiles(pair: conts.ClassfilePair) -> bool:
     """Compare two classfiles with normalized bytecode equality using sootdiff.
     Requires sootdiff to be on the path.
 
     Args:
-        ref: The reference classfile.
-        other: The other classfile.
+        pair: The pair of classfiles.
     Returns:
         True if the files are equal
     """
+    ref = pair.expected
+    other = pair.replayed
     if ref.name != other.name:
         raise ValueError("Cannot compare two classfiles from different classes")
 
@@ -139,6 +131,37 @@ def locate_classfiles(src: pathlib.Path, basedir: pathlib.Path) -> List[pathlib.
         raise RuntimeError(f"Found multiple matching classfiles to {src}: {classfiles}")
 
     return sorted(classfiles, key=lambda path: path.name)
+
+
+def generate_classfile_pairs(
+    expected_classfiles: List[pathlib.Path], replayed_basedir: pathlib.Path
+) -> Iterable[conts.ClassfilePair]:
+    """For each classfile in the classfiles list, find the corresponding
+    classfile in the replayed basedir and create a pair. If no corresponding
+    classfile can be found, None is used in its place.
+
+    Args:
+        expected_classfiles: A list of the expected classfiles.
+        replayed_basedir: Base directory to search for matching classfiles.
+    Returns:
+        A generator of classfile pairs.
+    """
+    potential_replayed_matches = {
+        path
+        for path in replayed_basedir.rglob("*.class")
+        if path.name
+        in (expected_classfile_names := {p.name for p in expected_classfiles})
+    }
+    for expected in expected_classfiles:
+        matches = [
+            replayed
+            for replayed in potential_replayed_matches
+            if replayed.name == expected.name
+            and extract_java_package(replayed) == extract_java_package(expected)
+        ]
+        assert len(matches) <= 1
+        replayed = matches[0] if matches else None
+        yield conts.ClassfilePair(expected=expected, replayed=replayed)
 
 
 def remove_duplicate_checkcasts(path: pathlib.Path) -> None:

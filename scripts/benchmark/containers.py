@@ -4,6 +4,7 @@ import collections
 import pathlib
 import git
 import enum
+import pathlib
 
 from typing import Optional
 
@@ -142,6 +143,7 @@ class GitMergeResult:
     base_commit: str
     left_commit: str
     right_commit: str
+    merge_driver: str
     merge_ok: bool
     build_ok: bool
     eval_ok: bool
@@ -169,3 +171,8 @@ class MergeEvaluationStatistics:
     num_fail: int
     git_diff_avg_magn: int
     git_diff_avg_acc: int
+
+@dataclasses.dataclass
+class ClassfilePair:
+    expected: pathlib.Path
+    replayed: Optional[pathlib.Path]
