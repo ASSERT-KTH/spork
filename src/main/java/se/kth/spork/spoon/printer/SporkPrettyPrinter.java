@@ -99,11 +99,7 @@ public final class SporkPrettyPrinter extends DefaultJavaPrettyPrinter {
         if (e == null) {
             return this;
         } else if (e.getMetadata(SpoonTreeBuilder.SINGLE_REVISION_KEY) != null &&
-                (e instanceof CtMethod
-                        || e instanceof CtField
-                        || e instanceof CtStatement
-                        || e instanceof CtExpression
-                )
+                (e instanceof CtMethod || e instanceof CtField)
                 && SourceExtractor.hasSourcePos(e)) {
             CtElement origNode = (CtElement) e.getMetadata(SpoonTreeBuilder.ORIGINAL_NODE_KEY);
             String originalSource = SourceExtractor.getOriginalSource(origNode);
