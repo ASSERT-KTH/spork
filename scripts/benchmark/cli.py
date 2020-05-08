@@ -160,7 +160,7 @@ def create_cli_parser():
         "global .gitconfig file.",
         required=True,
         nargs="+",
-        type=pathlib.Path,
+        type=str,
     )
     git_merge_command.add_argument(
         "--merge-commits",

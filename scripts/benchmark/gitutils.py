@@ -184,6 +184,29 @@ def extract_conflicting_files(
     return file_merges
 
 
+def extract_unmerged_files(
+    repo: git.Repo, ms: conts.MergeScenario, file_ext: Optional[str] = None
+) -> List[pathlib.Path]:
+    """Extract a list of paths to all files that can't be trivially merged for
+    the given merge scenario.
+
+    Args:
+        repo: A git repository.
+        ms: A merge scenario.
+        file_ext: Limit the search to the given file extension.
+    Returns:
+        A list of paths to unmerged files, relative to the root of the repository worktree.
+    """
+    index = repo.index.from_tree(
+        repo, ms.base.hexsha, ms.left.hexsha, ms.right.hexsha
+    )
+    return [
+        (path := pathlib.Path(k))
+        for k in index.unmerged_blobs().keys()
+        if file_ext is not None or path.suffix == file_ext
+    ]
+
+
 def _has_conflict_marker(file_merge: conts.FileMerge) -> bool:
     return any(
         map(
@@ -242,12 +265,13 @@ def merge_no_commit(
                 LOGGER.info(f"Merging: left={left_sha} right={right_sha}")
                 output = repo.git.merge(right_sha, "--no-commit")
                 success = True
-            except git.CommandError:
+            except git.GitCommandError as exc:
+                output = str(exc)
                 success = False
 
             yield success, extract_automerged_files(
                 output, pathlib.Path(repo.working_tree_dir)
-            ) if success else []
+            )
     finally:
         repo.git.merge("--quit")
 

@@ -24,8 +24,7 @@ def compare_compiled_bytecode(
     Args:
         expected_classfiles: Classfiles from the expected revision.
     Returns:
-        True if each of the expected classfiles are present in the replayed
-        compile output, and each pair of classfiles are equal.
+        The amount of classfiles that compared equal.
     """
     num_equal = 0
 
@@ -51,7 +50,7 @@ def compare_compiled_bytecode(
         else:
             LOGGER.warning(f"{pair.replayed.name} revisions not equal")
 
-    return num_equal == len(expected_classfiles)
+    return num_equal
 
 
 def compare_classfiles(pair: conts.ClassfilePair) -> bool:
@@ -135,13 +134,7 @@ def locate_classfiles(
     ]
 
     if not classfiles:
-        raise RuntimeError(
-            f"Unable to locate classfile corresponding to {src}"
-        )
-    if len(classfiles) > 1:
-        raise RuntimeError(
-            f"Found multiple matching classfiles to {src}: {classfiles}"
-        )
+        LOGGER.warning(f"Found no classfiles corresponding to {src}")
 
     return sorted(classfiles, key=lambda path: path.name)
 

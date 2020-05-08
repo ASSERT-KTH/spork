@@ -170,72 +170,43 @@ def run_git_merge(
         An iterable of GitMergeResults, one for each driver
     """
     ms = merge_scenario  # alias for less verbosity
+    expected_classfiles = tuple()
 
     with (
         tempfile.TemporaryDirectory() if evaluate else _nop_context()
     ) as ctx:
         if evaluate:
             with gitutils.saved_git_head(repo):
-                gitutils.checkout_clean(repo, ms.expected.hexsha)
-                LOGGER.info("Building expected revision")
-                expected_build_ok = fileutils.mvn_compile(
-                    workdir=repo.working_tree_dir
+                (
+                    expected_classfiles,
+                    expected_compile_basedir,
+                ) = _extract_expected_revision_classfiles(
+                    repo, ms, pathlib.Path(ctx)
                 )
-                if not expected_build_ok:
-                    raise RuntimeError(
-                        f"Failed to build expected revision {ms.expected.hexsha}"
+                if not expected_classfiles:
+                    LOGGER.warning(
+                        "Found no expected classfiles for merge scenario "
+                        f"{ms.expected.hexsha}, skipping ..."
                     )
-
-                LOGGER.info("Making temporary copy of expected build")
-                shutil.copytree(
-                    pathlib.Path(repo.working_tree_dir) / "target",
-                    pathlib.Path(ctx) / "target",
-                )
-
-        build_ok = False
-        eval_ok = False
-
-        expected_compile_basedir = pathlib.Path(ctx) / "target"
-
-        # used to assert that the expected classfiles don't change across merge tools
-        # they shouldn't as Git decides which source files need to be processed, and
-        # the expected compile output is never changed, but just in case
-        used_expected_classfiles = None
+                    return
 
         for merge_driver in merge_drivers:
+            build_ok = False
+            eval_ok = False
+            num_equal_classfiles = 0
+
             with gitutils.merge_no_commit(
                 repo,
                 ms.left.hexsha,
                 ms.right.hexsha,
                 driver_config=(merge_driver, "*.java"),
             ) as merge_stat:
-                merge_ok, auto_merged = merge_stat
+                merge_ok, _ = merge_stat
                 _log_cond(
                     "Merge replay OK",
                     "Merge conflict or failure",
                     use_info=merge_ok,
                 )
-
-                expected_classfiles = list(
-                    itertools.chain.from_iterable(
-                        javautils.locate_classfiles(
-                            src, basedir=expected_compile_basedir
-                        )
-                        for src in auto_merged
-                    )
-                )
-
-                if used_expected_classfiles is None:
-                    used_expected_classfiles = expected_classfiles
-                    for classfile in expected_classfiles:
-                        LOGGER.info(
-                            f"Removing duplicate checkcasts from expected revision of {classfile.name}"
-                        )
-                        javautils.remove_duplicate_checkcasts(classfile)
-                elif used_expected_classfiles != expected_classfiles:
-                    raise RuntimeError(
-                        "Expected classfiles changed between merge tools"
-                    )
 
                 if build or evaluate:
                     LOGGER.info("Building replayed revision")
@@ -249,7 +220,7 @@ def run_git_merge(
                     )
 
                     if build_ok and evaluate:
-                        eval_ok = javautils.compare_compiled_bytecode(
+                        num_equal_classfiles = javautils.compare_compiled_bytecode(
                             pathlib.Path(repo.working_tree_dir) / "target",
                             expected_classfiles,
                         )
@@ -259,11 +230,53 @@ def run_git_merge(
                 merge_driver=merge_driver,
                 merge_ok=merge_ok,
                 build_ok=build_ok,
-                eval_ok=eval_ok,
+                num_equal_classfiles=num_equal_classfiles,
+                num_expected_classfiles=len(expected_classfiles),
                 base_commit=ms.base.hexsha,
                 left_commit=ms.left.hexsha,
                 right_commit=ms.right.hexsha,
             )
+
+
+def _extract_expected_revision_classfiles(
+    repo: git.Repo, ms: conts.MergeScenario, tempdir: pathlib.Path
+) -> Tuple[pathlib.Path]:
+    gitutils.checkout_clean(repo, ms.expected.hexsha)
+    LOGGER.info("Building expected revision")
+
+    if not fileutils.mvn_compile(workdir=repo.working_tree_dir):
+        raise RuntimeError(
+            f"Failed to build expected revision {ms.expected.hexsha}"
+        )
+
+    LOGGER.info("Making temporary copy of expected build")
+    expected_compile_basedir = tempdir / "target"
+    shutil.copytree(
+        pathlib.Path(repo.working_tree_dir) / "target",
+        expected_compile_basedir,
+    )
+
+    sources = [
+        repo.working_tree_dir / path
+        for path in gitutils.extract_unmerged_files(repo, ms, file_ext=".java")
+    ]
+    LOGGER.info(f"Extracted unmerged files: {sources}")
+
+    expected_classfiles = tuple(
+        itertools.chain.from_iterable(
+            javautils.locate_classfiles(src, basedir=expected_compile_basedir)
+            for src in sources
+        )
+    )
+    LOGGER.info(f"Extracted classfiles: {expected_classfiles}")
+
+    for classfile in expected_classfiles:
+        LOGGER.info(
+            f"Removing duplicate checkcasts from expected revision of {classfile.name}"
+        )
+        javautils.remove_duplicate_checkcasts(classfile)
+
+    return expected_classfiles, expected_compile_basedir
 
 
 def _log_cond(info: str, warning: str, use_info: bool):

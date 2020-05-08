@@ -152,7 +152,8 @@ class GitMergeResult:
     merge_driver: str
     merge_ok: bool
     build_ok: bool
-    eval_ok: bool
+    num_expected_classfiles: int
+    num_equal_classfiles: int
 
 
 @dataclasses.dataclass(frozen=True, order=True)
