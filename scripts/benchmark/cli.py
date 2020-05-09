@@ -267,16 +267,45 @@ def main():
     args = parser.parse_args(sys.argv[1:])
 
     if args.command == "extract-merge-commits":
-        command.extract_merge_commits(args)
-        return
+        return command.extract_merge_commits(
+            repo_name=args.repo,
+            github_user=args.github_user,
+            output_file=args.output or pathlib.Path("merge_commits.txt"),
+            non_trivial=args.non_trivial,
+            buildable=args.buildable,
+            testable=args.testable,
+        )
     elif args.command == "extract-file-merge-metainfo":
-        command.extract_file_merge_metainfo(args)
+        command.extract_file_merge_metainfo(
+            repo_name=args.repo,
+            github_user=args.github_user,
+            output_file=args.output or pathlib.Path("file_merge_metainfo.csv"),
+            num_merges=args.num_merges,
+            merge_commits=args.merge_commits,
+        )
         return
     elif args.command == "run-git-merges":
-        command.git_merge(args)
-        return
+        return command.git_merge(
+            repo_name=args.repo,
+            github_user=args.github_user,
+            merge_drivers=args.merge_drivers,
+            merge_commits=args.merge_commits,
+            output_file=args.output or pathlib.Path("merge_results.csv"),
+            build=args.build,
+            evaluate=args.evaluate,
+            num_merges=args.num_merges,
+        )
     elif args.command == "runtime-benchmark":
-        command.runtime_benchmark(args)
+        command.runtime_benchmark(
+            repo_name=args.repo,
+            github_user=args.github_user,
+            merge_commands=args.merge_commands,
+            num_runs=args.num_runs,
+            file_merge_metainfo=args.file_merge_metainfo,
+            output_file=args.output or pathlib.Path("runtimes.csv"),
+            base_merge_dir=args.base_merge_dir,
+            num_merges=args.num_merges,
+        )
         return
     elif args.command == "analyze-file-merges":
         command.analyze_file_merges(args)
@@ -293,9 +322,26 @@ def main():
         return
 
     if args.command == "run-file-merges":
-        command.run_file_merges(args, eval_func)
+        command.run_file_merges(
+            repo_name=args.repo,
+            github_user=args.github_user,
+            eval_func=eval_func,
+            use_mpi=args.mpi,
+            merge_commits=args.merge_commits,
+            num_merges=args.num_merges,
+            gather_metainfo=args.gather_metainfo,
+            output_file=args.output or pathlib.Path("file_merges.csv")
+        )
     elif args.command == "run-file-merge-compare":
-        command.run_merge_and_compare(args, eval_func)
+        command.run_merge_and_compare(
+            compare=args.compare,
+            repo_name=args.repo,
+            github_user=args.github_user,
+            eval_func=eval_func,
+            num_merges=args.num_merges,
+            use_mpi=args.mpi,
+            output_file=args.output or pathlib.Path("file_merge_compare.csv"),
+        )
     else:
         raise ValueError(f"Unexpected command: {args.command}")
 

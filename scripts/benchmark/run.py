@@ -210,7 +210,7 @@ def run_git_merge(
 
                 if build or evaluate:
                     LOGGER.info("Building replayed revision")
-                    build_ok = fileutils.mvn_compile(
+                    build_ok, _ = fileutils.mvn_compile(
                         workdir=repo.working_tree_dir
                     )
                     _log_cond(
@@ -244,7 +244,8 @@ def _extract_expected_revision_classfiles(
     gitutils.checkout_clean(repo, ms.expected.hexsha)
     LOGGER.info("Building expected revision")
 
-    if not fileutils.mvn_compile(workdir=repo.working_tree_dir):
+    build_ok, _ = fileutils.mvn_compile(workdir=repo.working_tree_dir)
+    if not build_ok:
         raise RuntimeError(
             f"Failed to build expected revision {ms.expected.hexsha}"
         )
@@ -302,7 +303,9 @@ def is_buildable(commit_sha: str, repo: git.Repo) -> bool:
     """
     with gitutils.saved_git_head(repo):
         repo.git.checkout(commit_sha, "--force")
-        return fileutils.mvn_compile(workdir=repo.working_tree_dir)
+        LOGGER.info(f"Building commit {commit_sha}")
+        build_ok, _ = fileutils.mvn_compile(workdir=repo.working_tree_dir)
+        return build_ok
 
 
 def is_testable(commit_sha: str, repo: git.Repo) -> bool:

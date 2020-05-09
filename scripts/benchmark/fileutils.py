@@ -38,7 +38,7 @@ def create_merge_dirs(
         result_filename = "Expected.java"
 
         merge_dir = merge_dir_base / merge_commit.hexsha / result_blob.name
-        merge_dir.mkdir(parents=True)
+        merge_dir.mkdir(parents=True, exist_ok=True)
 
         _write_blob_to_file(merge_dir / result_filename, result_blob)
         _write_blob_to_file(merge_dir / left_filename, left_blob)
@@ -78,9 +78,12 @@ def count_lines(filepath: pathlib.Path) -> int:
 def mvn_compile(workdir: pathlib.Path) -> bool:
     """Compile the project in workdir with Maven's test-compile command."""
     proc = subprocess.run(
-        "mvn clean test-compile".split(), cwd=workdir, capture_output=True
+        "mvn clean test-compile".split(),
+        cwd=workdir,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
     )
-    return proc.returncode == 0
+    return proc.returncode == 0, proc.stdout.decode(sys.getdefaultencoding())
 
 
 def mvn_test(workdir: pathlib.Path):

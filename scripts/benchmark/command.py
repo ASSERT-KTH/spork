@@ -7,7 +7,7 @@ import dataclasses
 import re
 
 
-from typing import List, Optional, Iterable, Mapping
+from typing import List, Optional, Iterable, Mapping, Callable
 
 import daiquiri
 import git
@@ -26,31 +26,61 @@ from . import containers as conts
 LOGGER = daiquiri.getLogger(__name__)
 
 
-def run_file_merges(args: argparse.Namespace, eval_func):
+def run_file_merges(
+    repo_name: str,
+    github_user: Optional[str],
+    eval_func: Callable,
+    output_file: Optional[pathlib.Path],
+    use_mpi: bool,
+    merge_commits: Optional[pathlib.Path],
+    num_merges: Optional[int],
+    gather_metainfo: bool,
+    base_merge_dir: pathlib.Path = pathlib.Path("merge_directory"),
+):
     """Run individual file merges."""
     commit_shas = (
-        fileutils.read_non_empty_lines(args.merge_commits)
-        if args.merge_commits
+        fileutils.read_non_empty_lines(merge_commits)
+        if merge_commits is not None
         else None
     )
     evaluations, file_merges, merge_dirs = _run_file_merges(
-        args, eval_func, expected_merge_commit_shas=commit_shas
+        eval_func=eval_func,
+        repo_name=repo_name,
+        github_user=github_user,
+        num_merges=num_merges,
+        use_mpi=use_mpi,
+        expected_merge_commit_shas=commit_shas,
+        base_merge_dir=base_merge_dir,
     )
-    output_file = args.output or pathlib.Path("results.csv")
+    output_file = output_file
     reporter.write_csv(
         data=evaluations, container=conts.MergeEvaluation, dst=output_file,
     )
 
-    if args.gather_metainfo:
+    if gather_metainfo:
         _output_java_blob_metainfos(merge_dirs, base_output_file=output_file)
         _output_file_merge_metainfos(file_merges, base_output_file=output_file)
 
 
+def file_merge_metainfo_path(base_output_path: pathlib.Path) -> pathlib.Path:
+    """Return the expected path of a merge metainfo file corresponding to the
+    base output file."""
+    return base_output_path.parent / (
+        base_output_path.stem + "_file_merge_metainfo.csv"
+    )
+
+
+def blob_metainfo_path(base_output_path: pathlib.Path) -> pathlib.Path:
+    """Return the expected path of a blob metainfo file corresponding to the
+    base output file."""
+    return base_output_path.parent / (
+        base_output_path.stem + "_blob_metainfo.csv"
+    )
+
+
 def _output_java_blob_metainfos(merge_dirs, base_output_file):
     LOGGER.info("Gathering Java blob metainfo")
-    metainfo_output_file = base_output_file.parent / (
-        base_output_file.stem + "_blob_metainfo.csv"
-    )
+    metainfo_output_file = blob_metainfo_path(base_output_file)
     metainfos = evaluate.gather_java_blob_metainfos(merge_dirs)
     reporter.write_csv(
         data=metainfos,
@@ -62,9 +92,7 @@ def _output_java_blob_metainfos(merge_dirs, base_output_file):
 
 def _output_file_merge_metainfos(file_merges, base_output_file):
     LOGGER.info("Gathering file merge metainfo")
-    metainfo_output_file = base_output_file.parent / (
-        base_output_file.stem + "_file_merge_metainfo.csv"
-    )
+    metainfo_output_file = file_merge_metainfo_path(base_output_file)
     file_merge_metainfos = list(
         map(conts.FileMergeMetainfo.from_file_merge, file_merges)
     )
@@ -76,14 +104,27 @@ def _output_file_merge_metainfos(file_merges, base_output_file):
     LOGGER.info(f"File merge metainfo written to {metainfo_output_file}")
 
 
-def run_merge_and_compare(args: argparse.Namespace, eval_func):
+def run_merge_and_compare(
+    repo_name: str,
+    github_user: str,
+    eval_func: Callable,
+    compare: pathlib.Path,
+    output_file: pathlib.Path,
+    num_merges: Optional[int],
+    use_mpi: bool,
+):
     """Run individual file merges and compare the results to previous results."""
     old_evaluations = analyze.Evaluations.from_path(
-        args.compare, container=conts.MergeEvaluation
+        compare, container=conts.MergeEvaluation
     )
     commit_shas = [path for path in old_evaluations.extract("merge_commit")]
     data, _, _ = _run_file_merges(
-        args, eval_func, expected_merge_commit_shas=commit_shas
+        repo_name=repo_name,
+        github_user=github_user,
+        eval_func=eval_func,
+        use_mpi=use_mpi,
+        num_merges=num_merges,
+        expected_merge_commit_shas=commit_shas,
     )
     new_evaluations = analyze.Evaluations(
         data=data, container=conts.MergeEvaluation,
@@ -91,12 +132,11 @@ def run_merge_and_compare(args: argparse.Namespace, eval_func):
 
     new_evaluations.log_diffs(old_evaluations)
 
-    if args.output is not None:
-        reporter.write_csv(
-            data=new_evaluations.data,
-            container=conts.MergeEvaluation,
-            dst=args.output,
-        )
+    reporter.write_csv(
+        data=new_evaluations.data,
+        container=conts.MergeEvaluation,
+        dst=output_file,
+    )
 
     if new_evaluations.at_least_as_good_as(old_evaluations):
         LOGGER.info("New results were no worse than the reference")
@@ -106,15 +146,22 @@ def run_merge_and_compare(args: argparse.Namespace, eval_func):
         sys.exit(1)
 
 
-def extract_merge_commits(args: argparse.Namespace):
+def extract_merge_commits(
+    repo_name: str,
+    github_user: str,
+    output_file: pathlib.Path,
+    non_trivial: bool,
+    buildable: bool,
+    testable: bool,
+):
     """Extract merge commits."""
-    repo = _get_repo(args.repo, args.github_user)
+    repo = _get_repo(repo_name, github_user)
 
     merge_scenarios = gitutils.extract_merge_scenarios(
-        repo, non_trivial=args.non_trivial
+        repo, non_trivial=non_trivial
     )
 
-    if args.buildable or args.testable:
+    if buildable or testable:
         buildable = [
             ms
             for ms in merge_scenarios
@@ -127,7 +174,7 @@ def extract_merge_commits(args: argparse.Namespace):
             f"Filtered {len(merge_scenarios) - len(buildable)} merges that did not build"
         )
         merge_scenarios = buildable
-        if args.testable:
+        if testable:
             testable = [
                 ms
                 for ms in merge_scenarios
@@ -140,19 +187,24 @@ def extract_merge_commits(args: argparse.Namespace):
 
     LOGGER.info(f"Extracted {len(merge_scenarios)} merge commits")
 
-    outpath = args.output or pathlib.Path("merge_scenarios.txt")
-    outpath.write_text(
+    output_file.write_text(
         "\n".join([merge.expected.hexsha for merge in merge_scenarios])
     )
-    LOGGER.info(f"Merge commits saved to {outpath}")
+    LOGGER.info(f"Merge commits saved to {output_file}")
 
 
-def extract_file_merge_metainfo(args: argparse.Namespace):
+def extract_file_merge_metainfo(
+    repo_name: str,
+    github_user: Optional[str],
+    merge_commits: pathlib.Path,
+    output_file: pathlib.Path,
+    num_merges: Optional[int],
+):
     """Extract metainfo about the file merges."""
-    repo = _get_repo(args.repo, args.github_user)
+    repo = _get_repo(repo_name, github_user)
     commit_shas = (
-        fileutils.read_non_empty_lines(args.merge_commits)
-        if args.merge_commits
+        fileutils.read_non_empty_lines(merge_commits)
+        if merge_commits
         else None
     )
 
@@ -162,51 +214,66 @@ def extract_file_merge_metainfo(args: argparse.Namespace):
     file_merges = gitutils.extract_all_conflicting_files(repo, merge_scenarios)
     file_merge_metainfos = list(
         map(conts.FileMergeMetainfo.from_file_merge, file_merges)
-    )[: args.num_merges]
+    )[:num_merges]
     reporter.write_csv(
         data=file_merge_metainfos,
         container=conts.FileMergeMetainfo,
-        dst=args.output or "file_merge_metainfo.csv",
+        dst=output_file,
     )
 
 
-def git_merge(args: argparse.Namespace):
+def git_merge(
+    repo_name: str,
+    github_user: Optional[str],
+    merge_drivers: List[str],
+    merge_commits: pathlib.Path,
+    output_file: pathlib.Path,
+    build: bool,
+    evaluate: bool,
+    num_merges: Optional[int],
+):
     """Run git merge on all scenarios."""
-    repo = _get_repo(args.repo, args.github_user)
+    repo = _get_repo(repo_name, github_user)
 
-    commit_shas = fileutils.read_non_empty_lines(args.merge_commits)[
-        : args.num_merges
-    ]
+    commit_shas = fileutils.read_non_empty_lines(merge_commits)[:num_merges]
     merge_scenarios = gitutils.extract_merge_scenarios(
         repo, merge_commit_shas=commit_shas
     )
     merge_results = run.run_git_merges(
-        merge_scenarios, args.merge_drivers, repo, args.build, args.evaluate
+        merge_scenarios, merge_drivers, repo, build, evaluate
     )
     reporter.write_csv(
-        data=merge_results, container=conts.GitMergeResult, dst=args.output
+        data=merge_results, container=conts.GitMergeResult, dst=output_file
     )
 
 
-def runtime_benchmark(args: argparse.Namespace):
+def runtime_benchmark(
+    repo_name: str,
+    github_user: Optional[str],
+    merge_commands: List[str],
+    num_runs: int,
+    file_merge_metainfo: pathlib.Path,
+    base_merge_dir: pathlib.Path,
+    num_merges: Optional[int],
+    output_file: pathlib.Path,
+):
     """Run a runtime benchmark on individual file merges."""
-    repo = _get_repo(args.repo, args.github_user)
+    repo = _get_repo(repo_name, github_user)
     file_merge_metainfo = reporter.read_csv(
-        csv_file=args.file_merge_metainfo, container=conts.FileMergeMetainfo
+        csv_file=file_merge_metainfo, container=conts.FileMergeMetainfo
     )
     file_merges = (
         conts.FileMerge.from_metainfo(repo, m) for m in file_merge_metainfo
     )
-    merge_dirs = fileutils.create_merge_dirs(args.base_merge_dir, file_merges)[
-        : args.num_merges
+    merge_dirs = fileutils.create_merge_dirs(base_merge_dir, file_merges)[
+        :num_merges
     ]
 
     runtime_results = itertools.chain.from_iterable(
-        run.runtime_benchmark(merge_dirs, merge_cmd, args.num_runs)
-        for merge_cmd in args.merge_commands
+        run.runtime_benchmark(merge_dirs, merge_cmd, num_runs)
+        for merge_cmd in merge_commands
     )
 
-    output_file = args.output or pathlib.Path("runtimes.csv")
     reporter.write_csv(
         data=runtime_results, container=conts.RuntimeResult, dst=output_file
     )
@@ -326,13 +393,17 @@ def _print_latex_tables(titled_frames):
 
 
 def _run_file_merges(
-    args: argparse.Namespace,
-    eval_func,
+    eval_func: Callable,
+    repo_name: str,
+    github_user: str,
+    num_merges: Optional[int],
+    use_mpi: bool,
     expected_merge_commit_shas: Optional[List[str]],
+    base_merge_dir: pathlib.Path = pathlib.Path("merge_directory"),
 ) -> (Iterable[conts.MergeEvaluation], List[conts.FileMerge]):
-    assert not args.mpi or mpi.RANK == mpi.MASTER_RANK
+    assert not mpi or mpi.RANK == mpi.MASTER_RANK
 
-    repo = _get_repo(args.repo, args.github_user)
+    repo = _get_repo(repo_name, github_user)
 
     merge_scenarios = gitutils.extract_merge_scenarios(
         repo, expected_merge_commit_shas
@@ -340,16 +411,15 @@ def _run_file_merges(
 
     LOGGER.info(f"Found {len(merge_scenarios)} merge scenarios")
 
-    merge_base_dir = pathlib.Path("merge_directory")
-    merge_base_dir.mkdir(parents=True, exist_ok=True)
+    base_merge_dir.mkdir(parents=True, exist_ok=True)
     file_merges = list(
         gitutils.extract_all_conflicting_files(repo, merge_scenarios)
-    )[: args.num_merges]
-    merge_dirs = fileutils.create_merge_dirs(merge_base_dir, file_merges)
+    )[:num_merges]
+    merge_dirs = fileutils.create_merge_dirs(base_merge_dir, file_merges)
 
     LOGGER.info(f"Extracted {len(merge_dirs)} file merges")
 
-    if args.mpi:
+    if use_mpi:
         evaluations = mpi.master(merge_dirs)
     else:
         evaluations = eval_func(merge_dirs)
