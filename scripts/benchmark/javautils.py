@@ -209,11 +209,11 @@ def extract_java_package(path: pathlib.Path) -> str:
     """Extract the package statement from a .java or .class file. Requires the
     pkgextractor to be on the path.
     """
-    return (
-        subprocess.run(["pkgextractor", str(path)], capture_output=True)
-        .stdout.decode(encoding=sys.getdefaultencoding())
-        .strip()
-    )
+
+    proc = subprocess.run(["pkgextractor", str(path)], capture_output=True)
+    if proc.returncode != 0:
+        raise RuntimeError(f"pkgextractor failed to extract package from {path}")
+    return proc.stdout.decode(encoding=sys.getdefaultencoding()).strip()
 
 
 def find_target_directories(project_root: pathlib.Path) -> List[pathlib.Path]:
