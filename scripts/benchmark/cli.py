@@ -246,27 +246,6 @@ def create_cli_parser():
         type=pathlib.Path,
     )
 
-    analyze_file_merges_command = subparsers.add_parser(
-        "analyze-file-merges",
-        help="Analyze results from the run-file-merges command.",
-    )
-    analyze_file_merges_command.add_argument(
-        "--results",
-        help="One or more file merge benchmark results files. Each file called "
-        "<something>.csv is expected to have an accompanying "
-        "<something>_blob_metainfo.csv in the same directory",
-        required=True,
-        nargs="+",
-        type=pathlib.Path,
-    )
-    analyze_file_merges_command.add_argument(
-        "-o",
-        "--output",
-        help="Path to output file.",
-        default="file_merge_analysis.csv",
-        type=pathlib.Path,
-    )
-
     return parser
 
 
@@ -315,9 +294,6 @@ def main():
             base_merge_dir=args.base_merge_dir,
             num_merges=args.num_merges,
         )
-        return
-    elif args.command == "analyze-file-merges":
-        command.analyze_file_merges(args)
         return
 
     eval_func = functools.partial(

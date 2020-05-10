@@ -11,7 +11,6 @@ from typing import List, Optional, Iterable, Mapping, Callable
 
 import daiquiri
 import git
-import pandas
 
 from . import evaluate
 from . import run
@@ -282,119 +281,6 @@ def runtime_benchmark(
     reporter.write_csv(
         data=runtime_results, container=conts.RuntimeResult, dst=output_file
     )
-
-
-def analyze_file_merges(args: argparse.Namespace):
-    """Analyze results from running file merges."""
-
-    def _to_dataframe(data, container):
-        headers = [f.name for f in dataclasses.fields(container)]
-        tuples = map(dataclasses.astuple, data)
-        return pandas.DataFrame(data=tuples, columns=headers)
-
-    git_diffs = []
-
-    for results_file in args.results:
-        project = results_file.name.split("_")[0]
-        blob_metainfo_file = results_file.parent / (
-            results_file.stem + "_blob_metainfo.csv"
-        )
-
-        # read into dataclasses first to ensure type correctness
-        merge_evaluations = _to_dataframe(
-            reporter.read_csv(results_file, container=conts.MergeEvaluation),
-            container=conts.MergeEvaluation,
-        )
-
-        blob_metainfo = reporter.read_csv(
-            container=conts.JavaBlobMetainfo, csv_file=blob_metainfo_file
-        )
-
-        blob_line_counts = {
-            blob_meta.hexsha: blob_meta.num_lines
-            for blob_meta in blob_metainfo
-        }
-        git_diff = analyze.analyze_merge_evaluations(
-            merge_evaluations, project, blob_line_counts
-        )
-        git_diffs.append(git_diff)
-
-    titled_frames = zip(["Git diff {}",], [git_diffs],)
-
-    for title, frames in titled_frames:
-        concat = pandas.concat(frames).sort_values(by="merge_cmd")
-        _print_latex_table(
-            title.format("accuracy"),
-            concat[["project", "merge_cmd", "acc_mean"]].rename(
-                columns={"acc_mean": "mean"}
-            ),
-        )
-        _print_latex_table(
-            title.format("magnitude"),
-            concat[["project", "merge_cmd", "magn_mean"]].rename(
-                columns={"magn_mean": "mean"}
-            ),
-        )
-
-
-def _print_latex_table(title, concat):
-    projects = {project for project in concat.project}
-
-    result_frame = pandas.DataFrame(columns=["project"], data=sorted(projects))
-
-    for merge_cmd, df in concat.groupby("merge_cmd"):
-        result_frame = result_frame.merge(
-            df.rename(columns={"mean": merge_cmd})[["project", merge_cmd]],
-            on="project",
-        )
-
-    means = result_frame.mean()
-    means["project"] = "Total"
-    result_frame.loc["mean"] = means
-
-    result_frame.reset_index()
-    safe_title = re.sub("[^a-z_]", "", title.replace(" ", "_").lower())
-    latex = result_frame.to_latex(
-        float_format="%.3f",
-        caption=title,
-        label=f"tab:res:{safe_title}",
-        index=False,
-    )
-
-    filename = f"{safe_title}.tex"
-    pathlib.Path(
-        f"{safe_title}.tex", mode="w", encoding=sys.getdefaultencoding()
-    ).write_text(latex)
-    LOGGER.info(f"Wrote table to {filename}")
-
-
-def _print_latex_tables(titled_frames):
-    """Print one file with latex tables per merge command."""
-    files = {}
-    for title, frames in titled_frames:
-        concat = pandas.concat(frames)
-        for merge_cmd, df in concat.groupby("merge_cmd"):
-            if merge_cmd not in files:
-                files[merge_cmd] = open(
-                    merge_cmd + ".tex",
-                    mode="a",
-                    encoding=sys.getdefaultencoding(),
-                )
-
-            df_without_cmd = df.loc[:, df.columns != "merge_cmd"]
-            file = files[merge_cmd]
-            latex = df_without_cmd.to_latex(
-                float_format="%.3f",
-                caption=f"{merge_cmd.split('_')[0].capitalize()} {title}".replace(
-                    "_", " "
-                ),
-                label=f"tab:res:{merge_cmd}_{title}".replace(" ", "_").lower(),
-                index=False,
-            )
-            files[merge_cmd].write(latex)
-
-    for file in files.values():
-        file.close()
 
 
 def _run_file_merges(

@@ -3,8 +3,6 @@ import dataclasses
 import pathlib
 import functools
 import itertools
-import pandas
-import scipy.stats
 
 from typing import List, Iterable, Tuple, Any, TypeVar, Mapping
 
@@ -118,73 +116,6 @@ class Evaluations:
 _EXPECTED_BLOB = "expected_blob"
 _REPLAYED_BLOB = "replayed_blob"
 _DIFF_SIZE = "diff_size"
-
-
-def analyze_merge_evaluations(
-    merge_evaluations: pandas.DataFrame,
-    project: str,
-    blob_line_counts: Mapping[str, int],
-) -> pandas.DataFrame:
-    def _id(v):
-        return v
-
-    line_measure_transform = {
-        "merge_cmd": _id,
-        _EXPECTED_BLOB: lambda sha: blob_line_counts.get(sha) or -1,
-        _REPLAYED_BLOB: lambda sha: blob_line_counts.get(sha) or -1,
-        _DIFF_SIZE: _id,
-    }
-
-    git_diffs = []
-
-    for _, df in merge_evaluations.groupby("merge_cmd"):
-        git_diff = _create_result(
-            df, line_measure_transform, "git_diff_size", project
-        )
-        git_diffs.append(git_diff)
-
-    git_diff_frame = pandas.concat(git_diffs)
-
-    return git_diff_frame
-
-
-def _create_result(
-    df: pandas.DataFrame,
-    measure_transform: Mapping[str, int],
-    size_column: str,
-    project: str,
-):
-    full_result = (
-        df.query(f"outcome == '{conts.MergeOutcome.SUCCESS}'")[
-            ["merge_cmd", _EXPECTED_BLOB, _REPLAYED_BLOB, size_column]
-        ]
-        .rename(columns={size_column: "diff_size"})
-        .agg(measure_transform)
-        .rename(
-            columns={
-                _EXPECTED_BLOB: "expected_size",
-                _REPLAYED_BLOB: "replayed_size",
-            }
-        )
-    )
-
-    accuracies = full_result.apply(
-        lambda row: accuracy(
-            row.expected_size, row.replayed_size, row.diff_size
-        ),
-        axis=1,
-    )
-
-    merge_cmd = full_result.merge_cmd.iloc[0]
-    acc_mean = accuracies.mean()
-    print(
-        merge_cmd, size_column, scipy.stats.normaltest(accuracies.to_numpy())
-    )
-
-    return pandas.DataFrame(
-        columns="project merge_cmd acc_mean magn_mean".split(),
-        data=[[project, merge_cmd, acc_mean, full_result.diff_size.mean()]],
-    )
 
 
 def accuracy(expected_size: int, replayed_size: int, diff_size: int):
