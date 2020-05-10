@@ -23,6 +23,7 @@ class PcsBuilder extends CtScanner {
     public PcsBuilder(Revision revision) {
        super();
        this.revision = revision;
+       rootTolastSibling.put(NodeFactory.ROOT, NodeFactory.startOfChildList(NodeFactory.ROOT));
     }
 
     /**
@@ -44,25 +45,24 @@ class PcsBuilder extends CtScanner {
         if (root == null)
             root = wrapped;
 
+        rootTolastSibling.put(wrapped, NodeFactory.startOfChildList(wrapped));
+
         SpoonNode parent = wrapped.getParent();
-        SpoonNode predecessor = rootTolastSibling.getOrDefault(parent, NodeFactory.startOfChildList(wrapped.getParent()));
-        pcses.add(new Pcs(parent, predecessor, wrapped, revision));
+        SpoonNode predecessor = rootTolastSibling.get(parent);
+        pcses.add(new Pcs<>(parent, predecessor, wrapped, revision));
         rootTolastSibling.put(parent, wrapped);
     }
 
     @Override
     protected void exit(CtElement e) {
-        if (e == root.getElement()) {
-            finalizePcsLists();
-        }
-    }
+        SpoonNode current = NodeFactory.wrap(e);
+        SpoonNode predecessor = rootTolastSibling.get(current);
+        SpoonNode successor = NodeFactory.endOfChildList(current);
+        pcses.add(new Pcs<>(current, predecessor, successor, revision));
 
-    /**
-     * Add the last element to each PCS list (i.e. Pcs(root, child, null)).
-     */
-    private void finalizePcsLists() {
-        for (SpoonNode predecessor : rootTolastSibling.values()) {
-            pcses.add(new Pcs(predecessor.getParent(), predecessor, NodeFactory.endOfChildList(predecessor.getParent()), revision));
+        if (current.getParent() == NodeFactory.ROOT) {
+            // need to finish the virtual root's child list artificially as it is not a real node
+            pcses.add(new Pcs<>(NodeFactory.ROOT, current, NodeFactory.endOfChildList(NodeFactory.ROOT), revision));
         }
     }
 
