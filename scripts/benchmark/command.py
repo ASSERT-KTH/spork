@@ -411,7 +411,7 @@ def _run_file_merges(
     repo = _get_repo(repo_name, github_user)
 
     merge_scenarios = gitutils.extract_merge_scenarios(
-        repo, expected_merge_commit_shas
+        repo, merge_commit_shas=expected_merge_commit_shas
     )
 
     LOGGER.info(f"Found {len(merge_scenarios)} merge scenarios")
