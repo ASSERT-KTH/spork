@@ -294,7 +294,7 @@ def merge_no_commit(
                 output, pathlib.Path(repo.working_tree_dir)
             )
     finally:
-        repo.git.merge("--quit")
+        repo.git.merge("--abort")
 
 
 def extract_automerged_files(
