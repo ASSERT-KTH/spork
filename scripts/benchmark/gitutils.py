@@ -136,20 +136,25 @@ def extract_conflicting_files(
         rev_map = {}
         for stage, blob in blobs:
             if stage == 1:
-                insert(blob, conts.Revision.BASE, base_expected_diff, rev_map)
+                ambiguous = _insert(
+                    blob, conts.Revision.BASE, base_expected_diff, rev_map
+                )
             elif stage == 2:
-                insert(blob, conts.Revision.LEFT, left_expected_diff, rev_map)
+                ambiguous = _insert(
+                    blob, conts.Revision.LEFT, left_expected_diff, rev_map
+                )
             elif stage == 3:
-                insert(
+                ambiguous = _insert(
                     blob, conts.Revision.RIGHT, right_expected_diff, rev_map
                 )
             else:
                 raise ValueError("unknown stage " + stage)
 
-        if rev_map.get(conts.Revision.ACTUAL_MERGE) is None:
-            LOGGER.warning(
-                "Could not find expected revision, skipping: " + str(rev_map)
-            )
+            if ambiguous:
+                break
+
+        if ambiguous:
+            LOGGER.warning("Expected revision of file is ambiguous, skipping")
             continue
         if (
             conts.Revision.LEFT not in rev_map
@@ -157,8 +162,14 @@ def extract_conflicting_files(
         ):
             # this is a delete/modify conflict which can't be resolved by
             # file-based merge tool, and so is not useful in the Spork analysis
+            LOGGER.info(
+                "Skipping delete/modify file conflict: " + str(rev_map)
+            )
+            continue
+
+        if rev_map.get(conts.Revision.ACTUAL_MERGE) is None:
             LOGGER.warning(
-                "Skipping delete/edit file conflict: " + str(rev_map)
+                "Could not find expected revision, skipping: " + str(rev_map)
             )
             continue
 
@@ -183,6 +194,23 @@ def extract_conflicting_files(
         )
 
     return file_merges
+
+
+def _insert(blob, rev, diff_map, rev_map):
+    rev_map[rev] = blob
+    if blob.hexsha in diff_map:
+        expected_blob = diff_map[blob.hexsha]
+        if not (
+            conts.Revision.ACTUAL_MERGE not in rev_map
+            or rev_map[conts.Revision.ACTUAL_MERGE] == expected_blob
+        ):
+            # we all ready have an expected revision, but found another
+            return True
+
+        if expected_blob != None:
+            rev_map[conts.Revision.ACTUAL_MERGE] = expected_blob
+
+    return False
 
 
 def contains_delete_modify(repo: git.Repo, ms: conts.MergeScenario) -> bool:
@@ -358,18 +386,6 @@ def _to_file_merge(
         expected=expected,
         from_merge_scenario=ms,
     )
-
-
-def insert(blob, rev, diff_map, rev_map):
-    rev_map[rev] = blob
-    if blob.hexsha in diff_map:
-        expected_blob = diff_map[blob.hexsha]
-        assert (
-            conts.Revision.ACTUAL_MERGE not in rev_map
-            or rev_map[conts.Revision.ACTUAL_MERGE] == expected_blob
-        )
-        if expected_blob != None:
-            rev_map[conts.Revision.ACTUAL_MERGE] = expected_blob
 
 
 def clone_repo(
