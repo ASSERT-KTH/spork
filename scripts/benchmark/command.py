@@ -292,7 +292,7 @@ def _run_file_merges(
     expected_merge_commit_shas: Optional[List[str]],
     base_merge_dir: pathlib.Path = pathlib.Path("merge_directory"),
 ) -> (Iterable[conts.MergeEvaluation], List[conts.FileMerge]):
-    assert not mpi or mpi.RANK == mpi.MASTER_RANK
+    assert not use_mpi or mpi.RANK == mpi.MASTER_RANK
 
     repo = _get_repo(repo_name, github_user)
 
