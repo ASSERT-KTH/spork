@@ -213,9 +213,10 @@ def run_git_merge(
                 build_ok, output = javautils.mvn_compile(
                     workdir=repo.working_tree_dir
                 )
-                (eval_dir / f"{merge_driver}_build_output.txt").write_bytes(
-                    output
-                )
+                if eval_dir:
+                    (eval_dir / f"{merge_driver}_build_output.txt").write_bytes(
+                        output
+                    )
                 _log_cond(
                     "Replayed build OK",
                     "Replayed build failed",
