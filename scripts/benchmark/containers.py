@@ -182,3 +182,8 @@ class MergeEvaluationStatistics:
 class ClassfilePair:
     expected: pathlib.Path
     replayed: Optional[pathlib.Path]
+
+@dataclasses.dataclass
+class ExpectedClassfile:
+    copy_abspath: pathlib.Path
+    original_relpath: pathlib.Path

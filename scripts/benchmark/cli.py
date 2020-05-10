@@ -174,9 +174,11 @@ def create_cli_parser():
         action="store_true",
     )
     git_merge_command.add_argument(
-        "--evaluate",
-        help="Run the bytecode comparison evaluation. Only for Java projects. Implies --build.",
-        action="store_true",
+        "--eval-dir",
+        help="If specified, run the Java bytecode evaluation in the given "
+        "directory. Implies --build.",
+        type=pathlib.Path,
+        default=None,
     )
 
     runtime_bench_command = subparsers.add_parser(
@@ -221,8 +223,14 @@ def create_cli_parser():
     )
     merge_extractor_command.add_argument(
         "--testable",
-        help="Only extract merge scenarios all invovled commits are buildable, "
+        help="Only extract merge scenarios all involved commits are buildable, "
         "and the merge commit passes the test suit. Implies --buildable.",
+        action="store_true",
+    )
+    merge_extractor_command.add_argument(
+        "--skip-delete-modify",
+        help="Skip any merge scenario that contains at least one "
+        "delete/modify conflict",
         action="store_true",
     )
 
@@ -274,6 +282,7 @@ def main():
             non_trivial=args.non_trivial,
             buildable=args.buildable,
             testable=args.testable,
+            skip_delete_modify=args.skip_delete_modify,
         )
     elif args.command == "extract-file-merge-metainfo":
         command.extract_file_merge_metainfo(
@@ -292,7 +301,7 @@ def main():
             merge_commits=args.merge_commits,
             output_file=args.output or pathlib.Path("merge_results.csv"),
             build=args.build,
-            evaluate=args.evaluate,
+            base_eval_dir=args.eval_dir,
             num_merges=args.num_merges,
         )
     elif args.command == "runtime-benchmark":
@@ -330,7 +339,7 @@ def main():
             merge_commits=args.merge_commits,
             num_merges=args.num_merges,
             gather_metainfo=args.gather_metainfo,
-            output_file=args.output or pathlib.Path("file_merges.csv")
+            output_file=args.output or pathlib.Path("file_merges.csv"),
         )
     elif args.command == "run-file-merge-compare":
         command.run_merge_and_compare(

@@ -159,12 +159,12 @@ def evaluation_result(
     if merge_result.outcome != conts.MergeOutcome.FAIL:
         replayed_blob = gitutils.hash_object(replayed)
 
-        if merge_result.outcome == conts.MergeOutcome.SUCCESS:
+        git_diff_size = git_diff_edit_script_size(expected, replayed)
+
+        if merge_result.outcome == conts.MergeOutcome.CONFLICT:
             conflicts = extract_conflicts(replayed)
             conflict_size = sum(c.num_lines for c in conflicts)
             num_conflicts = len(conflicts)
-
-            git_diff_size = git_diff_edit_script_size(expected, replayed)
 
     merge_dir = merge_result.merge_dir.relative_to(base_merge_dir)
     merge_commit = fileutils.extract_commit_sha(merge_dir)

@@ -153,38 +153,43 @@ def extract_merge_commits(
     non_trivial: bool,
     buildable: bool,
     testable: bool,
+    skip_delete_modify: bool,
 ):
     """Extract merge commits."""
     repo = _get_repo(repo_name, github_user)
 
-    merge_scenarios = gitutils.extract_merge_scenarios(
-        repo, non_trivial=non_trivial
+    merge_scenarios = iter(
+        gitutils.extract_merge_scenarios(repo, non_trivial=non_trivial)
     )
 
+    if skip_delete_modify:
+        LOGGER.info(
+            "Filtering out merge scenarios containing delete/modify conflicts"
+        )
+        merge_scenarios = (
+            ms
+            for ms in merge_scenarios
+            if not gitutils.contains_delete_modify(repo, ms)
+        )
     if buildable or testable:
-        buildable = [
+        LOGGER.info("Filtering out merge scenarios that do not build")
+        merge_scenarios = (
             ms
             for ms in merge_scenarios
             if all(
                 run.is_buildable(commit.hexsha, repo)
                 for commit in [ms.base, ms.left, ms.right, ms.expected]
             )
-        ]
-        LOGGER.info(
-            f"Filtered {len(merge_scenarios) - len(buildable)} merges that did not build"
         )
-        merge_scenarios = buildable
-        if testable:
-            testable = [
-                ms
-                for ms in merge_scenarios
-                if run.is_testable(ms.expected.hexsha, repo)
-            ]
-            LOGGER.info(
-                f"Filtered {len(merge_scenarios) - len(testable)} merges that could not be tested"
-            )
-            merge_scenarios = testable
+    if testable:
+        LOGGER.info("Filtering out merge scenarios that cannot be tested")
+        merge_scenarios = (
+            ms
+            for ms in merge_scenarios
+            if run.is_testable(ms.expected.hexsha, repo)
+        )
 
+    merge_scenarios = list(merge_scenarios)
     LOGGER.info(f"Extracted {len(merge_scenarios)} merge commits")
 
     output_file.write_text(
@@ -209,7 +214,7 @@ def extract_file_merge_metainfo(
     )
 
     merge_scenarios = gitutils.extract_merge_scenarios(
-        repo, merge_commit_shas=commit_shas
+        repo, merge_commit_shas=commit_shas,
     )
     file_merges = gitutils.extract_all_conflicting_files(repo, merge_scenarios)
     file_merge_metainfos = list(
@@ -229,7 +234,7 @@ def git_merge(
     merge_commits: pathlib.Path,
     output_file: pathlib.Path,
     build: bool,
-    evaluate: bool,
+    base_eval_dir: Optional[pathlib.Path],
     num_merges: Optional[int],
 ):
     """Run git merge on all scenarios."""
@@ -240,7 +245,7 @@ def git_merge(
         repo, merge_commit_shas=commit_shas
     )
     merge_results = run.run_git_merges(
-        merge_scenarios, merge_drivers, repo, build, evaluate
+        merge_scenarios, merge_drivers, repo, build, base_eval_dir,
     )
     reporter.write_csv(
         data=merge_results, container=conts.GitMergeResult, dst=output_file

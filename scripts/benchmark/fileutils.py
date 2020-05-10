@@ -75,23 +75,6 @@ def count_lines(filepath: pathlib.Path) -> int:
         return len([1 for _ in f.readlines()])
 
 
-def mvn_compile(workdir: pathlib.Path) -> bool:
-    """Compile the project in workdir with Maven's test-compile command."""
-    proc = subprocess.run(
-        "mvn clean test-compile".split(),
-        cwd=workdir,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-    )
-    return proc.returncode == 0, proc.stdout.decode(sys.getdefaultencoding())
-
-
-def mvn_test(workdir: pathlib.Path):
-    """Run the project's test suite."""
-    proc = subprocess.run("mvn clean test".split(), cwd=workdir)
-    return proc.returncode == 0
-
-
 def read_non_empty_lines(path: pathlib.Path) -> List[str]:
     """Read all non-empty lines from the path, stripping any leading and trailing whitespace."""
     return [

@@ -10,7 +10,8 @@ import enum
 import contextlib
 import tempfile
 import shutil
-from typing import List, Generator, Iterable, Tuple
+import hashlib
+from typing import List, Generator, Iterable, Tuple, Optional
 
 import git
 import daiquiri
@@ -121,7 +122,7 @@ def run_git_merges(
     merge_drivers: List[str],
     repo: git.Repo,
     build: bool,
-    evaluate: bool,
+    base_eval_dir: Optional[pathlib.Path] = None,
 ) -> Iterable[conts.GitMergeResult]:
     """Replay the provided merge scenarios using git-merge. Assumes that the
     merge scenarios belong to the provided repo. The merge drivers must be
@@ -134,7 +135,8 @@ def run_git_merges(
             Each driver must be defined in the global .gitconfig file.
         repo: The related repository.
         build: If True, try to build the project with Maven after merge.
-        evaluate: Run the Java-specific bytecode evaluation.
+        base_eval_dir: If specified, run Java bytecode evaluation in the given
+            directory. Implies build.
     Returns:
         An iterable of merge results.
     """
@@ -144,7 +146,7 @@ def run_git_merges(
             f"base: {ms.base.hexsha} left: {ms.left.hexsha} "
             f"right: {ms.right.hexsha}"
         )
-        yield from run_git_merge(ms, merge_drivers, repo, build, evaluate)
+        yield from run_git_merge(ms, merge_drivers, repo, build, base_eval_dir)
 
 
 def run_git_merge(
@@ -152,7 +154,7 @@ def run_git_merge(
     merge_drivers: List[str],
     repo: git.Repo,
     build: bool,
-    evaluate: bool,
+    base_eval_dir: Optional[pathlib.Path] = None,
 ) -> conts.GitMergeResult:
     """Replay a single merge scenario. Assumes that the merge scenario belongs
     to the provided repo. The merge tool to use must be configured in
@@ -165,119 +167,130 @@ def run_git_merge(
             be defined in the global .gitconfig file.
         repo: The related repository.
         build: If True, try to build the project with Maven after merge.
-        evaluate: Run the Java bytecode evaluation. Implies build.
     Returns:
         An iterable of GitMergeResults, one for each driver
     """
     ms = merge_scenario  # alias for less verbosity
     expected_classfiles = tuple()
 
-    with (
-        tempfile.TemporaryDirectory() if evaluate else _nop_context()
-    ) as ctx:
-        if evaluate:
-            with gitutils.saved_git_head(repo):
-                (
-                    expected_classfiles,
-                    expected_compile_basedir,
-                ) = _extract_expected_revision_classfiles(
-                    repo, ms, pathlib.Path(ctx)
-                )
-                if not expected_classfiles:
-                    LOGGER.warning(
-                        "Found no expected classfiles for merge scenario "
-                        f"{ms.expected.hexsha}, skipping ..."
-                    )
-                    return
+    eval_dir = (
+        base_eval_dir / merge_scenario.expected.hexsha
+        if base_eval_dir
+        else None
+    )
 
-        for merge_driver in merge_drivers:
-            build_ok = False
-            eval_ok = False
-            num_equal_classfiles = 0
-
-            with gitutils.merge_no_commit(
-                repo,
-                ms.left.hexsha,
-                ms.right.hexsha,
-                driver_config=(merge_driver, "*.java"),
-            ) as merge_stat:
-                merge_ok, _ = merge_stat
-                _log_cond(
-                    "Merge replay OK",
-                    "Merge conflict or failure",
-                    use_info=merge_ok,
-                )
-
-                if build or evaluate:
-                    LOGGER.info("Building replayed revision")
-                    build_ok, _ = fileutils.mvn_compile(
-                        workdir=repo.working_tree_dir
-                    )
-                    _log_cond(
-                        "Replayed build OK",
-                        "Replayed build failed",
-                        use_info=build_ok,
-                    )
-
-                    if build_ok and evaluate:
-                        num_equal_classfiles = javautils.compare_compiled_bytecode(
-                            pathlib.Path(repo.working_tree_dir) / "target",
-                            expected_classfiles,
-                        )
-
-            yield conts.GitMergeResult(
-                merge_commit=ms.expected.hexsha,
-                merge_driver=merge_driver,
-                merge_ok=merge_ok,
-                build_ok=build_ok,
-                num_equal_classfiles=num_equal_classfiles,
-                num_expected_classfiles=len(expected_classfiles),
-                base_commit=ms.base.hexsha,
-                left_commit=ms.left.hexsha,
-                right_commit=ms.right.hexsha,
+    if eval_dir:
+        with gitutils.saved_git_head(repo):
+            expected_classfiles = _extract_expected_revision_classfiles(
+                repo, ms, eval_dir
             )
+            if not expected_classfiles:
+                LOGGER.warning(
+                    "Found no expected classfiles for merge scenario "
+                    f"{ms.expected.hexsha}, skipping ..."
+                )
+                return
+
+    for merge_driver in merge_drivers:
+        build_ok = False
+        num_equal_classfiles = 0
+
+        with gitutils.merge_no_commit(
+            repo,
+            ms.left.hexsha,
+            ms.right.hexsha,
+            driver_config=(merge_driver, "*.java"),
+        ) as merge_stat:
+            merge_ok, _ = merge_stat
+            _log_cond(
+                "Merge replay OK",
+                "Merge conflict or failure",
+                use_info=merge_ok,
+            )
+
+            if build or eval_dir:
+                LOGGER.info("Building replayed revision")
+                build_ok, output = javautils.mvn_compile(
+                    workdir=repo.working_tree_dir
+                )
+                (eval_dir / f"{merge_driver}_build_output.txt").write_bytes(
+                    output
+                )
+                _log_cond(
+                    "Replayed build OK",
+                    "Replayed build failed",
+                    use_info=build_ok,
+                )
+
+                if eval_dir:
+                    num_equal_classfiles = javautils.compare_compiled_bytecode(
+                        pathlib.Path(repo.working_tree_dir),
+                        expected_classfiles,
+                        eval_dir,
+                        merge_driver,
+                    )
+
+        yield conts.GitMergeResult(
+            merge_commit=ms.expected.hexsha,
+            merge_driver=merge_driver,
+            merge_ok=merge_ok,
+            build_ok=build_ok,
+            num_equal_classfiles=num_equal_classfiles,
+            num_expected_classfiles=len(expected_classfiles),
+            base_commit=ms.base.hexsha,
+            left_commit=ms.left.hexsha,
+            right_commit=ms.right.hexsha,
+        )
 
 
 def _extract_expected_revision_classfiles(
-    repo: git.Repo, ms: conts.MergeScenario, tempdir: pathlib.Path
-) -> Tuple[pathlib.Path]:
+    repo: git.Repo, ms: conts.MergeScenario, eval_dir: pathlib.Path
+) -> List[conts.ExpectedClassfile]:
+    """Extract expected classfiles, copy them to the evaluation directory,
+    return a list of tuples with the absolute path to the copy and the path to
+    the original classfile relative to the repository root.
+    """
     gitutils.checkout_clean(repo, ms.expected.hexsha)
     LOGGER.info("Building expected revision")
+    worktree_dir = pathlib.Path(repo.working_tree_dir)
 
-    build_ok, _ = fileutils.mvn_compile(workdir=repo.working_tree_dir)
+    build_ok, _ = javautils.mvn_compile(workdir=worktree_dir)
     if not build_ok:
         raise RuntimeError(
             f"Failed to build expected revision {ms.expected.hexsha}"
         )
 
-    LOGGER.info("Making temporary copy of expected build")
-    expected_compile_basedir = tempdir / "target"
-    shutil.copytree(
-        pathlib.Path(repo.working_tree_dir) / "target",
-        expected_compile_basedir,
-    )
-
     sources = [
-        repo.working_tree_dir / path
+        worktree_dir / path
         for path in gitutils.extract_unmerged_files(repo, ms, file_ext=".java")
     ]
     LOGGER.info(f"Extracted unmerged files: {sources}")
 
-    expected_classfiles = tuple(
-        itertools.chain.from_iterable(
-            javautils.locate_classfiles(src, basedir=expected_compile_basedir)
-            for src in sources
-        )
-    )
+    expected_classfiles = []
+    for classfiles, pkg in (
+        javautils.locate_classfiles(src, basedir=worktree_dir)
+        for src in sources
+    ):
+        for classfile in classfiles:
+            copy_basedir = eval_dir / classfile.name / "expected"
+            classfile_copy = javautils.copy_to_pkg_dir(
+                classfile, pkg, copy_basedir
+            )
+            tup = conts.ExpectedClassfile(
+                copy_abspath=classfile_copy,
+                original_relpath=classfile.relative_to(worktree_dir),
+            )
+            expected_classfiles.append(tup)
+
     LOGGER.info(f"Extracted classfiles: {expected_classfiles}")
 
     for classfile in expected_classfiles:
         LOGGER.info(
-            f"Removing duplicate checkcasts from expected revision of {classfile.name}"
+            f"Removing duplicate checkcasts from expected revision of {classfile.copy_abspath.name}"
         )
-        javautils.remove_duplicate_checkcasts(classfile)
+        javautils.remove_duplicate_checkcasts(classfile.copy_abspath)
 
-    return expected_classfiles, expected_compile_basedir
+    return expected_classfiles
 
 
 def _log_cond(info: str, warning: str, use_info: bool):
@@ -285,11 +298,6 @@ def _log_cond(info: str, warning: str, use_info: bool):
         LOGGER.info(info)
     else:
         LOGGER.warning(warning)
-
-
-@contextlib.contextmanager
-def _nop_context():
-    yield
 
 
 def is_buildable(commit_sha: str, repo: git.Repo) -> bool:
@@ -304,7 +312,7 @@ def is_buildable(commit_sha: str, repo: git.Repo) -> bool:
     with gitutils.saved_git_head(repo):
         repo.git.checkout(commit_sha, "--force")
         LOGGER.info(f"Building commit {commit_sha}")
-        build_ok, _ = fileutils.mvn_compile(workdir=repo.working_tree_dir)
+        build_ok, _ = javautils.mvn_compile(workdir=repo.working_tree_dir)
         return build_ok
 
 
@@ -319,7 +327,7 @@ def is_testable(commit_sha: str, repo: git.Repo) -> bool:
     """
     with gitutils.saved_git_head(repo):
         repo.git.checkout(commit_sha, "--force")
-        return fileutils.mvn_test(workdir=repo.working_tree_dir)
+        return javautils.mvn_test(workdir=repo.working_tree_dir)
 
 
 def runtime_benchmark(

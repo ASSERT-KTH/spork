@@ -6,7 +6,7 @@ import tempfile
 import subprocess
 import shutil
 import sys
-from typing import List, Iterable
+from typing import List, Iterable, Tuple
 
 import daiquiri
 
@@ -17,12 +17,16 @@ LOGGER = daiquiri.getLogger(__name__)
 
 def compare_compiled_bytecode(
     replayed_compile_basedir: pathlib.Path,
-    expected_classfiles: List[pathlib.Path],
+    expected_classfiles: List[conts.ExpectedClassfile],
+    eval_dir: pathlib.Path,
+    merge_driver: str,
 ):
     """Run the bytecode comparison evaluation.
 
     Args:
-        expected_classfiles: Classfiles from the expected revision.
+        expected_classfiles: Tuples of (classfile_copy_abspath,
+            original_classfile_relpath), where the relative path is relative to
+            the root of the repository.
     Returns:
         The amount of classfiles that compared equal.
     """
@@ -44,7 +48,7 @@ def compare_compiled_bytecode(
         remove_duplicate_checkcasts(pair.replayed)
 
         LOGGER.info(f"Comparing {pair.replayed.name} revisions ...")
-        if compare_classfiles(pair):
+        if compare_classfiles(pair, eval_dir, merge_driver):
             LOGGER.info(f"{pair.replayed.name} revision are equal")
             num_equal += 1
         else:
@@ -53,61 +57,76 @@ def compare_compiled_bytecode(
     return num_equal
 
 
-def compare_classfiles(pair: conts.ClassfilePair) -> bool:
+def compare_classfiles(
+    pair: conts.ClassfilePair, eval_dir: pathlib.Path, merge_driver: str
+) -> bool:
     """Compare two classfiles with normalized bytecode equality using sootdiff.
     Requires sootdiff to be on the path.
 
     Args:
         pair: The pair of classfiles.
+        eval_dir: Directory to perform evaluation in.
+        merge_driver: The merge driver that produced the merge. Used to give
+            the storage directory a name.
     Returns:
         True if the files are equal
     """
-    ref = pair.expected
-    other = pair.replayed
-    if ref.name != other.name:
+    expected = pair.expected
+    replayed = pair.replayed
+    if expected.name != replayed.name:
         raise ValueError(
             "Cannot compare two classfiles from different classes"
         )
 
-    ref_pkg = extract_java_package(ref)
-    other_pkg = extract_java_package(other)
+    expected_pkg = extract_java_package(expected)
+    replayed_pkg = extract_java_package(replayed)
 
-    if ref_pkg != other_pkg:
+    basedir = eval_dir / expected.name
+    expected_basedir = basedir / "expected"
+    replayed_basedir = basedir / merge_driver
+
+    copy_to_pkg_dir(
+        classfile=replayed, pkg=replayed_pkg, basedir=replayed_basedir
+    )
+
+    if expected_pkg != replayed_pkg:
         return False
 
-    with tempfile.TemporaryDirectory() as tmpdir:
-        ref_dirpath = pathlib.Path(tmpdir) / "ref"
-        other_dirpath = pathlib.Path(tmpdir) / "other"
-        pkg_relpath = pathlib.Path(*ref_pkg.split("."))
+    qualname = f"{expected_pkg}.{expected.stem}"
 
-        ref_pkg_dirpath = ref_dirpath / pkg_relpath
-        ref_pkg_dirpath.mkdir(parents=True)
-        other_pkg_dirpath = other_dirpath / pkg_relpath
-        other_pkg_dirpath.mkdir(parents=True)
+    proc = subprocess.run(
+        [
+            "sootdiff",
+            "-qname",
+            qualname,
+            "-reffile",
+            str(expected_basedir),
+            "-otherfile",
+            str(replayed_basedir),
+        ],
+    )
 
-        shutil.copy(ref, ref_pkg_dirpath / ref.name)
-        shutil.copy(other, other_pkg_dirpath / other.name)
+    return proc.returncode == 0
 
-        qualname = f"{ref_pkg}.{ref.stem}"
 
-        proc = subprocess.run(
-            [
-                "sootdiff",
-                "-qname",
-                qualname,
-                "-reffile",
-                str(ref_dirpath),
-                "-otherfile",
-                str(other_dirpath),
-            ],
-        )
+def copy_to_pkg_dir(
+    classfile: pathlib.Path, pkg: str, basedir: pathlib.Path,
+) -> pathlib.Path:
+    pkg_relpath = pathlib.Path(*pkg.split("."))
+    pkg_abspath = basedir / pkg_relpath
+    pkg_abspath.mkdir(parents=True, exist_ok=True)
+    classfile_dst = pkg_abspath / classfile.name
 
-        return proc.returncode == 0
+    if classfile_dst.exists():
+        raise FileExistsError(f"Classfile {classfile_dst} all ready exists!")
+
+    shutil.copy(classfile, classfile_dst)
+    return classfile_dst
 
 
 def locate_classfiles(
     src: pathlib.Path, basedir: pathlib.Path
-) -> List[pathlib.Path]:
+) -> (List[pathlib.Path], str):
     """Locate the classfiles corresponding to the source file. Requires the
     pkgextractor utility to be on the path.
 
@@ -136,11 +155,12 @@ def locate_classfiles(
     if not classfiles:
         LOGGER.warning(f"Found no classfiles corresponding to {src}")
 
-    return sorted(classfiles, key=lambda path: path.name)
+    return (sorted(classfiles), expected_pkg)
 
 
 def generate_classfile_pairs(
-    expected_classfiles: List[pathlib.Path], replayed_basedir: pathlib.Path
+    expected_classfiles: List[conts.ExpectedClassfile],
+    replayed_basedir: pathlib.Path,
 ) -> Iterable[conts.ClassfilePair]:
     """For each classfile in the classfiles list, find the corresponding
     classfile in the replayed basedir and create a pair. If no corresponding
@@ -152,23 +172,12 @@ def generate_classfile_pairs(
     Returns:
         A generator of classfile pairs.
     """
-    potential_replayed_matches = {
-        path
-        for path in replayed_basedir.rglob("*.class")
-        if path.name
-        in (expected_classfile_names := {p.name for p in expected_classfiles})
-    }
     for expected in expected_classfiles:
-        matches = [
-            replayed
-            for replayed in potential_replayed_matches
-            if replayed.name == expected.name
-            and extract_java_package(replayed)
-            == extract_java_package(expected)
-        ]
-        assert len(matches) <= 1
-        replayed = matches[0] if matches else None
-        yield conts.ClassfilePair(expected=expected, replayed=replayed)
+        replayed_classfile = replayed_basedir / expected.original_relpath
+        if replayed_classfile.exists():
+            yield conts.ClassfilePair(
+                expected=expected.copy_abspath, replayed=replayed_classfile
+            )
 
 
 def remove_duplicate_checkcasts(path: pathlib.Path) -> None:
@@ -205,3 +214,36 @@ def extract_java_package(path: pathlib.Path) -> str:
         .stdout.decode(encoding=sys.getdefaultencoding())
         .strip()
     )
+
+
+def find_target_directories(project_root: pathlib.Path) -> List[pathlib.Path]:
+    """Find target directories created by Maven."""
+
+    def _contains_class_dirs(path):
+        contained_dirs = {p.name for p in path.iterdir() if p.is_dir()}
+        return "classes" in contained_dirs or "test-classes" in contained_dirs
+
+    return [
+        target_dir
+        for target_dir in project_root.rglob("target")
+        if _contains_class_dirs(target_dir)
+    ]
+
+
+def mvn_compile(workdir: pathlib.Path) -> Tuple[bool, bytes]:
+    """Compile the project in workdir with Maven's test-compile command."""
+    proc = subprocess.run(
+        "mvn clean test-compile".split(),
+        cwd=workdir,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+    )
+    return proc.returncode == 0, proc.stdout
+
+
+def mvn_test(workdir: pathlib.Path):
+    """Run the project's test suite."""
+    proc = subprocess.run("mvn clean test".split(), cwd=workdir)
+    return proc.returncode == 0
+
+

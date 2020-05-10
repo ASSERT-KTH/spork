@@ -33,8 +33,8 @@ LOGGER = daiquiri.getLogger(__name__)
 
 def extract_merge_scenarios(
     repo: git.Repo,
-    merge_commit_shas: Optional[List[str]] = None,
     non_trivial: bool = False,
+    merge_commit_shas: Optional[List[str]] = None,
 ) -> List[conts.MergeScenario]:
     """Extract merge scenarios from a repo.
 
@@ -155,7 +155,8 @@ def extract_conflicting_files(
             conts.Revision.LEFT not in rev_map
             or conts.Revision.RIGHT not in rev_map
         ):
-            # this is a delete file/edit file conflict, we can't do much about that
+            # this is a delete/modify conflict which can't be resolved by
+            # file-based merge tool, and so is not useful in the Spork analysis
             LOGGER.warning(
                 "Skipping delete/edit file conflict: " + str(rev_map)
             )
@@ -184,6 +185,26 @@ def extract_conflicting_files(
     return file_merges
 
 
+def contains_delete_modify(repo: git.Repo, ms: conts.MergeScenario) -> bool:
+    """Check if the merge scenario contains a delete/modify conflict.
+
+    Args:
+        repo: A Git repo.
+        ms: A merge scenario.
+    Returns:
+        True iff the scenario contains a delete/modify conflict.
+    """
+    index = repo.index.from_tree(
+        repo, ms.base.hexsha, ms.left.hexsha, ms.right.hexsha
+    )
+    for filepath, blobs in index.unmerged_blobs().items():
+        blob_states = {state for state, _ in blobs}
+        # 2 is the "current" (left) branch and 3 is the "other" (right) branch
+        if 2 not in blob_states or 3 not in blob_states:
+            return True
+    return False
+
+
 def extract_unmerged_files(
     repo: git.Repo, ms: conts.MergeScenario, file_ext: Optional[str] = None
 ) -> List[pathlib.Path]:
@@ -201,9 +222,9 @@ def extract_unmerged_files(
         repo, ms.base.hexsha, ms.left.hexsha, ms.right.hexsha
     )
     return [
-        (path := pathlib.Path(k))
+        path
         for k in index.unmerged_blobs().keys()
-        if file_ext is not None or path.suffix == file_ext
+        if file_ext is None or (path := pathlib.Path(k)).suffix == file_ext
     ]
 
 
