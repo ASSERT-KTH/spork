@@ -8,6 +8,7 @@ import pathlib
 import shutil
 import contextlib
 import subprocess
+import re
 
 from typing import (
     List,
@@ -32,6 +33,8 @@ LOGGER = daiquiri.getLogger(__name__)
 
 FILE_MERGE_LOCATOR_DRIVER_CONFIG = ("filemergelocator", "*")
 FILE_MERGE_LOCATOR_OUTPUT_NAME = ".filemergelocator_results"
+
+CONFLICT_PATTERN = re.compile("(?m)^CONFLICT \((.*?)\):")
 
 
 def extract_merge_scenarios(
@@ -214,8 +217,11 @@ def merge_driver_exists(
     )
 
 
-def contains_delete_modify(repo: git.Repo, ms: conts.MergeScenario) -> bool:
-    """Check if the merge scenario contains a delete/modify conflict.
+def contains_non_content_conflict(
+    repo: git.Repo, ms: conts.MergeScenario
+) -> bool:
+    """Check if the merge scenario any non-content conflict, such
+    asdelete/modify or rename/rename. Such conflicts cannot be solved by a standard merge tool.
 
     Args:
         repo: A Git repo.
@@ -230,10 +236,12 @@ def contains_delete_modify(repo: git.Repo, ms: conts.MergeScenario) -> bool:
         driver_config=FILE_MERGE_LOCATOR_DRIVER_CONFIG,
     ) as merge:
         _, output = merge
-        for line in output.strip().split("\n"):
-            if line.startswith("CONFLICT (modify/delete)"):
-                return True
-    return False
+        matches = [
+            match
+            for match in re.findall(CONFLICT_PATTERN, output)
+            if match != "content"
+        ]
+    return len(matches) != 0
 
 
 def extract_unmerged_files(
@@ -472,6 +480,7 @@ def set_merge_driver(
         f"{file_pattern} merge={driver_name}",
         encoding=sys.getdefaultencoding(),
     )
+
 
 def clear_merge_driver(repo: git.Repo) -> None:
     """Remove the repository-local attributes file."""

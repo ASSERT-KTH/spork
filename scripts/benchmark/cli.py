@@ -228,9 +228,9 @@ def create_cli_parser():
         action="store_true",
     )
     merge_extractor_command.add_argument(
-        "--skip-delete-modify",
+        "--skip-non-content-conflicts",
         help="Skip any merge scenario that contains at least one "
-        "delete/modify conflict",
+        "non-content conflict, such as rename/rename or delete/modify.",
         action="store_true",
     )
 
@@ -261,7 +261,7 @@ def main():
             non_trivial=args.non_trivial,
             buildable=args.buildable,
             testable=args.testable,
-            skip_delete_modify=args.skip_delete_modify,
+            skip_non_content_conflicts=args.skip_non_content_conflicts,
         )
     elif args.command == "extract-file-merge-metainfo":
         command.extract_file_merge_metainfo(

@@ -152,7 +152,7 @@ def extract_merge_commits(
     non_trivial: bool,
     buildable: bool,
     testable: bool,
-    skip_delete_modify: bool,
+    skip_non_content_conflicts: bool,
 ):
     """Extract merge commits."""
     repo = _get_repo(repo_name, github_user)
@@ -161,14 +161,14 @@ def extract_merge_commits(
         gitutils.extract_merge_scenarios(repo, non_trivial=non_trivial)
     )
 
-    if skip_delete_modify:
+    if skip_non_content_conflicts:
         LOGGER.info(
             "Filtering out merge scenarios containing delete/modify conflicts"
         )
         merge_scenarios = (
             ms
             for ms in merge_scenarios
-            if not gitutils.contains_delete_modify(repo, ms)
+            if not gitutils.contains_non_content_conflict(repo, ms)
         )
     if buildable or testable:
         LOGGER.info("Filtering out merge scenarios that do not build")
