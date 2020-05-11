@@ -154,6 +154,14 @@ def extract_conflicting_files(
             for file in auto_merged:
                 abspath = repo.working_tree_dir / file
                 id_ = abspath.read_text(sys.getdefaultencoding()).strip()
+                if id_ not in filemergelocator_results:
+                    LOGGER.warning(
+                        f"Could not file merge for expected revision of {file} "
+                        f"in merge scenario {expected.hexsha}. "
+                        "This is typically due to non-content changes "
+                        "(e.g mode changes). Skipping."
+                    )
+                    continue
                 (
                     left_blob_sha,
                     base_blob_sha,
