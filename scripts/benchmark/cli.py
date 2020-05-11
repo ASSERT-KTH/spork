@@ -212,7 +212,8 @@ def create_cli_parser():
     )
     merge_extractor_command.add_argument(
         "--non-trivial",
-        help="Extract only non-trivial merges",
+        help="Extract only non-trivial merges. Implies "
+        "--skip-non-content-conflicts",
         action="store_true",
     )
     merge_extractor_command.add_argument(
