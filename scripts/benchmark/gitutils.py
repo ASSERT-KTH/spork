@@ -130,6 +130,15 @@ def extract_conflicting_files(
         driver_config=FILE_MERGE_LOCATOR_DRIVER_CONFIG,
     ) as merge:
         _, merge_output = merge
+
+        if _contains_non_content_conflict(merge_output):
+            LOGGER.warning(
+                f"Merge scenario {expected.hexsha} contains "
+                "non-content conflict, can't safely extract expected "
+                "revision. Skipping."
+            )
+            return []
+
         auto_merged = extract_automerged_files(merge_output)
         filemergelocator_results_file = (
             pathlib.Path(repo.working_tree_dir)
@@ -150,30 +159,50 @@ def extract_conflicting_files(
                     base_blob_sha,
                     right_blob_sha,
                 ) = filemergelocator_results[id_]
-                left_blob = get_blob(repo, left, left_blob_sha)
-                right_blob = get_blob(repo, right, right_blob_sha)
-                base_blob = get_blob(repo, base, base_blob_sha)
-                expected_blob = expected.tree[str(file)]
+                left_blob = get_blob_by_sha(repo, left, left_blob_sha)
+                right_blob = get_blob_by_sha(repo, right, right_blob_sha)
+                base_blob = get_blob_by_sha(repo, base, base_blob_sha)
 
-                file_merges.append(
-                    conts.FileMerge(
-                        expected=expected_blob,
-                        left=left_blob,
-                        right=right_blob,
-                        base=base_blob,
-                        from_merge_scenario=merge_scenario,
+                expected_blob = get_blob_by_path(repo, expected, str(file))
+
+                if expected_blob is None:
+                    LOGGER.warning(
+                        f"Could not find expected file {file} in merge commit "
+                        f"{expected.hexsha}, skipping"
                     )
-                )
+                else:
+                    expected_blob = expected.tree[str(file)]
+                    file_merges.append(
+                        conts.FileMerge(
+                            expected=expected_blob,
+                            left=left_blob,
+                            right=right_blob,
+                            base=base_blob,
+                            from_merge_scenario=merge_scenario,
+                        )
+                    )
 
     return file_merges
 
 
-def get_blob(repo: git.Repo, commit: git.Commit, blob_sha: str):
-    index = repo.index.from_tree(repo, commit.tree)
+def get_blob_by_sha(
+    repo: git.Repo, commit: git.Commit, blob_sha: str
+) -> git.Blob:
+    index = repo.index.from_tree(repo, commit.hexsha)
     for _, blob in index.iter_blobs():
         if blob.hexsha == blob_sha:
             return blob
     raise ValueError(f"{commit} has no blob with hash {blob_sha}")
+
+
+def get_blob_by_path(
+    repo: git.Repo, commit: git.Commit, blob_path: str
+) -> Optional[git.Blob]:
+    index = repo.index.from_tree(repo, commit.hexsha)
+    for _, blob in index.iter_blobs():
+        if blob.path == blob_path:
+            return blob
+    return None
 
 
 def _extract_filemergelocator_blob_shas(
@@ -236,11 +265,15 @@ def contains_non_content_conflict(
         driver_config=FILE_MERGE_LOCATOR_DRIVER_CONFIG,
     ) as merge:
         _, output = merge
-        matches = [
-            match
-            for match in re.findall(CONFLICT_PATTERN, output)
-            if match != "content"
-        ]
+        return _contains_non_content_conflict(output)
+
+
+def _contains_non_content_conflict(merge_output: str) -> bool:
+    matches = [
+        match
+        for match in re.findall(CONFLICT_PATTERN, merge_output)
+        if match != "content"
+    ]
     return len(matches) != 0
 
 
