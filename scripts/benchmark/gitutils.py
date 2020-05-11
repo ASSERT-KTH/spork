@@ -30,6 +30,9 @@ END_CONFLICT = ">>>>>>>"
 
 LOGGER = daiquiri.getLogger(__name__)
 
+FILE_MERGE_LOCATOR_DRIVER_CONFIG = ("filemergelocator", "*")
+FILE_MERGE_LOCATOR_OUTPUT_NAME = ".filemergelocator_results"
+
 
 def extract_merge_scenarios(
     repo: git.Repo,
@@ -63,7 +66,7 @@ def extract_merge_scenarios(
 
     for merge in merge_commits:
         left, right = merge.parents
-        base = repo.merge_base(*merge.parents)
+        base = repo.merge_base(*merge.parents, all=True)
 
         if not base:
             LOGGER.warning(
@@ -72,15 +75,17 @@ def extract_merge_scenarios(
             continue
         elif len(base) > 1:
             LOGGER.warning(
-                f"Ambiguous merge base for commits {left.hexsha} and {right.hexsha}: {base}"
+                f"Multiple merge bases for {left.hexsha} and {right.hexsha}: {base}. "
+                "Skipping to avoid recursive merge."
             )
             continue
 
         scenario = conts.MergeScenario(merge, base[0], left, right)
 
         if non_trivial and not extract_conflicting_files(repo, scenario):
-            LOGGER.warning(f"Skipping trivial merge commit {merge.hexsha}")
+            LOGGER.info(f"Skipping trivial merge commit {merge.hexsha}")
         else:
+            LOGGER.info(f"Extracted merge commit {merge.hexsha}")
             expected_merge_commits -= {merge.hexsha}
             merge_scenarios.append(scenario)
 
@@ -112,105 +117,101 @@ def extract_conflicting_files(
     right = merge_scenario.right
     base = merge_scenario.base
     expected = merge_scenario.expected
-    merge_idx: git.IndexFile = repo.index.from_tree(repo, base, left, right)
-
-    left_expected_diff = {
-        diff.a_blob.hexsha: diff.b_blob
-        for diff in left.diff(expected)
-        if diff.a_blob
-    }
-    right_expected_diff = {
-        diff.a_blob.hexsha: diff.b_blob
-        for diff in right.diff(expected)
-        if diff.a_blob
-    }
-    base_expected_diff = {
-        diff.a_blob.hexsha: diff.b_blob
-        for diff in base.diff(expected)
-        if diff.a_blob
-    }
 
     file_merges = []
 
-    for _, blobs in merge_idx.unmerged_blobs().items():
-        rev_map = {}
-        for stage, blob in blobs:
-            if stage == 1:
-                ambiguous = _insert(
-                    blob, conts.Revision.BASE, base_expected_diff, rev_map
-                )
-            elif stage == 2:
-                ambiguous = _insert(
-                    blob, conts.Revision.LEFT, left_expected_diff, rev_map
-                )
-            elif stage == 3:
-                ambiguous = _insert(
-                    blob, conts.Revision.RIGHT, right_expected_diff, rev_map
-                )
-            else:
-                raise ValueError("unknown stage " + stage)
-
-            if ambiguous:
-                break
-
-        if ambiguous:
-            LOGGER.warning("Expected revision of file is ambiguous, skipping")
-            continue
-        if (
-            conts.Revision.LEFT not in rev_map
-            or conts.Revision.RIGHT not in rev_map
-        ):
-            # this is a delete/modify conflict which can't be resolved by
-            # file-based merge tool, and so is not useful in the Spork analysis
-            LOGGER.info(
-                "Skipping delete/modify file conflict: " + str(rev_map)
-            )
-            continue
-
-        if rev_map.get(conts.Revision.ACTUAL_MERGE) is None:
-            LOGGER.warning(
-                "Could not find expected revision, skipping: " + str(rev_map)
-            )
-            continue
-
-        file_merge = _to_file_merge(rev_map, merge_scenario)
-
-        if not str(file_merge.expected.name).endswith(".java"):
-            LOGGER.warning(
-                f"{file_merge.expected.name} is not a Java file, skipping"
-            )
-            continue
-        if skip_conflict_markers and _has_conflict_marker(file_merge):
-            LOGGER.warning(
-                f"Found conflict markers in scenario {expected.hexsha}/{file_merge.expected.hexsha}, skipping"
-            )
-            continue
-
-        file_merges.append(file_merge)
-
-    if not file_merges:
-        LOGGER.info(
-            f"No file merges required for merge commit {expected.hexsha}"
+    with merge_no_commit(
+        repo,
+        left.hexsha,
+        right.hexsha,
+        driver_config=FILE_MERGE_LOCATOR_DRIVER_CONFIG,
+    ) as merge:
+        _, merge_output = merge
+        auto_merged = extract_automerged_files(merge_output)
+        filemergelocator_results_file = (
+            pathlib.Path(repo.working_tree_dir)
+            / FILE_MERGE_LOCATOR_OUTPUT_NAME
         )
+
+        if filemergelocator_results_file.exists():
+            filemergelocator_results = _extract_filemergelocator_blob_shas(
+                filemergelocator_results_file
+            )
+            filemergelocator_results_file.unlink()
+
+            for file in auto_merged:
+                abspath = repo.working_tree_dir / file
+                id_ = abspath.read_text(sys.getdefaultencoding()).strip()
+                (
+                    left_blob_sha,
+                    base_blob_sha,
+                    right_blob_sha,
+                ) = filemergelocator_results[id_]
+                left_blob = get_blob(repo, left, left_blob_sha)
+                right_blob = get_blob(repo, right, right_blob_sha)
+                base_blob = get_blob(repo, base, base_blob_sha)
+                expected_blob = expected.tree[str(file)]
+
+                file_merges.append(
+                    conts.FileMerge(
+                        expected=expected_blob,
+                        left=left_blob,
+                        right=right_blob,
+                        base=base_blob,
+                        from_merge_scenario=merge_scenario,
+                    )
+                )
 
     return file_merges
 
 
-def _insert(blob, rev, diff_map, rev_map):
-    rev_map[rev] = blob
-    if blob.hexsha in diff_map:
-        expected_blob = diff_map[blob.hexsha]
-        if not (
-            conts.Revision.ACTUAL_MERGE not in rev_map
-            or rev_map[conts.Revision.ACTUAL_MERGE] == expected_blob
-        ):
-            # we all ready have an expected revision, but found another
-            return True
+def get_blob(repo: git.Repo, commit: git.Commit, blob_sha: str):
+    index = repo.index.from_tree(repo, commit.tree)
+    for _, blob in index.iter_blobs():
+        if blob.hexsha == blob_sha:
+            return blob
+    raise ValueError(f"{commit} has no blob with hash {blob_sha}")
 
-        if expected_blob != None:
-            rev_map[conts.Revision.ACTUAL_MERGE] = expected_blob
 
-    return False
+def _extract_filemergelocator_blob_shas(
+    results_file: pathlib.Path,
+) -> Tuple[str, str, str]:
+    """Extract the hexshas of blobs that the file merge locator driver printed
+    to stdout.
+    """
+    chunk_size = 4
+    results = dict()
+    lines = (
+        results_file.read_text(sys.getdefaultencoding()).strip().split("\n")
+    )
+    assert len(lines) % chunk_size == 0
+
+    for i in range(0, len(lines), chunk_size):
+        id_, *shas = lines[i : i + chunk_size]
+        results[id_] = shas
+
+    return results
+
+
+def merge_driver_exists(
+    driver_name: str, gitconfig: Optional[pathlib.Path] = None
+) -> bool:
+    """Check that the specified driver is present in the gitconfig file.
+
+    Args:
+        driver_name: Name of the merge driver.
+        gitonfig: A gitconfig file. Defaults to the global gitconfig.
+    Returns:
+        True if there is a driver with the specified name.
+    """
+    gitconfig = gitconfig or git.config.get_config_path("global")
+    parser = git.config.GitConfigParser(gitconfig)
+    return any(
+        True
+        for key in parser.sections()
+        if key.startswith("merge")
+        if parser.get_value(key, "name") == driver_name
+    )
 
 
 def contains_delete_modify(repo: git.Repo, ms: conts.MergeScenario) -> bool:
@@ -222,14 +223,16 @@ def contains_delete_modify(repo: git.Repo, ms: conts.MergeScenario) -> bool:
     Returns:
         True iff the scenario contains a delete/modify conflict.
     """
-    index = repo.index.from_tree(
-        repo, ms.base.hexsha, ms.left.hexsha, ms.right.hexsha
-    )
-    for filepath, blobs in index.unmerged_blobs().items():
-        blob_states = {state for state, _ in blobs}
-        # 2 is the "current" (left) branch and 3 is the "other" (right) branch
-        if 2 not in blob_states or 3 not in blob_states:
-            return True
+    with merge_no_commit(
+        repo,
+        ms.left.hexsha,
+        ms.right.hexsha,
+        driver_config=FILE_MERGE_LOCATOR_DRIVER_CONFIG,
+    ) as merge:
+        _, output = merge
+        for line in output.strip().split("\n"):
+            if line.startswith("CONFLICT (modify/delete)"):
+                return True
     return False
 
 
@@ -311,30 +314,33 @@ def merge_no_commit(
                 LOGGER.info(f"Using merge driver config {driver_config}")
                 set_merge_driver(repo, *driver_config)
             try:
-                LOGGER.info(f"Merging: left={left_sha} right={right_sha}")
                 output = repo.git.merge(right_sha, "--no-commit")
                 success = True
             except git.GitCommandError as exc:
                 output = str(exc)
                 success = False
 
-            yield success, extract_automerged_files(
-                output, pathlib.Path(repo.working_tree_dir)
-            )
+            yield success, output
     finally:
+        if driver_config:
+            LOGGER.info(f"Clearing merge driver")
+            clear_merge_driver(repo)
         repo.git.reset("--merge")
 
 
 def extract_automerged_files(
-    git_merge_output: str, worktree_root: pathlib.Path, ext=".java"
+    git_merge_output: str, ext=".java"
 ) -> List[pathlib.Path]:
     """Extract a list of automerged files from the output of a git merge. Must
     run `git merge` with at least info level 2 (which is the default).
     """
     auto_merged = []
     for line in git_merge_output.strip().split("\n"):
-        if line.startswith("Auto-merging") and (not ext or line.endswith(ext)):
-            auto_merged.append(worktree_root / line[len("Auto-merging ") :])
+        stripped = line.strip()
+        if stripped.startswith("Auto-merging") and (
+            not ext or stripped.endswith(ext)
+        ):
+            auto_merged.append(pathlib.Path(stripped[len("Auto-merging ") :]))
     return auto_merged
 
 
@@ -348,7 +354,7 @@ def saved_git_head(repo: git.Repo) -> ContextManager[None]:
         A context manager that restores the Git HEAD on exit.
     """
     saved_head = repo.head.commit.hexsha
-    LOGGER.info(f"Repo HEAD saved at {saved_head}")
+    LOGGER.debug(f"Repo HEAD saved at {saved_head}")
 
     exc = None
     try:
@@ -357,15 +363,15 @@ def saved_git_head(repo: git.Repo) -> ContextManager[None]:
         exc = e
     finally:
         checkout_clean(repo, saved_head)
-        LOGGER.info(f"Restored repo HEAD to {saved_head}")
+        LOGGER.debug(f"Restored repo HEAD to {saved_head}")
         if exc is not None:
             raise exc
 
 
 def checkout_clean(repo: git.Repo, commitish: str) -> None:
     """Checkout to a commit and clean any untracked files and directories."""
-    repo.git.checkout(commitish, "--force")
     repo.git.clean("-xfd")
+    repo.git.checkout(commitish, "--force")
 
 
 def _to_file_merge(
@@ -450,7 +456,8 @@ def hash_object(path: pathlib.Path) -> str:
 def set_merge_driver(
     repo: git.Repo, driver_name: str, file_pattern: str
 ) -> None:
-    """Set the merge driver for the given pattern by overwriting the repo-local .gitattributes file.
+    """Set the merge driver for the given pattern by overwriting the repo-local
+    .git/info/attributes file.
 
     Args:
         repo: A git repo.
@@ -458,10 +465,17 @@ def set_merge_driver(
             global .gitconfig file.
         file_pattern: A filename pattern to associate the driver with.
     """
-    (pathlib.Path(repo.working_tree_dir) / ".gitattributes").write_text(
+    if not merge_driver_exists(driver_name):
+        raise EnvironmentError(f"Merge driver '{driver_name}' does not exist")
+    attributes_file = pathlib.Path(repo.git_dir) / "info" / "attributes"
+    attributes_file.write_text(
         f"{file_pattern} merge={driver_name}",
         encoding=sys.getdefaultencoding(),
     )
+
+def clear_merge_driver(repo: git.Repo) -> None:
+    """Remove the repository-local attributes file."""
+    (pathlib.Path(repo.git_dir) / "info" / "attributes").unlink()
 
 
 def _get_blob(repo: git.Repo, commit_sha: str, blob_sha: str) -> git.Blob:

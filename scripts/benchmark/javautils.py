@@ -141,7 +141,11 @@ def locate_classfiles(
         A sorted list of classfile names.
     """
     if not src.is_file():
-        raise FileNotFoundError(f"No such file {src}")
+        LOGGER.warning(
+            f"{src} is not in {basedir}. This is typically caused by "
+            "renaming that Git cannot detect"
+        )
+        return []
     name = src.stem
     matches = [file for file in basedir.rglob("*.class") if file.stem == name]
     expected_pkg = extract_java_package(src)
@@ -212,7 +216,9 @@ def extract_java_package(path: pathlib.Path) -> str:
 
     proc = subprocess.run(["pkgextractor", str(path)], capture_output=True)
     if proc.returncode != 0:
-        raise RuntimeError(f"pkgextractor failed to extract package from {path}")
+        raise RuntimeError(
+            f"pkgextractor failed to extract package from {path}"
+        )
     return proc.stdout.decode(encoding=sys.getdefaultencoding()).strip()
 
 
@@ -245,5 +251,4 @@ def mvn_test(workdir: pathlib.Path):
     """Run the project's test suite."""
     proc = subprocess.run("mvn clean test".split(), cwd=workdir)
     return proc.returncode == 0
-
 

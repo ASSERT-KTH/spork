@@ -181,8 +181,15 @@ def run_git_merge(
 
     if eval_dir:
         with gitutils.saved_git_head(repo):
+            changed_sourcefiles = [
+                file_merge.expected.path
+                for file_merge in gitutils.extract_conflicting_files(
+                    repo, merge_scenario
+                )
+            ]
+            LOGGER.info(f"Found changed source files: {changed_sourcefiles}")
             expected_classfiles = _extract_expected_revision_classfiles(
-                repo, ms, eval_dir
+                repo, ms, eval_dir, changed_sourcefiles
             )
             if not expected_classfiles:
                 LOGGER.warning(
@@ -214,9 +221,9 @@ def run_git_merge(
                     workdir=repo.working_tree_dir
                 )
                 if eval_dir:
-                    (eval_dir / f"{merge_driver}_build_output.txt").write_bytes(
-                        output
-                    )
+                    (
+                        eval_dir / f"{merge_driver}_build_output.txt"
+                    ).write_bytes(output)
                 _log_cond(
                     "Replayed build OK",
                     "Replayed build failed",
@@ -245,7 +252,10 @@ def run_git_merge(
 
 
 def _extract_expected_revision_classfiles(
-    repo: git.Repo, ms: conts.MergeScenario, eval_dir: pathlib.Path
+    repo: git.Repo,
+    ms: conts.MergeScenario,
+    eval_dir: pathlib.Path,
+    unmerged_files: List[pathlib.Path],
 ) -> List[conts.ExpectedClassfile]:
     """Extract expected classfiles, copy them to the evaluation directory,
     return a list of tuples with the absolute path to the copy and the path to
@@ -261,12 +271,10 @@ def _extract_expected_revision_classfiles(
             f"Failed to build expected revision {ms.expected.hexsha}"
         )
 
-    sources = [
-        worktree_dir / path
-        for path in gitutils.extract_unmerged_files(repo, ms, file_ext=".java")
-    ]
+    sources = [worktree_dir / unmerged for unmerged in unmerged_files]
     LOGGER.info(f"Extracted unmerged files: {sources}")
 
+    print(sources)
     expected_classfiles = []
     for classfiles, pkg in (
         javautils.locate_classfiles(src, basedir=worktree_dir)
