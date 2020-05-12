@@ -3,11 +3,8 @@ package se.kth.spork.cli;
 import ch.qos.logback.classic.LoggerContext;
 import ch.qos.logback.classic.joran.JoranConfigurator;
 import ch.qos.logback.core.joran.spi.JoranException;
-import gumtree.spoon.AstComparator;
-import gumtree.spoon.diff.Diff;
 import org.slf4j.LoggerFactory;
 import picocli.CommandLine;
-import se.kth.spork.spoon.Compare;
 import se.kth.spork.spoon.Parser;
 import se.kth.spork.spoon.Spoon3dmMerge;
 import se.kth.spork.spoon.printer.PrinterPreprocessor;
@@ -25,7 +22,6 @@ import java.nio.file.StandardOpenOption;
 import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 /**
  * Command line interface for Spork.
@@ -36,7 +32,7 @@ public class Cli {
     private static final LazyLogger LOGGER = new LazyLogger(Spoon3dmMerge.class);
 
     public static void main(String[] args) {
-        int exitCode = new CommandLine(new TopCmd()).execute(args);
+        int exitCode = new CommandLine(new Merge()).execute(args);
         System.exit(exitCode);
     }
 
@@ -85,56 +81,12 @@ public class Cli {
         return sb.toString();
     }
 
-    @CommandLine.Command(mixinStandardHelpOptions = true, subcommands = {CompareCommand.class, MergeCommand.class},
-            description = "The Spork command line app.", synopsisSubcommandLabel = "<COMMAND>")
-    static class TopCmd implements Callable<Integer> {
-
-        @Override
-        public Integer call() {
-            new CommandLine(this).usage(System.out);
-            return 1;
-        }
-    }
-
-    @CommandLine.Command(name = "compare", mixinStandardHelpOptions = true,
-            description = "Compare the ASTs of two Java files, disregarding comments and the order of unordered elements")
-    private static class CompareCommand implements Callable<Integer> {
-        @CommandLine.Parameters(index = "0", paramLabel = "LEFT", description = "Path to a Java file")
-        File left;
-
-        @CommandLine.Parameters(index = "1", paramLabel = "RIGHT", description = "Path to a Java file")
-        File right;
-
-        @Override
-        public Integer call() {
-            CtModule leftModule = Parser.parseWithoutComments(left.toPath());
-            CtModule rightModule = Parser.parseWithoutComments(right.toPath());
-
-            Compare.sortUnorderedElements(leftModule);
-            Compare.sortUnorderedElements(rightModule);
-
-            Set<?> leftImports = new HashSet<>((Collection<?>) leftModule.getMetadata(Parser.IMPORT_STATEMENTS));
-            Set<?> rightImports = new HashSet<>((Collection<?>) rightModule.getMetadata(Parser.IMPORT_STATEMENTS));
-            Set<?> intersection = new HashSet<>(leftImports);
-            intersection.retainAll(rightImports);
-
-            Diff diff = new AstComparator().compare(leftModule, rightModule);
-
-            System.out.println(diff);
-
-            long editCount = Stream.of(leftImports, rightImports)
-                    .flatMap(Set::stream).filter(e -> !intersection.contains(e)).count();
-            editCount += diff.getAllOperations().size();
-
-            System.out.println(editCount);
-
-            return 0;
-        }
-    }
-
-    @CommandLine.Command(name = "merge", mixinStandardHelpOptions = true,
-            description = "Perform a structured three-way merge")
-    private static class MergeCommand implements Callable<Integer> {
+    @CommandLine.Command(
+            name = "spork",
+            mixinStandardHelpOptions = true,
+            description = "The Spork command line app."
+    )
+    static class Merge implements Callable<Integer> {
         @CommandLine.Parameters(index = "0", paramLabel = "LEFT", description = "Path to the left revision")
         File left;
 

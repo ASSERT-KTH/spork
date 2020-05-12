@@ -8,7 +8,6 @@ import se.kth.spork.Util;
 import se.kth.spork.spoon.Parser;
 import se.kth.spork.spoon.Spoon3dmMerge;
 import se.kth.spork.util.Pair;
-import spoon.reflect.declaration.CtElement;
 import spoon.reflect.declaration.CtModule;
 
 import java.io.IOException;
@@ -26,7 +25,7 @@ class CliTest {
     void merge_shouldExitNonZero_onConflict(Util.TestSources sources) {
         String[] args = {"merge", sources.left.toString(), sources.base.toString(), sources.right.toString()};
 
-        int exitCode = new CommandLine(new Cli.TopCmd()).execute(args);
+        int exitCode = new CommandLine(new Cli.Merge()).execute(args);
 
         assertNotEquals(0, exitCode);
     }
@@ -34,9 +33,9 @@ class CliTest {
     @ParameterizedTest
     @ArgumentsSource(Util.BothModifiedSourceProvider.class)
     void merge_shouldExitZero_onCleanMerge(Util.TestSources sources) {
-        String[] args = {"merge", sources.left.toString(), sources.base.toString(), sources.right.toString()};
+        String[] args = {sources.left.toString(), sources.base.toString(), sources.right.toString()};
 
-        int exitCode = new CommandLine(new Cli.TopCmd()).execute(args);
+        int exitCode = new CommandLine(new Cli.Merge()).execute(args);
 
         assertEquals(0, exitCode);
     }

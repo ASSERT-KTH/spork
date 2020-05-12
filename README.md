@@ -41,7 +41,7 @@ wget https://raw.githubusercontent.com/KTH/spork/fe906f537d1bb7205256d1fe81fda9f
 diff3 Left.java Base.java Right.java -m -A
 
 # an AST-merge with Spork does
-java -jar spork.jar merge Left.java Base.java Right.java
+java -jar spork.jar Left.java Base.java Right.java
 ```
 
 It should print the result of the merge to stdout. See `Base.java` for the
