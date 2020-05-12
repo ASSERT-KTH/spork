@@ -55,17 +55,34 @@ You can find a pre-built jar-file under
 dependencies, so all you need is a Java runtime. Download the jar and run it
 like so:
 
+> **Important:** Spork requires a Java runtime version 8 or higher to run.
+
 ```
-java -jar path/to/spork/jar <left> <base> <right> [expected]
+java -jar path/to/spork/jar <left> <base> <right>
 ```
 
 The `left`, `base` and `right` arguments are required, and represent the left,
 base and right revisions, respectively. The base revision should be the best
-common ancestor of the left and right revisions. The `expected` argument is
-optional. If provided, Spork will compare the merge it computed with `expected`
-and say whether or not they match. This is mostly for development purposes.
+common ancestor of the left and right revisions.
 
-> **Important:** Spork requires Java 8 or higher to run.
+For a full listing of the command line options, supply the `-h` option. It will
+produce the following output.
+
+```
+Usage: spork [-eghlV] [-o=<out>] LEFT BASE RIGHT
+The Spork command line app.
+      LEFT              Path to the left revision.
+      BASE              Path to the base revision.
+      RIGHT             Path to the right revision.
+  -e, --exit-on-error   Disable line-based fallback if the structured merge
+                          encounters an error.
+  -g, --git-mode        Enable Git compatibility mode. Required to use Spork as
+                          a Git merge driver.
+  -h, --help            Show this help message and exit.
+  -l, --logging         Enable logging output.
+  -o, --output=<out>    Path to the output file. Existing files are overwritten.
+  -V, --version         Print version information and exit.
+```
 
 Naturally, if you want the absolute latest version, you will have to [build
 Spork yourself](#build).
@@ -79,8 +96,8 @@ Maven can be used to build the latest version of Spork.
 mvn clean compile package -DskipTests
 ```
 
-This will produce a jar-file in the `target` directory called something along the lines of
-`spork-x.x.x-SNAPSHOT.jar`. Run the jar with `java -jar path/to/spork/jar`.
+This will produce a jar-file in the `target` directory called something along
+the lines of `spork-x.x.x.jar`. Run the jar with `java -jar path/to/spork/jar`.
 
 ## Configure as a Git merge driver
 When Git performs a merge and encounters a file that has been edited in both revisions under merge, it will invoke a
