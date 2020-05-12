@@ -7,14 +7,14 @@ matrix:
       language: python
       os: linux
       python: 3.8
-      install: bash .travis/install.sh
-      script: bash .travis/run_benchmark.sh
+      install: bash "$TRAVIS_BUILD_DIR"/.travis/install.sh
+      script: bash "$TRAVIS_BUILD_DIR"/.travis/run_benchmark.sh
     - name: "Merge-and-build benchmark"
       language: python
       os: linux
       python: 3.8
-      install: bash .travis/install.sh
-      script: bash .travis/run_build_benchmark.sh
+      install: bash "$TRAVIS_BUILD_DIR"/.travis/install.sh
+      script: bash "$TRAVIS_BUILD_DIR"/.travis/run_build_benchmark.sh
       addons:
          apt:
             packages:
