@@ -165,8 +165,6 @@ public class SpoonTreeBuilder {
             }
         }
 
-        unsetSourcePosition(mergeTree);
-
         // adjust metadata for the merge tree
         Map<String, Object> metadata = new HashMap<>(mergeTree.getAllMetadata());
         metadata.remove(NodeFactory.WRAPPER_METADATA);
@@ -176,6 +174,10 @@ public class SpoonTreeBuilder {
         if (mergeParent != null) {
             CtRole mergeTreeRole = resolveRole(origTreeNode);
             Object inserted = withSiblings(originalTree, mergeParent, mergeTree, mergeTreeRole);
+
+            if (mergeTreeRole == CtRole.TYPE_MEMBER || mergeTreeRole == CtRole.COMMENT) {
+                unsetSourcePosition(mergeTree);
+            }
 
             if (isVarKeyword(mergeTree) && mergeParent instanceof CtParameterReference && mergeTreeRole == CtRole.TYPE) {
                 // we skip this case, because  for some reason, when it comes to parameter references, Spoon sets
