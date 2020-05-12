@@ -23,7 +23,7 @@ from . import mpi
 from . import command
 from . import containers as conts
 
-_CI = bool(os.getenv("SPORK_CI"))
+_CI = os.getenv("TRAVIS_BUILD_DIR")
 
 def setup_logging():
     daiquiri.setup(
