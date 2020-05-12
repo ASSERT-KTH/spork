@@ -31,7 +31,7 @@ END_CONFLICT = ">>>>>>>"
 
 LOGGER = daiquiri.getLogger(__name__)
 
-FILE_MERGE_LOCATOR_DRIVER_CONFIG = ("filemergelocator", "*")
+FILE_MERGE_LOCATOR_DRIVER_CONFIG = ("filemergelocator", "*.java")
 FILE_MERGE_LOCATOR_OUTPUT_NAME = ".filemergelocator_results"
 
 CONFLICT_PATTERN = re.compile("(?m)^CONFLICT \((.*?)\):")
@@ -171,6 +171,9 @@ def extract_conflicting_files(
                 right_blob = get_blob_by_sha(repo, right, right_blob_sha)
                 base_blob = get_blob_by_sha(repo, base, base_blob_sha)
 
+                if left_blob is None or right_blob is None or base_blob is None:
+                    continue
+
                 expected_blob = get_blob_by_path(repo, expected, str(file))
 
                 if expected_blob is None:
@@ -193,6 +196,15 @@ def extract_conflicting_files(
     return file_merges
 
 
+def _missing_blob_warning(blob_sha: str, commit: git.Commit):
+    LOGGER.warning(
+        f"Could not find blob {blob_sha} in commit {commit.hexsha}. "
+        "We have seen this happen when our .git/config/attributes file "
+        "interferes with line ending conversion, or when line ending "
+        "conversion has changed across revisions. Skipping file merge."
+    )
+
+
 def get_blob_by_sha(
     repo: git.Repo, commit: git.Commit, blob_sha: str
 ) -> git.Blob:
@@ -200,7 +212,8 @@ def get_blob_by_sha(
     for _, blob in index.iter_blobs():
         if blob.hexsha == blob_sha:
             return blob
-    raise ValueError(f"{commit} has no blob with hash {blob_sha}")
+    _missing_blob_warning(blob_sha, commit)
+    return
 
 
 def get_blob_by_path(
