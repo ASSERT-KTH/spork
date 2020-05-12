@@ -23,11 +23,11 @@ class CliTest {
     @ParameterizedTest
     @ArgumentsSource(Util.ConflictSourceProvider.class)
     void merge_shouldExitNonZero_onConflict(Util.TestSources sources) {
-        String[] args = {"merge", sources.left.toString(), sources.base.toString(), sources.right.toString()};
+        String[] args = {sources.left.toString(), sources.base.toString(), sources.right.toString()};
 
         int exitCode = new CommandLine(new Cli.Merge()).execute(args);
 
-        assertNotEquals(0, exitCode);
+        assertTrue(exitCode > 0);
     }
 
     @ParameterizedTest
