@@ -372,15 +372,18 @@ def merge_no_commit(
     try:
         with saved_git_head(repo):
             checkout_clean(repo, left_sha)
-            if driver_config:
-                LOGGER.info(f"Using merge driver config {driver_config}")
-                set_merge_driver(repo, *driver_config)
             try:
+                if driver_config:
+                    set_merge_driver(repo, *driver_config)
+                    LOGGER.info(f"Using merge driver config {driver_config}")
                 output = repo.git.merge(right_sha, "--no-commit")
                 success = True
             except git.GitCommandError as exc:
                 output = str(exc)
                 success = False
+            except:
+                LOGGER.error("An unexpected error ocurred")
+                raise
 
             yield success, output
     finally:
@@ -530,6 +533,7 @@ def set_merge_driver(
     if not merge_driver_exists(driver_name):
         raise EnvironmentError(f"Merge driver '{driver_name}' does not exist")
     attributes_file = pathlib.Path(repo.git_dir) / "info" / "attributes"
+    attributes_file.parent.mkdir(exist_ok=True)
     attributes_file.write_text(
         f"{file_pattern} merge={driver_name}",
         encoding=sys.getdefaultencoding(),
