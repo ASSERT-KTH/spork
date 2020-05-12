@@ -265,8 +265,9 @@ def _extract_expected_revision_classfiles(
     LOGGER.info("Building expected revision")
     worktree_dir = pathlib.Path(repo.working_tree_dir)
 
-    build_ok, _ = javautils.mvn_compile(workdir=worktree_dir)
+    build_ok, build_output = javautils.mvn_compile(workdir=worktree_dir)
     if not build_ok:
+        LOGGER.error(build_output.decode(sys.getdefaultencoding()))
         raise RuntimeError(
             f"Failed to build expected revision {ms.expected.hexsha}"
         )
