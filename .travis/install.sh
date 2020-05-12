@@ -15,7 +15,7 @@ spork_jar_path="$PWD/$(ls target/spork*.jar)"
 
 echo "Creating spork executable"
 echo "#! /bin/bash" > spork
-echo "java -jar $spork_jar_path" '$@' >> spork
+echo "$JAVA_HOME/bin/java -jar $spork_jar_path --exit-on-error" '$@' >> spork
 chmod 700 spork
 
 mkdir -p ~/.local/bin

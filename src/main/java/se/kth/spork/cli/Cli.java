@@ -99,8 +99,14 @@ public class Cli {
 
         @CommandLine.Option(
                 names = {"-o", "--output"},
-                description = "Path to the output file. Existing files are overwritten")
+                description = "Path to the output file. Existing files are overwritten.")
         File out;
+
+        @CommandLine.Option(
+                names = {"-e", "--exit-on-error"},
+                description = "Disable line-based fallback if the structured merge encounters an error."
+        )
+        boolean exitOnError;
 
         @CommandLine.Option(
                 names = {"-g", "--git-mode"},
@@ -136,7 +142,7 @@ public class Cli {
                 rightPath.toFile().deleteOnExit();
             }
 
-            Pair<String, Integer> merged = merge(basePath, leftPath, rightPath);
+            Pair<String, Integer> merged = merge(basePath, leftPath, rightPath, !exitOnError);
             String pretty = merged.first;
             int numConflicts = merged.second;
 
@@ -160,29 +166,47 @@ public class Cli {
      * @param base Path to base revision.
      * @param left Path to left revision.
      * @param right Path to right revision.
+     * @param exitOnError Disallow the use of line-based fallback if the structured merge encounters an error.
      * @return A pair on the form (prettyPrint, numConflicts)
      */
-    public static Pair<String, Integer> merge(Path base, Path left, Path right) {
+    public static Pair<String, Integer> merge(Path base, Path left, Path right, boolean exitOnError) {
         LOGGER.info(() -> "Parsing input files");
         CtModule baseModule = Parser.parse(base);
         CtModule leftModule = Parser.parse(left);
         CtModule rightModule = Parser.parse(right);
 
-        LOGGER.info(() -> "Initiating merge");
-        Pair<CtElement, Integer> merge = Spoon3dmMerge.merge(baseModule, leftModule, rightModule);
-        CtModule mergeTree = (CtModule) merge.first;
-        int numConflicts = merge.second;
+        try {
+            LOGGER.info(() -> "Initiating merge");
+            Pair<CtElement, Integer> merge = Spoon3dmMerge.merge(baseModule, leftModule, rightModule);
+            CtModule mergeTree = (CtModule) merge.first;
+            int numConflicts = merge.second;
 
-        LOGGER.info(() -> "Pretty-printing");
-        if (containsTypes(mergeTree)) {
-            return Pair.of(prettyPrint(mergeTree), numConflicts);
-        } else {
-            LOGGER.warn(() -> "Merge contains no types (i.e. classes, interfaces, etc), reverting to line-based merge");
-            String baseStr = Parser.read(base);
-            String leftStr = Parser.read(left);
-            String rightStr = Parser.read(right);
-            return LineBasedMerge.merge(baseStr, leftStr, rightStr);
+            LOGGER.info(() -> "Pretty-printing");
+            if (containsTypes(mergeTree)) {
+                return Pair.of(prettyPrint(mergeTree), numConflicts);
+            } else if (!exitOnError) {
+                LOGGER.warn(() -> "Merge contains no types (i.e. classes, interfaces, etc), reverting to line-based merge");
+                return lineBasedMerge(base, left, right);
+            } else {
+                throw new IllegalStateException("Merge contained no types and line-based fallback is disabled");
+            }
+        } catch (Exception e) {
+            if (exitOnError) {
+                LOGGER.debug(e::getMessage);
+                LOGGER.info(() -> "Spork encountered an error in structured merge. Falling back to line-based merge");
+                return lineBasedMerge(base, left, right);
+            } else {
+                LOGGER.error(() -> "Spork encountered a fatal error and line-based merge is disabled");
+                throw e;
+            }
         }
+    }
+
+    private static Pair<String, Integer> lineBasedMerge(Path base, Path left, Path right) {
+        String baseStr = Parser.read(base);
+        String leftStr = Parser.read(left);
+        String rightStr = Parser.read(right);
+        return LineBasedMerge.merge(baseStr, leftStr, rightStr);
     }
 
     /**
