@@ -1,5 +1,6 @@
 """The CLI for the benchmark suite."""
 import sys
+import os
 import pathlib
 import git
 import argparse
@@ -22,10 +23,11 @@ from . import mpi
 from . import command
 from . import containers as conts
 
+_CI = bool(os.getenv("SPORK_CI"))
 
 def setup_logging():
     daiquiri.setup(
-        level=logging.INFO,
+        level=logging.INFO if not _CI else logging.DEBUG,
         outputs=(
             daiquiri.output.Stream(
                 sys.stdout,

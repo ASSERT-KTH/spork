@@ -139,6 +139,7 @@ def extract_conflicting_files(
             )
             return []
 
+        LOGGER.debug(merge_output)
         auto_merged = extract_automerged_files(merge_output)
         filemergelocator_results_file = (
             pathlib.Path(repo.working_tree_dir)
