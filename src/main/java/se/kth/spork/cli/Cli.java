@@ -84,7 +84,8 @@ public class Cli {
     @CommandLine.Command(
             name = "spork",
             mixinStandardHelpOptions = true,
-            description = "The Spork command line app."
+            description = "The Spork command line app.",
+            versionProvider = SporkVersionProvider.class
     )
     static class Merge implements Callable<Integer> {
         @CommandLine.Parameters(index = "0", paramLabel = "LEFT", description = "Path to the left revision")
