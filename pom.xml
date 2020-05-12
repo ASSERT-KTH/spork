@@ -23,9 +23,9 @@
 
     <dependencies>
         <dependency>
-            <groupId>com.github.slarse</groupId>
+            <groupId>com.github.inria</groupId>
             <artifactId>spoon</artifactId>
-            <version>4f6d834</version>
+            <version>3a8d04df7cb0319896ae98b08986a7006b208fa6</version>
         </dependency>
         <dependency>
             <groupId>fr.inria.gforge.spoon.labs</groupId>
