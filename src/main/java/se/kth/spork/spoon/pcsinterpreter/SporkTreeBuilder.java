@@ -21,7 +21,7 @@ class SporkTreeBuilder {
     private final Map<SpoonNode, Map<SpoonNode, Pcs<SpoonNode>>> rootToChildren;
     private final Map<Pcs<SpoonNode>, Set<Pcs<SpoonNode>>> structuralConflicts;
     private final Map<SpoonNode, Set<Content<SpoonNode, RoledValues>>> contents;
-    private boolean hasStructuralConflicts;
+    private int numStructuralConflicts;
 
     // keeps track of which nodes have been added to the tree all ready
     // if any node is added twice, there's an unresolved move conflict
@@ -36,7 +36,7 @@ class SporkTreeBuilder {
         this.rootToChildren = buildRootToChildren(delta.getPcsSet());
         structuralConflicts = delta.getStructuralConflicts();
         contents = delta.getContents();
-        hasStructuralConflicts = false;
+        numStructuralConflicts = 0;
         usedNodes = new HashSet<>();
     }
 
@@ -69,10 +69,10 @@ class SporkTreeBuilder {
     }
 
     /**
-     * @return true iff conflicts were encountered at some point when building a tree.
+     * @return The amount of structural conflicts.
      */
-    public boolean hasStructuralConflict() {
-        return hasStructuralConflicts;
+    public int numStructuralConflicts() {
+        return numStructuralConflicts;
     }
 
     /**
@@ -137,7 +137,7 @@ class SporkTreeBuilder {
                     addChild(tree, build(child))
             );
         } else {
-            hasStructuralConflicts = true;
+            numStructuralConflicts++;
             StructuralConflict conflict = new StructuralConflict(
                     leftNodes.stream().map(SpoonNode::getElement).collect(Collectors.toList()),
                     rightNodes.stream().map(SpoonNode::getElement).collect(Collectors.toList())

@@ -215,9 +215,9 @@ public class ContentMerger {
     }
 
     private static Optional<?> mergeComments(Object base, Object left, Object right) {
-        Pair<String, Boolean> merge = LineBasedMerge.merge(base.toString(), left.toString(), right.toString());
+        Pair<String, Integer> merge = LineBasedMerge.merge(base.toString(), left.toString(), right.toString());
 
-        if (merge.second) {
+        if (merge.second > 0) {
             return Optional.empty();
         }
         return Optional.of(merge.first);

@@ -137,8 +137,8 @@ public class PrinterPreprocessor extends CtScanner {
                 String rawBase = conflict.getBase().isPresent() ?
                         (String) conflict.getBase().get().getMetadata(RoledValue.Key.RAW_CONTENT) : "";
 
-                Pair<String, Boolean> rawConflict = LineBasedMerge.merge(rawBase, rawLeft, rawRight);
-                assert rawConflict.second : "Comments without conflict should already have been merged";
+                Pair<String, Integer> rawConflict = LineBasedMerge.merge(rawBase, rawLeft, rawRight);
+                assert rawConflict.second > 0 : "Comments without conflict should already have been merged";
 
                 element.putMetadata(RAW_COMMENT_CONFLICT_KEY, rawConflict.first);
                 break;

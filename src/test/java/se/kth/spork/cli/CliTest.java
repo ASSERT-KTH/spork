@@ -66,9 +66,9 @@ class CliTest {
     void prettyPrint_shouldContainConflict(Util.TestSources sources) throws IOException {
         List<Util.Conflict> expectedConflicts = Util.parseConflicts(sources.expected);
 
-        Pair<CtModule, Boolean> merged = Spoon3dmMerge.merge(sources.base, sources.left, sources.right);
+        Pair<CtModule, Integer> merged = Spoon3dmMerge.merge(sources.base, sources.left, sources.right);
         CtModule mergeTree = merged.first;
-        boolean hasConflicts = merged.second;
+        Integer numConflicts = merged.second;
 
         String prettyPrint = Cli.prettyPrint(mergeTree);
 
@@ -77,7 +77,7 @@ class CliTest {
         System.out.println(prettyPrint);
 
         assertEquals(expectedConflicts, actualConflicts);
-        assertTrue(hasConflicts);
+        assertTrue(numConflicts > 0);
     }
 
     @ParameterizedTest
@@ -85,7 +85,7 @@ class CliTest {
     void prettyPrint_shouldParseToExpectedTree_whenConflictHasBeenStrippedOut(Util.TestSources sources) throws IOException {
         CtModule expected = Parser.parse(Util.keepLeftConflict(sources.expected));
 
-        Pair<CtModule, Boolean> merged = Spoon3dmMerge.merge(sources.base, sources.left, sources.right);
+        Pair<CtModule, Integer> merged = Spoon3dmMerge.merge(sources.base, sources.left, sources.right);
         CtModule mergeTree = merged.first;
 
         String prettyPrint = Cli.prettyPrint(mergeTree);
@@ -102,7 +102,7 @@ class CliTest {
      * @param sources
      */
     private static void runTestMerge(Util.TestSources sources, Path tempDir) throws IOException {
-        Pair<CtModule, Boolean> merged = Spoon3dmMerge.merge(sources.base, sources.left, sources.right);
+        Pair<CtModule, Integer> merged = Spoon3dmMerge.merge(sources.base, sources.left, sources.right);
         CtModule mergeTree = merged.first;
 
         Object expectedImports = mergeTree.getMetadata(Parser.IMPORT_STATEMENTS);

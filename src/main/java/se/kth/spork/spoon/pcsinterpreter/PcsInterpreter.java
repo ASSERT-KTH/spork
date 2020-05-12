@@ -20,9 +20,9 @@ public class PcsInterpreter {
      *
      * @param baseLeft  A tree matching between the base revision and the left revision.
      * @param baseRight A tree matching between the base revision and the right revision.
-     * @return A pair on the form (tree, hasStructuralConflicts).
+     * @return A pair on the form (tree, numConflicts).
      */
-    public static Pair<CtElement, Boolean> fromMergedPcs(
+    public static Pair<CtElement, Integer> fromMergedPcs(
             ChangeSet<SpoonNode, RoledValues> delta,
             SpoonMapping baseLeft,
             SpoonMapping baseRight) {
@@ -36,6 +36,6 @@ public class PcsInterpreter {
         SpoonTreeBuilder spoonTreeBuilder = new SpoonTreeBuilder(baseLeft, baseRight, oldEnv);
         CtElement spoonTreeRoot = spoonTreeBuilder.build(sporkTreeRoot);
 
-        return Pair.of(spoonTreeRoot, sporkTreeBuilder.hasStructuralConflict() || spoonTreeBuilder.hasContentConflict());
+        return Pair.of(spoonTreeRoot, sporkTreeBuilder.numStructuralConflicts() + spoonTreeBuilder.numContentConflicts());
     }
 }

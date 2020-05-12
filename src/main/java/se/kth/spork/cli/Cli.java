@@ -136,9 +136,9 @@ public class Cli {
                 rightPath.toFile().deleteOnExit();
             }
 
-            Pair<String, Boolean> merged = merge(basePath, leftPath, rightPath);
+            Pair<String, Integer> merged = merge(basePath, leftPath, rightPath);
             String pretty = merged.first;
-            boolean hasConflicts = merged.second;
+            int numConflicts = merged.second;
 
             if (out != null) {
                 LOGGER.info(() -> "Writing merge to " + out);
@@ -149,7 +149,7 @@ public class Cli {
             }
 
             LOGGER.info(() -> "Total time elapsed: " + (double) (System.nanoTime() - start) / 1e9 + " seconds");
-            return hasConflicts ? 1 : 0;
+            return numConflicts % 127;
         }
 
     }
@@ -160,22 +160,22 @@ public class Cli {
      * @param base Path to base revision.
      * @param left Path to left revision.
      * @param right Path to right revision.
-     * @return A pair on the form (prettyPrint, hasConflicts)
+     * @return A pair on the form (prettyPrint, numConflicts)
      */
-    public static Pair<String, Boolean> merge(Path base, Path left, Path right) {
+    public static Pair<String, Integer> merge(Path base, Path left, Path right) {
         LOGGER.info(() -> "Parsing input files");
         CtModule baseModule = Parser.parse(base);
         CtModule leftModule = Parser.parse(left);
         CtModule rightModule = Parser.parse(right);
 
         LOGGER.info(() -> "Initiating merge");
-        Pair<CtElement, Boolean> merge = Spoon3dmMerge.merge(baseModule, leftModule, rightModule);
+        Pair<CtElement, Integer> merge = Spoon3dmMerge.merge(baseModule, leftModule, rightModule);
         CtModule mergeTree = (CtModule) merge.first;
-        boolean hasConflicts = merge.second;
+        int numConflicts = merge.second;
 
         LOGGER.info(() -> "Pretty-printing");
         if (containsTypes(mergeTree)) {
-            return Pair.of(prettyPrint(mergeTree), hasConflicts);
+            return Pair.of(prettyPrint(mergeTree), numConflicts);
         } else {
             LOGGER.warn(() -> "Merge contains no types (i.e. classes, interfaces, etc), reverting to line-based merge");
             String baseStr = Parser.read(base);

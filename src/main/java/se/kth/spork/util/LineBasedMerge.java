@@ -26,13 +26,12 @@ public class LineBasedMerge {
      * @param base The base revision.
      * @param left The left revision.
      * @param right The right revision.
-     * @return A pair containing the merge and a boolean that, if true, indicates the presence of conflicts.
+     * @return A pair containing the merge and the amount of conflicts.
      */
-    public static Pair<String, Boolean> merge(String base, String left, String right) {
+    public static Pair<String, Integer> merge(String base, String left, String right) {
         RawText baseRaw = new RawText(base.getBytes());
         RawText leftRaw = new RawText(left.getBytes());
         RawText rightRaw = new RawText(right.getBytes());
-        boolean hasConflict = false;
 
         MergeAlgorithm merge = new MergeAlgorithm();
         MergeResult<RawText> res = merge.merge(new SequenceComparator<RawText>() {
@@ -51,13 +50,14 @@ public class LineBasedMerge {
         List<RawText> seqs = res.getSequences();
         List<String> lines = new ArrayList<>();
         boolean inConflict = false;
+        int numConflicts = 0;
 
         while (it.hasNext()) {
             MergeChunk chunk = it.next();
             RawText seq = seqs.get(chunk.getSequenceIndex());
 
             if (chunk.getConflictState() == MergeChunk.ConflictState.FIRST_CONFLICTING_RANGE) {
-                hasConflict = true;
+                numConflicts++;
                 inConflict = true;
                 lines.add(SporkPrettyPrinter.START_CONFLICT);
             } else if (chunk.getConflictState() == MergeChunk.ConflictState.NEXT_CONFLICTING_RANGE) {
@@ -86,6 +86,6 @@ public class LineBasedMerge {
             lines.add(SporkPrettyPrinter.END_CONFLICT);
         }
 
-        return new Pair<>(String.join("\n", lines), hasConflict);
+        return new Pair<>(String.join("\n", lines), numConflicts);
     }
 }

@@ -36,7 +36,7 @@ class Spoon3dmMergeTest {
         Object expectedImports = expected.getMetadata(Parser.IMPORT_STATEMENTS);
         assert expectedImports != null;
 
-        Pair<CtModule, Boolean> merged = Spoon3dmMerge.merge(sources.base, sources.left, sources.right);
+        Pair<CtModule, Integer> merged = Spoon3dmMerge.merge(sources.base, sources.left, sources.right);
         CtModule mergeTree = merged.first;
         Object mergedImports = mergeTree.getMetadata(Parser.IMPORT_STATEMENTS);
 

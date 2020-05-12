@@ -32,9 +32,9 @@ public class Spoon3dmMerge {
      * @param base  The base revision.
      * @param left  The left revision.
      * @param right The right revision.
-     * @return A pair on the form (mergeTree, hasConflicts).
+     * @return A pair on the form (mergeTree, numConflicts).
      */
-    public static Pair<CtModule, Boolean> merge(Path base, Path left, Path right) {
+    public static Pair<CtModule, Integer> merge(Path base, Path left, Path right) {
         long start = System.nanoTime();
 
         // PARSING PHASE
@@ -57,9 +57,9 @@ public class Spoon3dmMerge {
      * @param base  The base revision.
      * @param left  The left revision.
      * @param right The right revision.
-     * @return A pair on the form (mergeTree, hasConflicts).
+     * @return A pair on the form (mergeTree, numConflicts).
      */
-    public static <T extends CtElement> Pair<T, Boolean> merge(T base, T left, T right) {
+    public static <T extends CtElement> Pair<T, Integer> merge(T base, T left, T right) {
         long start = System.nanoTime();
 
         // MATCHING PHASE
@@ -114,11 +114,12 @@ public class Spoon3dmMerge {
 
         // INTERPRETER PHASE
         LOGGER.info(() -> "Interpreting resolved PCS merge");
-        Pair<CtElement, Boolean> merge = PcsInterpreter.fromMergedPcs(delta, baseLeft, baseRight);
+        Pair<CtElement, Integer> merge = PcsInterpreter.fromMergedPcs(delta, baseLeft, baseRight);
         // we can be certain that the merge tree has the same root type as the three constituents, so this cast is safe
         @SuppressWarnings("unchecked")
         T mergeTree = (T) merge.first;
-        boolean hasConflicts = merge.second;
+        int numConflicts = merge.second;
+
 
         LOGGER.info(() -> "Merging import statements");
         List<CtImport> mergedImports = mergeImportStatements(base, left, right);
@@ -126,7 +127,7 @@ public class Spoon3dmMerge {
 
         LOGGER.info(() -> "Merged in " + (double) (System.nanoTime() - start) / 1e9 + " seconds");
 
-        return Pair.of(mergeTree, hasConflicts);
+        return Pair.of(mergeTree, numConflicts);
     }
 
     /**

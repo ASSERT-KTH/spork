@@ -39,7 +39,7 @@ public class SpoonTreeBuilder {
 
     private SpoonMapping baseLeft;
     private SpoonMapping baseRight;
-    private boolean hasContentConflict = false;
+    private int numContentConflicts = 0;
 
     private Factory factory;
 
@@ -129,10 +129,10 @@ public class SpoonTreeBuilder {
     }
 
     /**
-     * @return true if a content conflict was encountered when building the tree.
+     * @return The amount of content conflicts.
      */
-    public boolean hasContentConflict() {
-        return hasContentConflict;
+    public int numContentConflicts() {
+        return numContentConflicts;
     }
 
     /**
@@ -161,7 +161,7 @@ public class SpoonTreeBuilder {
             if (!mergedContent.second.isEmpty()) {
                 // at least one conflict was not resolved
                 mergeTree.putMetadata(ContentConflict.METADATA_KEY, mergedContent.second);
-                hasContentConflict = true;
+                numContentConflicts += mergedContent.second.size();
             }
         }
 
