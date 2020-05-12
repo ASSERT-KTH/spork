@@ -274,7 +274,6 @@ def _extract_expected_revision_classfiles(
     sources = [worktree_dir / unmerged for unmerged in unmerged_files]
     LOGGER.info(f"Extracted unmerged files: {sources}")
 
-    print(sources)
     expected_classfiles = []
     for classfiles, pkg in (
         javautils.locate_classfiles(src, basedir=worktree_dir)
