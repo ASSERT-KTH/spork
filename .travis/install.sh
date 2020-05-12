@@ -19,7 +19,7 @@ echo "java -jar $spork_jar_path" '$@' >> spork
 chmod 700 spork
 
 mkdir -p ~/.local/bin
-cp "$TRAVIS_BUILD_DIR"/.travis/{pkgextractor,sootdiff,duplicate-checkcast-remover} spork ~/.local/bin
+cp "$TRAVIS_BUILD_DIR"/.travis/{pkgextractor,sootdiff,duplicate-checkcast-remover,run_benchmark.sh,run_build_benchmark.sh} spork ~/.local/bin
 
 git checkout benchmark
 
