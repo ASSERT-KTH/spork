@@ -1,0 +1,14 @@
+[core]
+	attributesfile = ~/.gitattributes
+
+[merge "spork"]
+    name = spork
+    driver = ~/.local/bin/spork merge --git-mode %A %O %B -o %A
+
+[merge "jdime"]
+    name = jdime
+    driver = ~/.local/bin/jdime -m structured --stat --force --accept-non-java --exit-on-error %A %O %B -o %A
+
+[merge "filemergelocator"]
+    name = filemergelocator
+    driver = ~/.local/bin/filemergelocator %A %O %B -O %A

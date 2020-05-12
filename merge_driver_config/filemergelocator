@@ -1,0 +1,24 @@
+#! /bin/bash
+# A small merge driver for Git that just prints the object hashes and puts a
+# random ID in the output file. This id can then be used to locate the path to
+# the expected merged file.
+#
+# This script does not clear the outfile, so it's important to manually clobber
+# the file before each merge.
+
+outfile=".filemergelocator_results"
+left=$1
+base=$2
+right=$3
+
+rand=$RANDOM
+echo $rand >> $outfile
+git hash-object "$left" >> $outfile
+git hash-object "$base" >> $outfile
+git hash-object "$right" >> $outfile
+
+echo $rand > "$left"
+
+echo "Stored results in $PWD/$outfile"
+
+exit 0
