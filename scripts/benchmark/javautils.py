@@ -214,8 +214,9 @@ def extract_java_package(path: pathlib.Path) -> str:
     pkgextractor to be on the path.
     """
 
-    proc = subprocess.run(["pkgextractor", str(path)], capture_output=True)
+    proc = subprocess.run(["pkgextractor", str(path)], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     if proc.returncode != 0:
+        LOGGER.debug(proc.stdout.decode(sys.getdefaultencoding()))
         raise RuntimeError(
             f"pkgextractor failed to extract package from {path}"
         )
