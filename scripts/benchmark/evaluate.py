@@ -55,7 +55,7 @@ def git_diff_edit_script_size(
         The size of the edit script.
     """
     cmd = [*GIT_DIFF_CMD, str(base_file), str(dest_file)]
-    proc = subprocess.run(cmd, capture_output=True)
+    proc = subprocess.run(cmd, capture_output=True, timeout=10)
 
     if not proc.stdout:
         return 0
@@ -88,7 +88,7 @@ def git_diff_edit_script(
         "--ignore-blank-lines --ignore-space-change --no-index -U0"
     ).split()
     cmd = [*git_diff, str(base_file), str(dest_file)]
-    proc = subprocess.run(cmd, shell=False, capture_output=True)
+    proc = subprocess.run(cmd, shell=False, capture_output=True, timeout=10)
 
     if proc.returncode == 0:
         # zero exit code means there were no differences

@@ -92,18 +92,23 @@ def _run_file_merge(
     scenario_dir, merge_cmd, base, left, right, expected, merge
 ):
     start = time.perf_counter()
-    proc = subprocess.run(
-        f"{merge_cmd} {left} {base} {right} -o {merge}".split(),
-        capture_output=True,
-    )
+    try:
+        proc = subprocess.run(
+            f"{merge_cmd} {left} {base} {right} -o {merge}".split(),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            timeout=5*60,
+        )
+    except:
+        LOGGER.exception(f"error running {merge_cmd}")
+
     runtime = time.perf_counter() - start
 
     if not merge.is_file():
         LOGGER.error(
             f"{merge_cmd} failed to produce a merge file on {scenario_dir.parent.name}/{scenario_dir.name}"
         )
-        LOGGER.info(proc.stdout.decode(sys.getdefaultencoding()))
-        LOGGER.info(proc.stderr.decode(sys.getdefaultencoding()))
+        LOGGER.error(proc.stdout.decode(sys.getdefaultencoding()))
         return conts.MergeOutcome.FAIL, runtime, proc
     elif proc.returncode != 0:
         LOGGER.warning(

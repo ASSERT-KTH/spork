@@ -94,17 +94,22 @@ def compare_classfiles(
 
     qualname = f"{expected_pkg}.{expected.stem}"
 
-    proc = subprocess.run(
-        [
-            "sootdiff",
-            "-qname",
-            qualname,
-            "-reffile",
-            str(expected_basedir),
-            "-otherfile",
-            str(replayed_basedir),
-        ],
-    )
+    try:
+        proc = subprocess.run(
+            [
+                "sootdiff",
+                "-qname",
+                qualname,
+                "-reffile",
+                str(expected_basedir),
+                "-otherfile",
+                str(replayed_basedir),
+            ],
+            timeout=30,
+        )
+    except:
+        LOGGER.exception("error running sootdiff")
+        return False
 
     return proc.returncode == 0
 
@@ -202,7 +207,7 @@ def remove_duplicate_checkcasts(path: pathlib.Path) -> None:
     if not path.suffix == ".class":
         raise ValueError(f"Not a .class file: {path}")
 
-    proc = subprocess.run(["duplicate-checkcast-remover", str(path)])
+    proc = subprocess.run(["duplicate-checkcast-remover", str(path)], timeout=60)
     if proc.returncode != 0:
         raise RuntimeError(
             f"Failed to run duplicate-checkast-remover on {path}"
@@ -213,8 +218,12 @@ def extract_java_package(path: pathlib.Path) -> str:
     """Extract the package statement from a .java or .class file. Requires the
     pkgextractor to be on the path.
     """
+    try:
+        proc = subprocess.run(["pkgextractor", str(path)], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=60)
+    except:
+        LOGGER.exception("error running pkgextractor")
+        return ""
 
-    proc = subprocess.run(["pkgextractor", str(path)], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     if proc.returncode != 0:
         LOGGER.debug(proc.stdout.decode(sys.getdefaultencoding()))
         raise RuntimeError(
@@ -239,17 +248,22 @@ def find_target_directories(project_root: pathlib.Path) -> List[pathlib.Path]:
 
 def mvn_compile(workdir: pathlib.Path) -> Tuple[bool, bytes]:
     """Compile the project in workdir with Maven's test-compile command."""
-    proc = subprocess.run(
-        "mvn clean test-compile".split(),
-        cwd=workdir,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-    )
+    try:
+        proc = subprocess.run(
+            "mvn clean test-compile".split(),
+            cwd=workdir,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            timeout=5*60,
+        )
+    except:
+        LOGGER.exception("error compiling project")
+        return False, b""
     return proc.returncode == 0, proc.stdout
 
 
 def mvn_test(workdir: pathlib.Path):
     """Run the project's test suite."""
-    proc = subprocess.run("mvn clean test".split(), cwd=workdir)
+    proc = subprocess.run("mvn clean test".split(), cwd=workdir, timeout=5*60)
     return proc.returncode == 0
 

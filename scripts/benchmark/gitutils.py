@@ -511,7 +511,7 @@ def hash_object(path: pathlib.Path) -> str:
         raise FileNotFoundError(f"Not a file: {path}")
 
     proc = subprocess.run(
-        ["git", "hash-object", str(path)], capture_output=True
+        ["git", "hash-object", str(path)], capture_output=True, timeout=10
     )
     if proc.returncode != 0:
         raise RuntimeError(f"hash-object exited non-zero on {path}")
