@@ -6,6 +6,7 @@ import tempfile
 import subprocess
 import shutil
 import sys
+import os
 from typing import List, Iterable, Tuple
 
 import daiquiri
@@ -159,12 +160,20 @@ def locate_classfiles(
         classfile
         for classfile in matches
         if extract_java_package(classfile) == expected_pkg
+        and _closest_pomfile(classfile) == _closest_pomfile(src)
     ]
 
     if not classfiles:
         LOGGER.warning(f"Found no classfiles corresponding to {src}")
 
     return (sorted(classfiles), expected_pkg)
+
+def _closest_pomfile(path: pathlib.Path) -> pathlib.Path:
+    for parent in path.parents:
+        if list(parent.glob("pom.xml")):
+            return parent / "pom.xml"
+    raise ValueError(f"{path} has no parent directory with a pomfile")
+
 
 
 def generate_classfile_pairs(
