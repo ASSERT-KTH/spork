@@ -39,7 +39,7 @@ def run_file_merges(
     Returns:
         A generator that yields one conts.MergeResult per merge directory.
     """
-    for merge_result, _ in _run_file_merges(file_merge_dirs, merge_cmd):
+    for merge_result in _run_file_merges(file_merge_dirs, merge_cmd):
         yield merge_result
 
 
@@ -66,7 +66,7 @@ def _run_file_merges(
         assert right.is_file()
         assert expected.is_file()
 
-        outcome, runtime, proc = _run_file_merge(
+        outcome, runtime = _run_file_merge(
             merge_dir,
             merge_cmd,
             base=base,
@@ -85,7 +85,7 @@ def _run_file_merges(
             merge_cmd=sanitized_merge_cmd,
             outcome=outcome,
             runtime=runtime,
-        ), proc
+        )
 
 
 def _run_file_merge(
@@ -101,6 +101,7 @@ def _run_file_merge(
         )
     except:
         LOGGER.exception(f"error running {merge_cmd}")
+        proc = None
 
     runtime = time.perf_counter() - start
 
@@ -108,18 +109,19 @@ def _run_file_merge(
         LOGGER.error(
             f"{merge_cmd} failed to produce a merge file on {scenario_dir.parent.name}/{scenario_dir.name}"
         )
-        LOGGER.error(proc.stdout.decode(sys.getdefaultencoding()))
-        return conts.MergeOutcome.FAIL, runtime, proc
+        if proc != None:
+            LOGGER.error(proc.stdout.decode(sys.getdefaultencoding()))
+        return conts.MergeOutcome.FAIL, runtime
     elif proc.returncode != 0:
         LOGGER.warning(
             f"Merge conflict in {scenario_dir.parent.name}/{scenario_dir.name}"
         )
-        return conts.MergeOutcome.CONFLICT, runtime, proc
+        return conts.MergeOutcome.CONFLICT, runtime
     else:
         LOGGER.info(
             f"Successfully merged {scenario_dir.parent.name}/{scenario_dir.name}"
         )
-        return conts.MergeOutcome.SUCCESS, runtime, proc
+        return conts.MergeOutcome.SUCCESS, runtime
 
 
 def run_git_merges(
@@ -348,7 +350,7 @@ def runtime_benchmark(
     file_merge_dirs: List[pathlib.Path], merge_cmd: str, repeats: int
 ) -> Iterable[conts.RuntimeResult]:
     for _ in range(repeats):
-        for ms, proc in _run_file_merges(file_merge_dirs, merge_cmd):
+        for ms in _run_file_merges(file_merge_dirs, merge_cmd):
             assert ms.outcome != conts.MergeOutcome.FAIL
 
             merge_commit = fileutils.extract_commit_sha(ms.merge_dir)
