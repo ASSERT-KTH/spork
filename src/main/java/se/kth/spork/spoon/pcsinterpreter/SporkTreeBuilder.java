@@ -27,6 +27,10 @@ class SporkTreeBuilder {
     // if any node is added twice, there's an unresolved move conflict
     private Set<SpoonNode> usedNodes;
 
+    // keeps track of all structural inconsistencies that are used
+    // if any have not been used when the tree has been built, there's something wrong
+    private Set<Pcs<SpoonNode>> remainingInconsistencies;
+
     /**
      * Create a builder.
      *
@@ -38,6 +42,8 @@ class SporkTreeBuilder {
         contents = delta.getContents();
         numStructuralConflicts = 0;
         usedNodes = new HashSet<>();
+        remainingInconsistencies = new HashSet<>();
+        structuralConflicts.values().forEach(remainingInconsistencies::addAll);
     }
 
     private static <T extends ListNode> Map<T, Map<T, Pcs<T>>> buildRootToChildren(Set<Pcs<T>> pcses) {
@@ -73,6 +79,14 @@ class SporkTreeBuilder {
      */
     public int numStructuralConflicts() {
         return numStructuralConflicts;
+    }
+
+    public SporkTree buildTree() {
+        SporkTree tree = build(NodeFactory.ROOT);
+        if (!remainingInconsistencies.isEmpty()) {
+            throw new IllegalStateException("Unhandled inconsistencies remain: " + remainingInconsistencies);
+        }
+        return tree;
     }
 
     /**
@@ -124,6 +138,9 @@ class SporkTreeBuilder {
             Pcs<SpoonNode> conflicting,
             Map<SpoonNode, Pcs<SpoonNode>> children,
             SporkTree tree) {
+        remainingInconsistencies.remove(nextPcs);
+        remainingInconsistencies.remove(conflicting);
+
         SpoonNode next = nextPcs.getSuccessor();
         Arrays.asList(Revision.LEFT, Revision.RIGHT).forEach(tree::addRevision);
         Pcs<SpoonNode> leftPcs = nextPcs.getRevision() == Revision.LEFT ? nextPcs : conflicting;
@@ -174,6 +191,7 @@ class SporkTreeBuilder {
                         .filter(confPcs -> StructuralConflict.isPredecessorConflict(finalPcs, confPcs)).findFirst();
 
                 if (predConflict.isPresent()) {
+                    remainingInconsistencies.remove(predConflict.get());
                     return nodes;
                 }
             }

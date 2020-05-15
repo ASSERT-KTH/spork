@@ -39,10 +39,8 @@ public class TdmMerge {
             mergeContent(pcs.getSuccessor(), base, delta);
 
             List<Pcs<T>> others = delta.getOtherRoots(pcs);
-            if (others.isEmpty())
-                others = delta.getOtherPredecessors(pcs);
-            if (others.isEmpty())
-                others = delta.getOtherSuccessors(pcs);
+            others.addAll(delta.getOtherPredecessors(pcs));
+            others.addAll(delta.getOtherSuccessors(pcs));
 
             for (Pcs<T> otherPcs : others) {
                 if (base.contains(otherPcs)) {

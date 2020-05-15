@@ -15,6 +15,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
@@ -29,61 +30,18 @@ public class Util {
     public static final Path BOTH_MODIFIED_DIRPATH = CLEAN_MERGE_DIRPATH.resolve("both_modified");
     public static final Path LEFT_MODIFIED_DIRPATH = CLEAN_MERGE_DIRPATH.resolve("left_modified");
     public static final Path CONFLICT_DIRPATH = Paths.get("src/test/resources/conflict");
+    public static final Path UNHANDLED_INCONSISTENCY_PATH = Paths.get("src/test/resources/unhandled_inconsistency");
 
-    /**
-     * Provides test sources for scenarios where both left and right revisions are modified.
-     */
-    public static class BothModifiedSourceProvider implements ArgumentsProvider {
-        @Override
-        public Stream<? extends Arguments> provideArguments(ExtensionContext extensionContext) {
-            return getArgumentSourcesStream(BOTH_MODIFIED_DIRPATH.toFile());
-        }
-    }
-
-    /**
-     * Provides test sources for scenarios where left is modified.
-     */
-    public static class LeftModifiedSourceProvider implements ArgumentsProvider {
-        @Override
-        public Stream<? extends Arguments> provideArguments(ExtensionContext extensionContext) {
-            return getArgumentSourcesStream(LEFT_MODIFIED_DIRPATH.toFile());
-        }
-    }
-
-    /**
-     * Provides test sources for scenarios where right is modified.
-     */
-    public static class RightModifiedSourceProvider implements ArgumentsProvider {
-        @Override
-        public Stream<? extends Arguments> provideArguments(ExtensionContext extensionContext) {
-            return getArgumentSourcesStream(LEFT_MODIFIED_DIRPATH.toFile()).map(
-                    arg -> {
-                        TestSources sources = (TestSources) arg.get()[0];
-                        // swap left and right around to make this a "right modified" test case
-                        Path left = sources.left;
-                        sources.left = sources.right;
-                        sources.right = left;
-                        return Arguments.of(sources);
-                    }
-            );
-        }
-    }
-
-    /**
-     * Provides test sources for scenarios where there are conflicts.
-     */
-    public static class ConflictSourceProvider implements ArgumentsProvider {
-        @Override
-        public Stream<? extends Arguments> provideArguments(ExtensionContext extensionContext) {
-            return getArgumentSourcesStream(CONFLICT_DIRPATH.toFile());
-        }
-    }
 
     private static Stream<? extends Arguments> getArgumentSourcesStream(File testDir) {
+        return getArgumentSourcesStream(testDir, TestSources::fromTestDirectory);
+    }
+
+    private static Stream<? extends Arguments> getArgumentSourcesStream(File testDir, Function<File, TestSources> sourceGetter) {
         return Arrays.stream(testDir.listFiles())
                 .filter(File::isDirectory)
                 .filter(f -> !f.getName().startsWith("IGNORE"))
-                .map(TestSources::fromTestDirectory)
+                .map(sourceGetter)
                 .map(Arguments::of);
     }
 
@@ -142,6 +100,62 @@ public class Util {
         return leftMarkerMatcher.replaceAll("");
     }
 
+    /**
+     * Provides test sources for scenarios where both left and right revisions are modified.
+     */
+    public static class BothModifiedSourceProvider implements ArgumentsProvider {
+        @Override
+        public Stream<? extends Arguments> provideArguments(ExtensionContext extensionContext) {
+            return getArgumentSourcesStream(BOTH_MODIFIED_DIRPATH.toFile());
+        }
+    }
+
+    /**
+     * Provides test sources for scenarios where left is modified.
+     */
+    public static class LeftModifiedSourceProvider implements ArgumentsProvider {
+        @Override
+        public Stream<? extends Arguments> provideArguments(ExtensionContext extensionContext) {
+            return getArgumentSourcesStream(LEFT_MODIFIED_DIRPATH.toFile());
+        }
+    }
+
+    /**
+     * Provides test sources for scenarios where right is modified.
+     */
+    public static class RightModifiedSourceProvider implements ArgumentsProvider {
+        @Override
+        public Stream<? extends Arguments> provideArguments(ExtensionContext extensionContext) {
+            return getArgumentSourcesStream(LEFT_MODIFIED_DIRPATH.toFile()).map(
+                    arg -> {
+                        TestSources sources = (TestSources) arg.get()[0];
+                        // swap left and right around to make this a "right modified" test case
+                        Path left = sources.left;
+                        sources.left = sources.right;
+                        sources.right = left;
+                        return Arguments.of(sources);
+                    }
+            );
+        }
+    }
+
+    public static class UnhandledInconsistencyProvider implements ArgumentsProvider {
+        @Override
+        public Stream<? extends Arguments> provideArguments(ExtensionContext extensionContext) throws Exception {
+            return getArgumentSourcesStream(UNHANDLED_INCONSISTENCY_PATH.toFile(), TestSources::fromTestDirectoryWithoutExpected);
+        }
+    }
+
+    /**
+     * Provides test sources for scenarios where there are conflicts.
+     */
+    public static class ConflictSourceProvider implements ArgumentsProvider {
+        @Override
+        public Stream<? extends Arguments> provideArguments(ExtensionContext extensionContext) {
+            return getArgumentSourcesStream(CONFLICT_DIRPATH.toFile());
+        }
+    }
+
     public static class Conflict {
         String left;
         String right;
@@ -169,7 +183,6 @@ public class Util {
         }
     }
 
-
     public static class TestSources {
         public Path base;
         public Path left;
@@ -194,9 +207,20 @@ public class Util {
             );
         }
 
+        public static TestSources fromTestDirectoryWithoutExpected(File testDir) {
+            Path path = testDir.toPath();
+            return new TestSources(
+                    path.resolve("Base.java"),
+                    path.resolve("Left.java"),
+                    path.resolve("Right.java"),
+                    null
+            );
+        }
+
         @Override
         public String toString() {
             return base.getParent().getFileName().toString();
         }
     }
+
 }
