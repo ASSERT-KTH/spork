@@ -183,9 +183,12 @@ public final class SporkPrettyPrinter extends DefaultJavaPrettyPrinter {
                 //
                 // All we need to do here is the decrease tabs and enter some appropriate whitespace
                 writelnIfNotPresent().writeAtLeftMargin(s).writeln();
+                return this;
             }
-            if (globalContentConflicts.containsKey(s)) {
-                Pair<String, String> conflict = globalContentConflicts.get(s);
+
+            String strippedQuotes = trimmed.replaceAll("\"", "");
+            if (globalContentConflicts.containsKey(strippedQuotes)) {
+                Pair<String, String> conflict = globalContentConflicts.get(strippedQuotes);
                 writeConflict(conflict.first, conflict.second);
             } else if (localConflictMap.isPresent() && localConflictMap.get().containsKey(s)) {
                 Pair<String, String> conflict = localConflictMap.get().get(s);
