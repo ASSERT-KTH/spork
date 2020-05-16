@@ -63,7 +63,7 @@ public final class SporkPrettyPrinter extends DefaultJavaPrettyPrinter {
             if (c == ',') {
                 encounteredComma = true;
                 break;
-            } else if (c == '=' || c == ';') {
+            } else if (c == ';') {
                 break;
             }
         }
