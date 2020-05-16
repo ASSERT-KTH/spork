@@ -31,7 +31,7 @@ END_CONFLICT = ">>>>>>>"
 
 LOGGER = daiquiri.getLogger(__name__)
 
-FILE_MERGE_LOCATOR_DRIVER_CONFIG = ("filemergelocator", "*.java")
+FILE_MERGE_LOCATOR_DRIVER_CONFIG = ("filemergelocator", "*")
 FILE_MERGE_LOCATOR_OUTPUT_NAME = ".filemergelocator_results"
 
 CONFLICT_PATTERN = re.compile("(?m)^CONFLICT \((.*?)\):")
