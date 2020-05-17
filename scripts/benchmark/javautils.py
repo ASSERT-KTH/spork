@@ -7,7 +7,7 @@ import subprocess
 import shutil
 import sys
 import os
-from typing import List, Iterable, Tuple
+from typing import List, Iterable, Tuple, Iterator
 
 import daiquiri
 
@@ -21,7 +21,7 @@ def compare_compiled_bytecode(
     expected_classfiles: List[conts.ExpectedClassfile],
     eval_dir: pathlib.Path,
     merge_driver: str,
-):
+) -> Iterator[Tuple[pathlib.Path, bool]]:
     """Run the bytecode comparison evaluation.
 
     Args:
@@ -29,33 +29,28 @@ def compare_compiled_bytecode(
             original_classfile_relpath), where the relative path is relative to
             the root of the repository.
     Returns:
-        The amount of classfiles that compared equal.
+        An iterator yielding (expected_path, equal) tuples.
     """
-    num_equal = 0
-
     classfile_pairs = generate_classfile_pairs(
         expected_classfiles, replayed_compile_basedir
     )
     for pair in classfile_pairs:
         if pair.replayed is None:
             LOGGER.warning(
-                f"No replayed classfile corresponding to {pair.expected.name}"
+                f"No replayed classfile corresponding to {pair.expected.copy_abspath.name}"
             )
-            continue
-
-        LOGGER.info(
-            f"Removing duplicate checkcasts from replayed revision of {pair.replayed.name}"
-        )
-        remove_duplicate_checkcasts(pair.replayed)
-
-        LOGGER.info(f"Comparing {pair.replayed.name} revisions ...")
-        if compare_classfiles(pair, eval_dir, merge_driver):
-            LOGGER.info(f"{pair.replayed.name} revision are equal")
-            num_equal += 1
+            yield pair.expected.original_relpath, False
         else:
-            LOGGER.warning(f"{pair.replayed.name} revisions not equal")
+            LOGGER.info(
+                f"Removing duplicate checkcasts from replayed revision of {pair.replayed.name}"
+            )
+            remove_duplicate_checkcasts(pair.replayed)
 
-    return num_equal
+            LOGGER.info(f"Comparing {pair.replayed.name} revisions ...")
+            equal = compare_classfiles(pair, eval_dir, merge_driver)
+            LOGGER.info(f"{pair.replayed.name} {'equal' if equal else 'not equal'}")
+            yield pair.expected.original_relpath, equal
+
 
 
 def compare_classfiles(
@@ -72,7 +67,7 @@ def compare_classfiles(
     Returns:
         True if the files are equal
     """
-    expected = pair.expected
+    expected = pair.expected.copy_abspath
     replayed = pair.replayed
     if expected.name != replayed.name:
         raise ValueError(
@@ -194,7 +189,7 @@ def generate_classfile_pairs(
         replayed_classfile = replayed_basedir / expected.original_relpath
         if replayed_classfile.exists():
             yield conts.ClassfilePair(
-                expected=expected.copy_abspath, replayed=replayed_classfile
+                expected=expected, replayed=replayed_classfile
             )
 
 

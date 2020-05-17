@@ -146,14 +146,11 @@ class MergeResult:
 @dataclasses.dataclass(frozen=True, order=True)
 class GitMergeResult:
     merge_commit: str
-    base_commit: str
-    left_commit: str
-    right_commit: str
+    classfile_path: str
     merge_driver: str
-    merge_ok: bool
     build_ok: bool
-    num_expected_classfiles: int
-    num_equal_classfiles: int
+    merge_ok: bool
+    eval_ok: bool
 
 
 @dataclasses.dataclass(frozen=True, order=True)
@@ -177,13 +174,13 @@ class MergeEvaluationStatistics:
     git_diff_avg_magn: int
     git_diff_avg_acc: int
 
-
-@dataclasses.dataclass
-class ClassfilePair:
-    expected: pathlib.Path
-    replayed: Optional[pathlib.Path]
-
 @dataclasses.dataclass
 class ExpectedClassfile:
     copy_abspath: pathlib.Path
     original_relpath: pathlib.Path
+
+@dataclasses.dataclass
+class ClassfilePair:
+    expected: ExpectedClassfile
+    replayed: Optional[pathlib.Path]
+

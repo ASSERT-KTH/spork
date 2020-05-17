@@ -11,7 +11,7 @@ import contextlib
 import tempfile
 import shutil
 import hashlib
-from typing import List, Generator, Iterable, Tuple, Optional
+from typing import List, Generator, Iterable, Tuple, Optional, Iterator
 
 import git
 import daiquiri
@@ -97,7 +97,7 @@ def _run_file_merge(
             f"{merge_cmd} {left} {base} {right} -o {merge}".split(),
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
-            timeout=5*60,
+            timeout=5 * 60,
         )
     except:
         LOGGER.exception(f"error running {merge_cmd}")
@@ -162,7 +162,7 @@ def run_git_merge(
     repo: git.Repo,
     build: bool,
     base_eval_dir: Optional[pathlib.Path] = None,
-) -> conts.GitMergeResult:
+) -> Iterator[conts.GitMergeResult]:
     """Replay a single merge scenario. Assumes that the merge scenario belongs
     to the provided repo. The merge tool to use must be configured in
     .gitattributes and .gitconfig, see the README at
@@ -207,7 +207,6 @@ def run_git_merge(
 
     for merge_driver in merge_drivers:
         build_ok = False
-        num_equal_classfiles = 0
 
         with gitutils.merge_no_commit(
             repo,
@@ -237,25 +236,33 @@ def run_git_merge(
                     use_info=build_ok,
                 )
 
-                if eval_dir:
-                    num_equal_classfiles = javautils.compare_compiled_bytecode(
-                        pathlib.Path(repo.working_tree_dir),
-                        expected_classfiles,
-                        eval_dir,
-                        merge_driver,
+            if eval_dir:
+                for (
+                    expected_classfile_path,
+                    equal,
+                ) in javautils.compare_compiled_bytecode(
+                    pathlib.Path(repo.working_tree_dir),
+                    expected_classfiles,
+                    eval_dir,
+                    merge_driver,
+                ):
+                    yield conts.GitMergeResult(
+                        merge_commit=ms.expected.hexsha,
+                        classfile_path=expected_classfile_path,
+                        merge_driver=merge_driver,
+                        build_ok=build_ok,
+                        merge_ok=merge_ok,
+                        eval_ok=equal,
                     )
-
-        yield conts.GitMergeResult(
-            merge_commit=ms.expected.hexsha,
-            merge_driver=merge_driver,
-            merge_ok=merge_ok,
-            build_ok=build_ok,
-            num_equal_classfiles=num_equal_classfiles,
-            num_expected_classfiles=len(expected_classfiles),
-            base_commit=ms.base.hexsha,
-            left_commit=ms.left.hexsha,
-            right_commit=ms.right.hexsha,
-        )
+            else:
+                yield conts.GitMergeResult(
+                    merge_commit=ms.expected.hexsha,
+                    merge_driver=merge_driver,
+                    merge_ok=merge_ok,
+                    build_ok=build_ok,
+                    classfile_path=None,
+                    eval_ok=False,
+                )
 
 
 def _extract_expected_revision_classfiles(
