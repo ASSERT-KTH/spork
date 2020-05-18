@@ -291,7 +291,7 @@ public class ContentMerger {
         }
 
         if (left == null || right == null)
-            throw new IllegalStateException("Expected at least left and right revisions, got: " + contents);
+            throw new IllegalArgumentException("Expected at least left and right revisions, got: " + contents);
 
         return new _ContentTriple(Optional.ofNullable(base), left, right);
     }

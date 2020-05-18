@@ -1,6 +1,7 @@
 package se.kth.spork.spoon.pcsinterpreter;
 
 import se.kth.spork.base3dm.*;
+import se.kth.spork.exception.ConflictException;
 import se.kth.spork.spoon.wrappers.NodeFactory;
 import se.kth.spork.spoon.wrappers.RoledValues;
 import se.kth.spork.spoon.wrappers.SpoonNode;
@@ -84,7 +85,7 @@ class SporkTreeBuilder {
     public SporkTree buildTree() {
         SporkTree tree = build(NodeFactory.ROOT);
         if (!remainingInconsistencies.isEmpty()) {
-            throw new IllegalStateException("Unhandled inconsistencies remain: " + remainingInconsistencies);
+            throw new ConflictException("Unhandled inconsistencies remain: " + remainingInconsistencies);
         }
         return tree;
     }
@@ -169,7 +170,7 @@ class SporkTreeBuilder {
     private void addChild(SporkTree tree, SporkTree child) {
         if (usedNodes.contains(child.getNode())) {
             // if this happens, then there is a duplicate node in the tree, indicating a move conflict
-            throw new IllegalStateException("Move conflict detected");
+            throw new ConflictException("Move conflict detected");
         }
         tree.addChild(child);
         usedNodes.add(child.getNode());
@@ -199,7 +200,7 @@ class SporkTreeBuilder {
             SpoonNode nextNode = pcs.getSuccessor();
 
             if (nextNode.isEndOfList())
-                throw new IllegalStateException(
+                throw new ConflictException(
                         "Reached the end of the child list without finding a predecessor conflict");
 
             nodes.add(nextNode);

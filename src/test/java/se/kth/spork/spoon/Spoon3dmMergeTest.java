@@ -4,6 +4,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ArgumentsSource;
 import se.kth.spork.Util;
 import se.kth.spork.cli.Cli;
+import se.kth.spork.exception.ConflictException;
 import se.kth.spork.util.Pair;
 import spoon.reflect.declaration.*;
 
@@ -34,13 +35,10 @@ class Spoon3dmMergeTest {
     @ParameterizedTest
     @ArgumentsSource(Util.UnhandledInconsistencyProvider.class)
     void merge_shouldThrow_onUnhandledInconsistencies(Util.TestSources sources) {
-        IllegalStateException thrown = assertThrows(
-                IllegalStateException.class,
+        assertThrows(
+                ConflictException.class,
                 () -> Spoon3dmMerge.merge(sources.base, sources.left, sources.right)
         );
-
-        String msg = thrown.getMessage();
-        assertTrue(msg.contains("Unhandled inconsistencies") || msg.contains("Move conflict"));
     }
 
     private static void runTestMerge(Util.TestSources sources) {

@@ -1,5 +1,6 @@
 package se.kth.spork.spoon.printer;
 
+import se.kth.spork.exception.ConflictException;
 import se.kth.spork.spoon.ContentConflict;
 import se.kth.spork.spoon.pcsinterpreter.ContentMerger;
 import se.kth.spork.spoon.wrappers.RoledValue;
@@ -182,7 +183,7 @@ public class PrinterPreprocessor extends CtScanner {
                 localPrinterMap.put(leftStr, Pair.of(leftStr, rightStr));
                 break;
             default:
-                throw new IllegalStateException("Unhandled conflict: " + leftVal + ", " + rightVal);
+                throw new ConflictException("Unhandled conflict: " + leftVal + ", " + rightVal);
         }
 
         if (!localPrinterMap.isEmpty()) {
