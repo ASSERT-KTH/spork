@@ -34,8 +34,7 @@ LOGGER = daiquiri.getLogger(__name__)
 FILE_MERGE_LOCATOR_DRIVER_CONFIG = ("filemergelocator", "*")
 FILE_MERGE_LOCATOR_OUTPUT_NAME = ".filemergelocator_results"
 
-CONFLICT_PATTERN = re.compile("(?m)^CONFLICT \((.*?)\):")
-
+CONFLICT_PATTERN = re.compile(r"(?m)^CONFLICT \((.*?)\):")
 
 def extract_merge_scenarios(
     repo: git.Repo,
@@ -85,7 +84,7 @@ def extract_merge_scenarios(
 
         scenario = conts.MergeScenario(merge, base[0], left, right)
 
-        if non_trivial and not extract_conflicting_files(repo, scenario):
+        if non_trivial and is_fast_forward_merge(repo, scenario) or not extract_conflicting_files(repo, scenario):
             LOGGER.info(f"Skipping trivial merge commit {merge.hexsha}")
         else:
             LOGGER.info(f"Extracted merge commit {merge.hexsha}")
@@ -98,6 +97,17 @@ def extract_merge_scenarios(
 
     return merge_scenarios
 
+def is_fast_forward_merge(repo: git.Repo, ms: conts.MergeScenario) -> bool:
+    """Check if the merge scenario is a fast-forward merge."""
+    return is_ancestor(repo, ms.left, ms.right)
+
+def is_ancestor(repo: git.Repo, left: git.Commit, right: git.Commit) -> bool:
+    """Check if left is an ancestor of right."""
+    try:
+        repo.git.merge_base(left.hexsha, right.hexsha, "--is-ancestor")
+        return True
+    except git.GitCommandError:
+        return False
 
 def extract_all_conflicting_files(
     repo: git.Repo, merge_scenarios: Sequence[conts.MergeScenario],
@@ -294,7 +304,7 @@ def _contains_non_content_conflict(merge_output: str) -> bool:
     matches = [
         match
         for match in re.findall(CONFLICT_PATTERN, merge_output)
-        if match != "content"
+        if match not in ["content", "add/add"]
     ]
     return len(matches) != 0
 

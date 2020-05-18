@@ -27,6 +27,34 @@ class MergeScenario:
             right=repo.commit(metainfo.right_commit),
         )
 
+    @staticmethod
+    def from_serializable(
+        repo: git.Repo, serializable: "SerializableMergeScenario"
+    ) -> "MergeScenario":
+        return MergeScenario(
+            expected=repo.commit(serializable.expected),
+            base=repo.commit(serializable.base),
+            left=repo.commit(serializable.left),
+            right=repo.commit(serializable.right),
+        )
+
+
+@dataclasses.dataclass(frozen=True)
+class SerializableMergeScenario:
+    expected: str
+    base: str
+    left: str
+    right: str
+
+    @staticmethod
+    def from_merge_scenario(ms: MergeScenario) -> "SerializableMergeScenario":
+        return SerializableMergeScenario(
+            expected=ms.expected.hexsha,
+            base=ms.base.hexsha,
+            left=ms.left.hexsha,
+            right=ms.right.hexsha,
+        )
+
 
 @dataclasses.dataclass(frozen=True)
 class FileMerge:
@@ -174,13 +202,15 @@ class MergeEvaluationStatistics:
     git_diff_avg_magn: int
     git_diff_avg_acc: int
 
+
 @dataclasses.dataclass
 class ExpectedClassfile:
     copy_abspath: pathlib.Path
     original_relpath: pathlib.Path
 
+
 @dataclasses.dataclass
 class ClassfilePair:
     expected: ExpectedClassfile
-    replayed: Optional[pathlib.Path]
+    replayed: pathlib.Path
 

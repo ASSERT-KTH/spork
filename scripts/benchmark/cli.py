@@ -18,7 +18,6 @@ from . import run
 from . import gitutils
 from . import fileutils
 from . import reporter
-from . import analyze
 from . import mpi
 from . import command
 from . import containers as conts
@@ -124,8 +123,8 @@ def create_cli_parser():
         parents=[base_merge_parser, mpi_parser],
     )
     file_merge_command.add_argument(
-        "--merge-commits",
-        help="Path to a list of merge commit shas to operate on.",
+        "--merge-scenarios",
+        help="Path to a CSV file with merge scenarios to operate on.",
         default=None,
         type=pathlib.Path,
     )
@@ -135,19 +134,6 @@ def create_cli_parser():
         "<OUTPUT_FILE_STEM>_blob_metainfo.csv and "
         "<OUTPUT_FILE_STEM>_file_merge_metainfo.csv.",
         action="store_true",
-    )
-
-    merge_and_compare_command = subparsers.add_parser(
-        "run-file-merge-compare",
-        help="Merge one file at a time, and compare the results to previous results. "
-        "This is mostly useful in continuous integration.",
-        parents=[base_merge_parser, mpi_parser],
-    )
-    merge_and_compare_command.add_argument(
-        "--compare",
-        help="Old results to compare against.",
-        required=True,
-        type=pathlib.Path,
     )
 
     git_merge_command = subparsers.add_parser(
@@ -165,8 +151,8 @@ def create_cli_parser():
         type=str,
     )
     git_merge_command.add_argument(
-        "--merge-commits",
-        help="Path to a list of merge commit shas to operate on.",
+        "--merge-scenarios",
+        help="Path to a CSV file with merge scenarios to operate on.",
         required=True,
         type=pathlib.Path,
     )
@@ -208,8 +194,8 @@ def create_cli_parser():
     )
 
     merge_extractor_command = subparsers.add_parser(
-        "extract-merge-commits",
-        help="Extract merge commits from a repo.",
+        "extract-merge-scenarios",
+        help="Extract merge scenarios from a repo.",
         parents=[base_parser],
     )
     merge_extractor_command.add_argument(
@@ -243,8 +229,8 @@ def create_cli_parser():
         parents=[base_parser],
     )
     file_merge_metainfo_command.add_argument(
-        "--merge-commits",
-        help="Path to a list of merge commit shas to operate on.",
+        "--merge-scenarios",
+        help="Path to a CSV file with merge scenarios to operate on.",
         default=None,
         type=pathlib.Path,
     )
@@ -256,11 +242,11 @@ def main():
     parser = create_cli_parser()
     args = parser.parse_args(sys.argv[1:])
 
-    if args.command == "extract-merge-commits":
-        return command.extract_merge_commits(
+    if args.command == "extract-merge-scenarios":
+        return command.extract_merge_scenarios(
             repo_name=args.repo,
             github_user=args.github_user,
-            output_file=args.output or pathlib.Path("merge_commits.txt"),
+            output_file=args.output or pathlib.Path("merge_scenarios.csv"),
             non_trivial=args.non_trivial,
             buildable=args.buildable,
             testable=args.testable,
@@ -272,7 +258,7 @@ def main():
             github_user=args.github_user,
             output_file=args.output or pathlib.Path("file_merge_metainfo.csv"),
             num_merges=args.num_merges,
-            merge_commits=args.merge_commits,
+            merge_scenarios=args.merge_scenarios,
         )
         return
     elif args.command == "run-git-merges":
@@ -280,7 +266,7 @@ def main():
             repo_name=args.repo,
             github_user=args.github_user,
             merge_drivers=args.merge_drivers,
-            merge_commits=args.merge_commits,
+            merge_scenarios=args.merge_scenarios,
             output_file=args.output or pathlib.Path("merge_results.csv"),
             build=args.build,
             base_eval_dir=args.eval_dir,
@@ -315,20 +301,10 @@ def main():
             github_user=args.github_user,
             eval_func=eval_func,
             use_mpi=args.mpi,
-            merge_commits=args.merge_commits,
+            merge_scenarios=args.merge_scenarios,
             num_merges=args.num_merges,
             gather_metainfo=args.gather_metainfo,
             output_file=args.output or pathlib.Path("file_merges.csv"),
-        )
-    elif args.command == "run-file-merge-compare":
-        command.run_merge_and_compare(
-            compare=args.compare,
-            repo_name=args.repo,
-            github_user=args.github_user,
-            eval_func=eval_func,
-            num_merges=args.num_merges,
-            use_mpi=args.mpi,
-            output_file=args.output or pathlib.Path("file_merge_compare.csv"),
         )
     else:
         raise ValueError(f"Unexpected command: {args.command}")

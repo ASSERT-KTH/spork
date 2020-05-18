@@ -4,7 +4,7 @@ import sys
 import pathlib
 import dataclasses
 
-from typing import List, Iterable, Callable, TypeVar, Any
+from typing import List, Iterable, Callable, TypeVar, Any, Optional
 
 from . import evaluate
 from . import gitutils
@@ -15,9 +15,17 @@ from . import containers as conts
 T = TypeVar("T")
 
 
-def write_csv(data: Iterable[T], container: T, dst: pathlib.Path) -> None:
+def write_csv(
+    data: Iterable[T],
+    container: T,
+    dst: pathlib.Path,
+    transformer: Optional[Callable] = None,
+) -> None:
     if not dataclasses.is_dataclass(container):
         raise TypeError(f"{container} is not a dataclass")
+
+    if transformer is not None:
+        data = map(transformer, data)
 
     _write_csv(
         headers=[field.name for field in dataclasses.fields(container)],

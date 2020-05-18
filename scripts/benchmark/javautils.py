@@ -35,7 +35,7 @@ def compare_compiled_bytecode(
         expected_classfiles, replayed_compile_basedir
     )
     for pair in classfile_pairs:
-        if pair.replayed is None:
+        if not pair.replayed.is_file():
             LOGGER.warning(
                 f"No replayed classfile corresponding to {pair.expected.copy_abspath.name}"
             )
@@ -187,10 +187,9 @@ def generate_classfile_pairs(
     """
     for expected in expected_classfiles:
         replayed_classfile = replayed_basedir / expected.original_relpath
-        if replayed_classfile.exists():
-            yield conts.ClassfilePair(
-                expected=expected, replayed=replayed_classfile
-            )
+        yield conts.ClassfilePair(
+            expected=expected, replayed=replayed_classfile
+        )
 
 
 def remove_duplicate_checkcasts(path: pathlib.Path) -> None:
