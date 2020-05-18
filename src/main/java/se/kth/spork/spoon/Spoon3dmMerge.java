@@ -71,7 +71,7 @@ public class Spoon3dmMerge {
         LOGGER.info(() -> "Matching trees with GumTree");
         Matcher baseLeftGumtreeMatch = matchTrees(baseGumtree, leftGumtree);
         Matcher baseRightGumtreeMatch = matchTrees(baseGumtree, rightGumtree);
-        Matcher leftRightGumtreeMatch = matchTreesTopDown(leftGumtree, rightGumtree);
+        Matcher leftRightGumtreeMatch = matchTreesXY(leftGumtree, rightGumtree);
 
         LOGGER.info(() -> "Converting GumTree matches to Spoon matches");
         SpoonMapping baseLeft = SpoonMapping.fromGumTreeMapping(baseLeftGumtreeMatch.getMappings());
@@ -173,8 +173,8 @@ public class Spoon3dmMerge {
         return matcher;
     }
 
-    private static Matcher matchTreesTopDown(ITree src, ITree dst) {
-        Matcher matcher = Matchers.getInstance().getMatcher("gumtree-topdown", src, dst);
+    private static Matcher matchTreesXY(ITree src, ITree dst) {
+        Matcher matcher = Matchers.getInstance().getMatcher("xy", src, dst);
         matcher.match();
         return matcher;
     }
