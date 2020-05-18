@@ -27,7 +27,7 @@ public class PcsInterpreter {
             SpoonMapping baseLeft,
             SpoonMapping baseRight) {
         SporkTreeBuilder sporkTreeBuilder = new SporkTreeBuilder(delta);
-        SporkTree sporkTreeRoot = sporkTreeBuilder.build(NodeFactory.ROOT);
+        SporkTree sporkTreeRoot = sporkTreeBuilder.buildTree();
 
         // this is a bit of a hack, get any used environment such that the SpoonTreeBuilder can copy environment
         // details

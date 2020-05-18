@@ -1,5 +1,6 @@
 package se.kth.spork.base3dm;
 
+import se.kth.spork.exception.ConflictException;
 import se.kth.spork.util.LazyLogger;
 
 import java.util.*;
@@ -39,10 +40,8 @@ public class TdmMerge {
             mergeContent(pcs.getSuccessor(), base, delta);
 
             List<Pcs<T>> others = delta.getOtherRoots(pcs);
-            if (others.isEmpty())
-                others = delta.getOtherPredecessors(pcs);
-            if (others.isEmpty())
-                others = delta.getOtherSuccessors(pcs);
+            others.addAll(delta.getOtherPredecessors(pcs));
+            others.addAll(delta.getOtherSuccessors(pcs));
 
             for (Pcs<T> otherPcs : others) {
                 if (base.contains(otherPcs)) {
@@ -102,7 +101,7 @@ public class TdmMerge {
         } else if (newContent.size() > 2) {
             // This should never happen, as there are at most 3 pieces of content to begin with and base has been
             // removed.
-            throw new IllegalStateException("Unexpected amount of conflicting content: " + newContent);
+            throw new ConflictException("Unexpected amount of conflicting content: " + newContent);
         }
 
         if (newContent.size() != 1) {

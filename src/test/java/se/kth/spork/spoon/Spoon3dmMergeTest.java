@@ -4,6 +4,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ArgumentsSource;
 import se.kth.spork.Util;
 import se.kth.spork.cli.Cli;
+import se.kth.spork.exception.ConflictException;
 import se.kth.spork.util.Pair;
 import spoon.reflect.declaration.*;
 
@@ -29,6 +30,15 @@ class Spoon3dmMergeTest {
     @ArgumentsSource(Util.BothModifiedSourceProvider.class)
     void mergeToTree_shouldReturnExpectedTree_whenBothVersionsAreModified(Util.TestSources sources) throws IOException {
         runTestMerge(sources);
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(Util.UnhandledInconsistencyProvider.class)
+    void merge_shouldThrow_onUnhandledInconsistencies(Util.TestSources sources) {
+        assertThrows(
+                ConflictException.class,
+                () -> Spoon3dmMerge.merge(sources.base, sources.left, sources.right)
+        );
     }
 
     private static void runTestMerge(Util.TestSources sources) {
