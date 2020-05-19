@@ -3,7 +3,10 @@ class Cls {
         try {
             System.out.println("Hello");
         } catch (IllegalArgumentException e) {
-            // pass
+            System.out.println("Oopsie!");
+            System.out.println("My bad!");
+        } finally {
+            System.out.println("Bye bye!");
         }
     }
 }

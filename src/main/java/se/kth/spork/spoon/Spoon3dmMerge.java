@@ -26,6 +26,10 @@ import java.util.*;
 public class Spoon3dmMerge {
     private static final LazyLogger LOGGER = new LazyLogger(Spoon3dmMerge.class);
 
+    static {
+        System.setProperty("gt.xym.sim", "0.7");
+    }
+
     /**
      * Merge the left and right revisions with an AST-based merge.
      *
