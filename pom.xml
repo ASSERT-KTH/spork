@@ -25,7 +25,7 @@
         <dependency>
             <groupId>com.github.inria</groupId>
             <artifactId>spoon</artifactId>
-            <version>3a8d04df7cb0319896ae98b08986a7006b208fa6</version>
+            <version>8498c0e74b23f1c100ccac31a417ffd610e06dc6</version>
         </dependency>
         <dependency>
             <groupId>fr.inria.gforge.spoon.labs</groupId>
