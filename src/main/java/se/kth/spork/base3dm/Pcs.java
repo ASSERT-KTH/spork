@@ -55,10 +55,6 @@ public class Pcs<T extends ListNode> {
         this.revision = revision;
     }
 
-    public boolean contains(T node) {
-        return Objects.equals(node, root) || Objects.equals(node, predecessor) || Objects.equals(node, successor);
-    }
-
     @Override
     public int hashCode() {
         return Objects.hash(root, predecessor, successor);
