@@ -28,7 +28,7 @@ public class SourceExtractor {
      * @param nodes A possibly empty list of adjacent nodes.
      * @return The original source code fragment, including any leading indentation on the first line.
      */
-    static String getOriginalSource(List<CtElement> nodes) {
+    public static String getOriginalSource(List<CtElement> nodes) {
         if (nodes.isEmpty())
             return "";
 
@@ -43,7 +43,7 @@ public class SourceExtractor {
      * @param elem A Spoon element.
      * @return The original source code associated with the elemen.
      */
-    static String getOriginalSource(CtElement elem) {
+    public static String getOriginalSource(CtElement elem) {
         SourcePosition pos = getSourcePos(elem);
         return getOriginalSource(pos, pos);
     }

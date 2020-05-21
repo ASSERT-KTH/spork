@@ -2,12 +2,12 @@ package se.kth.spork.spoon.pcsinterpreter;
 
 import se.kth.spork.base3dm.Revision;
 import se.kth.spork.base3dm.TdmMerge;
-import se.kth.spork.exception.ConflictException;
 import se.kth.spork.spoon.*;
 import se.kth.spork.spoon.matching.SpoonMapping;
 import se.kth.spork.spoon.wrappers.NodeFactory;
 import se.kth.spork.spoon.wrappers.RoledValues;
 import se.kth.spork.spoon.wrappers.SpoonNode;
+import se.kth.spork.util.LineBasedMerge;
 import se.kth.spork.util.Pair;
 import spoon.Launcher;
 import spoon.compiler.Environment;
@@ -40,7 +40,7 @@ public class SpoonTreeBuilder {
 
     private SpoonMapping baseLeft;
     private SpoonMapping baseRight;
-    private int numContentConflicts = 0;
+    private int numConflicts = 0;
 
     private Factory factory;
 
@@ -119,7 +119,7 @@ public class SpoonTreeBuilder {
         for (SporkTree child : root.getChildren()) {
             Optional<StructuralConflict> conflict = child.getStructuralConflict();
             lastChild = conflict
-                    .map(structuralConflict -> visitConflicting(root.getNode(), structuralConflict, child))
+                    .map(structuralConflict -> visitConflicting(root.getNode(), structuralConflict))
                     .orElseGet(() -> visit(root, child));
 
             if (root.getNode() == NodeFactory.ROOT || !child.isSingleRevisionSubtree())
@@ -130,10 +130,10 @@ public class SpoonTreeBuilder {
     }
 
     /**
-     * @return The amount of content conflicts.
+     * @return The amount of conflicts.
      */
-    public int numContentConflicts() {
-        return numContentConflicts;
+    public int numConflicts() {
+        return numConflicts;
     }
 
     /**
@@ -162,7 +162,7 @@ public class SpoonTreeBuilder {
             if (!mergedContent.second.isEmpty()) {
                 // at least one conflict was not resolved
                 mergeTree.putMetadata(ContentConflict.METADATA_KEY, mergedContent.second);
-                numContentConflicts += mergedContent.second.size();
+                numConflicts += mergedContent.second.size();
             }
         }
 
@@ -200,39 +200,13 @@ public class SpoonTreeBuilder {
      * @param parent   The parent node of the conflict.
      * @param conflict The current structural conflict.
      */
-    private CtElement visitConflicting(SpoonNode parent, StructuralConflict conflict, SporkTree sporkTreeDummy) {
-        final CtElement dummy;
-        final StructuralConflict resolvedConflict;
-        if (conflict.isUnresolved()) {
-            SpoonNode left;
-            SpoonNode right;
-            SpoonNode node = sporkTreeDummy.getNode();
-            switch (node.getRevision()) {
-                case LEFT:
-                    left = node;
-                    right = baseRight.getDst(baseLeft.getSrc(left));
-                    break;
-                case RIGHT:
-                    right = node;
-                    left = baseLeft.getDst(baseRight.getSrc(right));
-                    break;
-                case BASE:
-                    left = baseLeft.getDst(node);
-                    right = baseRight.getDst(node);
-                    break;
-                default:
-                    throw new ConflictException("Unexpected revision: " + node.getRevision());
-            }
-            dummy = node.getElement();
-            resolvedConflict = new StructuralConflict(Collections.singletonList(left.getElement()), Collections.singletonList(right.getElement()));
-        } else {
-            dummy = conflict.left.size() > 0 ? conflict.left.get(0) : conflict.right.get(0);
-            resolvedConflict = conflict;
-        }
-        
+    private CtElement visitConflicting(SpoonNode parent, StructuralConflict conflict) {
+        final CtElement dummy = conflict.left.size() > 0 ? conflict.left.get(0) : conflict.right.get(0);
+
         CtElement mergeParent = nodes.get(parent).getElement();
 
-        dummy.putMetadata(StructuralConflict.METADATA_KEY, resolvedConflict);
+        dummy.putMetadata(StructuralConflict.METADATA_KEY, conflict);
+
         SpoonNode dummyNode = NodeFactory.wrap(dummy);
         CtRole role = resolveRole(dummyNode);
 

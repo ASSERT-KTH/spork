@@ -1,9 +1,9 @@
 package se.kth.spork.spoon;
 
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ArgumentsSource;
 import se.kth.spork.Util;
-import se.kth.spork.cli.Cli;
 import se.kth.spork.exception.ConflictException;
 import se.kth.spork.util.Pair;
 import spoon.reflect.declaration.*;
@@ -33,9 +33,15 @@ class Spoon3dmMergeTest {
     }
 
     @ParameterizedTest
+    @ArgumentsSource(Util.CleanLineBasedFallbackProvider.class)
+    void merge_shouldBeClean_withGranularLineBasedFallback(Util.TestSources sources) throws IOException {
+        assertEquals(0, Spoon3dmMerge.merge(sources.base, sources.left, sources.right).second);
+    }
+
+    @Disabled
+    @ParameterizedTest
     @ArgumentsSource(Util.UnhandledInconsistencyProvider.class)
     void merge_shouldThrow_onUnhandledInconsistencies(Util.TestSources sources) {
-        System.out.println(Cli.prettyPrint(Spoon3dmMerge.merge(sources.base, sources.left, sources.right).first));
         assertThrows(
                 ConflictException.class,
                 () -> Spoon3dmMerge.merge(sources.base, sources.left, sources.right)

@@ -2,13 +2,12 @@ package se.kth.spork.spoon.printer;
 
 import se.kth.spork.spoon.pcsinterpreter.SpoonTreeBuilder;
 import se.kth.spork.spoon.StructuralConflict;
+import se.kth.spork.util.LineBasedMerge;
 import se.kth.spork.util.Pair;
 import spoon.compiler.Environment;
 import spoon.reflect.code.CtCatchVariable;
 import spoon.reflect.code.CtComment;
-import spoon.reflect.code.CtExpression;
 import spoon.reflect.code.CtLocalVariable;
-import spoon.reflect.code.CtStatement;
 import spoon.reflect.declaration.CtElement;
 import spoon.reflect.declaration.CtField;
 import spoon.reflect.declaration.CtMethod;
@@ -123,9 +122,8 @@ public final class SporkPrettyPrinter extends DefaultJavaPrettyPrinter {
 
 
         StructuralConflict structuralConflict = (StructuralConflict) e.getMetadata(StructuralConflict.METADATA_KEY);
-
         if (structuralConflict != null) {
-            writeStructuralConflict(structuralConflict);
+            handleStructuralConflict(e, structuralConflict);
         } else {
             if (getContext().forceWildcardGenerics()) {
                 // Forcing wildcard generics can cause crashes when references can't be resolved, so we don't want
@@ -153,6 +151,16 @@ public final class SporkPrettyPrinter extends DefaultJavaPrettyPrinter {
         }
     }
 
+    private void handleStructuralConflict(CtElement element, StructuralConflict structuralConflict) {
+        if (structuralConflict.lineBasedMerge.isPresent()) {
+            String merge = structuralConflict.lineBasedMerge.get();
+            int indentation = SourceExtractor.getIndentation(element);
+            printerHelper.writeRawSourceCode(merge, indentation);
+        } else {
+            writeStructuralConflict(structuralConflict);
+        }
+    }
+
     /**
      * Write both pats of a structural conflict.
      */
@@ -163,24 +171,15 @@ public final class SporkPrettyPrinter extends DefaultJavaPrettyPrinter {
     }
 
     private class SporkPrinterHelper extends PrinterHelper {
-        private String lastWritten;
-
         public SporkPrinterHelper(Environment env) {
             super(env);
-            lastWritten = "";
         }
 
         @Override
         public SporkPrinterHelper write(String s) {
             Optional<Map<String, Pair<String, String>>> localConflictMap = localContentConflictMaps.peek();
             String trimmed = s.trim();
-            lastWritten = s;
-            if (trimmed.startsWith(START_CONFLICT) && trimmed.endsWith(END_CONFLICT)) {
-                // this is an embedded conflict value, which is necessary for names sometimes as the
-                // DefaultJavaPrettyPrinter does not always visit the node (e.g. when printing the name of a variable
-                // in a variable access), and just uses getSimpleName(). This causes the conflict map for that node
-                // to not be present when its name is written.
-                //
+            if (trimmed.startsWith(START_CONFLICT) || trimmed.startsWith(MID_CONFLICT) || trimmed.startsWith(END_CONFLICT)) {
                 // All we need to do here is the decrease tabs and enter some appropriate whitespace
                 writelnIfNotPresent().writeAtLeftMargin(s).writeln();
                 return this;
@@ -219,7 +218,8 @@ public final class SporkPrettyPrinter extends DefaultJavaPrettyPrinter {
          * Write a line separator only if the last written string did not end with a line separator.
          */
         private SporkPrinterHelper writelnIfNotPresent() {
-            if (lastWritten.endsWith(lineSeparator))
+            String lastWritten = sbf.length() > 0 ? sbf.substring(sbf.length() - 1) : "";
+            if (lastWritten.equals(lineSeparator))
                 return this;
             return writeln();
         }
@@ -231,7 +231,6 @@ public final class SporkPrettyPrinter extends DefaultJavaPrettyPrinter {
             int tabBefore = getTabCount();
             setTabCount(0);
             super.write(s);
-            lastWritten = s;
             setTabCount(tabBefore);
             return this;
         }
@@ -247,7 +246,7 @@ public final class SporkPrettyPrinter extends DefaultJavaPrettyPrinter {
 
             for (int i = 0; i < lines.length; i++) {
                 if (i != 0) {
-                    writeln();
+                    writelnIfNotPresent();
                 }
                 String line = lines[i];
                 write(trimIndentation(line, indentationCount));
