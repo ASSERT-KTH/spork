@@ -35,6 +35,6 @@ public class PcsInterpreter {
         SpoonTreeBuilder spoonTreeBuilder = new SpoonTreeBuilder(baseLeft, baseRight, oldEnv);
         CtElement spoonTreeRoot = spoonTreeBuilder.build(sporkTreeRoot);
 
-        return Pair.of(spoonTreeRoot, sporkTreeBuilder.numStructuralConflicts() + spoonTreeBuilder.numConflicts());
+        return Pair.of(spoonTreeRoot, sporkTreeBuilder.numStructuralConflicts() + spoonTreeBuilder.numContentConflicts());
     }
 }
