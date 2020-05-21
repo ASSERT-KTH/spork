@@ -2,6 +2,7 @@ package se.kth.spork.spoon.pcsinterpreter;
 
 import se.kth.spork.base3dm.Revision;
 import se.kth.spork.base3dm.TdmMerge;
+import se.kth.spork.exception.ConflictException;
 import se.kth.spork.spoon.*;
 import se.kth.spork.spoon.matching.SpoonMapping;
 import se.kth.spork.spoon.wrappers.NodeFactory;
@@ -118,7 +119,7 @@ public class SpoonTreeBuilder {
         for (SporkTree child : root.getChildren()) {
             Optional<StructuralConflict> conflict = child.getStructuralConflict();
             lastChild = conflict
-                    .map(structuralConflict -> visitConflicting(root.getNode(), structuralConflict))
+                    .map(structuralConflict -> visitConflicting(root.getNode(), structuralConflict, child))
                     .orElseGet(() -> visit(root, child));
 
             if (root.getNode() == NodeFactory.ROOT || !child.isSingleRevisionSubtree())
@@ -199,11 +200,39 @@ public class SpoonTreeBuilder {
      * @param parent   The parent node of the conflict.
      * @param conflict The current structural conflict.
      */
-    private CtElement visitConflicting(SpoonNode parent, StructuralConflict conflict) {
+    private CtElement visitConflicting(SpoonNode parent, StructuralConflict conflict, SporkTree sporkTreeDummy) {
+        final CtElement dummy;
+        final StructuralConflict resolvedConflict;
+        if (conflict.isUnresolved()) {
+            SpoonNode left;
+            SpoonNode right;
+            SpoonNode node = sporkTreeDummy.getNode();
+            switch (node.getRevision()) {
+                case LEFT:
+                    left = node;
+                    right = baseRight.getDst(baseLeft.getSrc(left));
+                    break;
+                case RIGHT:
+                    right = node;
+                    left = baseLeft.getDst(baseRight.getSrc(right));
+                    break;
+                case BASE:
+                    left = baseLeft.getDst(node);
+                    right = baseRight.getDst(node);
+                    break;
+                default:
+                    throw new ConflictException("Unexpected revision: " + node.getRevision());
+            }
+            dummy = node.getElement();
+            resolvedConflict = new StructuralConflict(Collections.singletonList(left.getElement()), Collections.singletonList(right.getElement()));
+        } else {
+            dummy = conflict.left.size() > 0 ? conflict.left.get(0) : conflict.right.get(0);
+            resolvedConflict = conflict;
+        }
+        
         CtElement mergeParent = nodes.get(parent).getElement();
-        CtElement dummy = conflict.left.size() > 0 ? conflict.left.get(0) : conflict.right.get(0);
 
-        dummy.putMetadata(StructuralConflict.METADATA_KEY, conflict);
+        dummy.putMetadata(StructuralConflict.METADATA_KEY, resolvedConflict);
         SpoonNode dummyNode = NodeFactory.wrap(dummy);
         CtRole role = resolveRole(dummyNode);
 

@@ -26,6 +26,10 @@ public class StructuralConflict {
         this.right = right;
     }
 
+    public boolean isUnresolved() {
+        return left.isEmpty() && right.isEmpty();
+    }
+
     public static boolean isRootConflict(Pcs<?> left, Pcs<?> right) {
         return !Objects.equals(left.getRoot(), right.getRoot()) &&
                 (Objects.equals(left.getPredecessor(), right.getPredecessor()) ||

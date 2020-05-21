@@ -85,7 +85,7 @@ class SporkTreeBuilder {
     public SporkTree buildTree() {
         SporkTree tree = build(NodeFactory.ROOT);
         if (!remainingInconsistencies.isEmpty()) {
-            throw new ConflictException("Unhandled inconsistencies remain: " + remainingInconsistencies);
+            //throw new ConflictException("Unhandled inconsistencies remain: " + remainingInconsistencies);
         }
         return tree;
     }
@@ -108,26 +108,39 @@ class SporkTreeBuilder {
         if (children == null) // leaf node
             return tree;
 
-        while (true) {
-            Pcs<SpoonNode> nextPcs = children.get(next);
-            tree.addRevision(nextPcs.getRevision());
+        try {
+            while (true) {
+                Pcs<SpoonNode> nextPcs = children.get(next);
+                tree.addRevision(nextPcs.getRevision());
 
-            next = nextPcs.getSuccessor();
-            if (next.isEndOfList()) {
-                break;
+                next = nextPcs.getSuccessor();
+                if (next.isEndOfList()) {
+                    break;
+                }
+
+                Set<Pcs<SpoonNode>> conflicts = structuralConflicts.get(nextPcs);
+                Optional<Pcs<SpoonNode>> successorConflict = conflicts == null ? Optional.empty() :
+                        conflicts.stream().filter(confPcs ->
+                                StructuralConflict.isSuccessorConflict(nextPcs, confPcs)).findFirst();
+
+                // successor conflicts mark the start of a conflict, any other conflict is to be ignored
+                if (successorConflict.isPresent()) {
+                    Pcs<SpoonNode> conflicting = successorConflict.get();
+                    next = traverseConflict(nextPcs, conflicting, children, tree);
+                } else {
+                    addChild(tree, build(next));
+                }
             }
+        } catch (NullPointerException | ConflictException e) {
+            // could not resolve the child list
+            // TODO improve design, should not have to catch exceptions like this
+            tree = new SporkTree(currentRoot, currentContent, new StructuralConflict(Collections.emptyList(), Collections.emptyList()));
+            tree.setRevisions(Arrays.asList(Revision.LEFT, Revision.RIGHT));
+        }
 
-            Set<Pcs<SpoonNode>> conflicts = structuralConflicts.get(nextPcs);
-            Optional<Pcs<SpoonNode>> successorConflict = conflicts == null ? Optional.empty() :
-                    conflicts.stream().filter(confPcs ->
-                            StructuralConflict.isSuccessorConflict(nextPcs, confPcs)).findFirst();
-
-            // successor conflicts mark the start of a conflict, any other conflict is to be ignored
-            if (successorConflict.isPresent()) {
-                Pcs<SpoonNode> conflicting = successorConflict.get();
-                next = traverseConflict(nextPcs, conflicting, children, tree);
-            } else {
-                addChild(tree, build(next));
+        for (Pcs<SpoonNode> inconsistent : remainingInconsistencies) {
+            if (inconsistent.getRoot().equals(tree.getNode())) {
+                throw new ConflictException("Missed conflict: " + inconsistent);
             }
         }
 

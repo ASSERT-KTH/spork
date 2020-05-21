@@ -35,6 +35,7 @@ class Spoon3dmMergeTest {
     @ParameterizedTest
     @ArgumentsSource(Util.UnhandledInconsistencyProvider.class)
     void merge_shouldThrow_onUnhandledInconsistencies(Util.TestSources sources) {
+        System.out.println(Cli.prettyPrint(Spoon3dmMerge.merge(sources.base, sources.left, sources.right).first));
         assertThrows(
                 ConflictException.class,
                 () -> Spoon3dmMerge.merge(sources.base, sources.left, sources.right)
