@@ -7,6 +7,7 @@ import se.kth.spork.spoon.wrappers.NodeFactory;
 import se.kth.spork.spoon.wrappers.RoledValues;
 import se.kth.spork.spoon.wrappers.SpoonNode;
 import se.kth.spork.spoon.StructuralConflict;
+import se.kth.spork.util.LazyLogger;
 import se.kth.spork.util.LineBasedMerge;
 import se.kth.spork.util.Pair;
 import spoon.reflect.path.CtRole;
@@ -21,6 +22,7 @@ import java.util.stream.Stream;
  * @author Simon Larsén
  */
 class SporkTreeBuilder {
+    private static final LazyLogger LOGGER = new LazyLogger(SporkTreeBuilder.class);
 
     private final Map<SpoonNode, Map<SpoonNode, Pcs<SpoonNode>>> rootToChildren;
     private final Map<Pcs<SpoonNode>, Set<Pcs<SpoonNode>>> structuralConflicts;
@@ -92,9 +94,6 @@ class SporkTreeBuilder {
 
     public SporkTree buildTree() {
         SporkTree tree = build(NodeFactory.ROOT);
-        if (!remainingInconsistencies.isEmpty()) {
-            //throw new ConflictException("Unhandled inconsistencies remain: " + remainingInconsistencies);
-        }
         return tree;
     }
 
@@ -139,18 +138,21 @@ class SporkTreeBuilder {
                     addChild(tree, build(next));
                 }
             }
+
+            for (Pcs<SpoonNode> inconsistent : remainingInconsistencies) {
+                if (inconsistent.getRoot().equals(tree.getNode())) {
+                    throw new ConflictException("Missed conflict: " + inconsistent);
+                }
+            }
         } catch (NullPointerException | ConflictException e) {
             // could not resolve the child list
             // TODO improve design, should not have to catch exceptions like this
+            LOGGER.warn(() ->
+                    "Failed to resolve child list of " + currentRoot.getElement().getShortRepresentation()
+                            + ". Falling back to line-based merge of this element.");
             StructuralConflict conflict = approximateConflict(currentRoot);
             tree = new SporkTree(currentRoot, currentContent, conflict);
             tree.setRevisions(Arrays.asList(Revision.BASE, Revision.LEFT, Revision.RIGHT));
-        }
-
-        for (Pcs<SpoonNode> inconsistent : remainingInconsistencies) {
-            if (inconsistent.getRoot().equals(tree.getNode())) {
-                throw new ConflictException("Missed conflict: " + inconsistent);
-            }
         }
 
         return tree;

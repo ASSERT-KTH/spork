@@ -7,7 +7,6 @@ import se.kth.spork.spoon.matching.SpoonMapping;
 import se.kth.spork.spoon.wrappers.NodeFactory;
 import se.kth.spork.spoon.wrappers.RoledValues;
 import se.kth.spork.spoon.wrappers.SpoonNode;
-import se.kth.spork.util.LineBasedMerge;
 import se.kth.spork.util.Pair;
 import spoon.Launcher;
 import spoon.compiler.Environment;
