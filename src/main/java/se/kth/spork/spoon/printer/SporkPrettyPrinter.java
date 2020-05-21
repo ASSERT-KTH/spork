@@ -181,7 +181,7 @@ public final class SporkPrettyPrinter extends DefaultJavaPrettyPrinter {
             String trimmed = s.trim();
             if (trimmed.startsWith(START_CONFLICT) || trimmed.startsWith(MID_CONFLICT) || trimmed.startsWith(END_CONFLICT)) {
                 // All we need to do here is the decrease tabs and enter some appropriate whitespace
-                writelnIfNotPresent().writeAtLeftMargin(s).writeln();
+                writelnIfNotPresent().writeAtLeftMargin(s);
                 return this;
             }
 
@@ -246,7 +246,7 @@ public final class SporkPrettyPrinter extends DefaultJavaPrettyPrinter {
 
             for (int i = 0; i < lines.length; i++) {
                 if (i != 0) {
-                    writelnIfNotPresent();
+                    writeln();
                 }
                 String line = lines[i];
                 write(trimIndentation(line, indentationCount));
