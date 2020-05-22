@@ -1,5 +1,6 @@
 package se.kth.spork.util;
 
+import se.kth.spork.spoon.printer.SourceExtractor;
 import se.kth.spork.spoon.printer.SporkPrettyPrinter;
 
 import java.util.ArrayList;
@@ -12,6 +13,7 @@ import org.eclipse.jgit.diff.SequenceComparator;
 import org.eclipse.jgit.merge.MergeAlgorithm;
 import org.eclipse.jgit.merge.MergeChunk;
 import org.eclipse.jgit.merge.MergeResult;
+import spoon.reflect.declaration.CtElement;
 
 /**
  * Line-based merge implementation using JGit.
@@ -87,5 +89,20 @@ public class LineBasedMerge {
         }
 
         return new Pair<>(String.join("\n", lines), numConflicts);
+    }
+
+    /**
+     * Merge three revisions of a Spoon element using line-based merge.
+     *
+     * @param base The base revision.
+     * @param left The left revision.
+     * @param right The right revision.
+     * @return A pair containing the merge and the amount of conflicts.
+     */
+    public static Pair<String, Integer> merge(CtElement base, CtElement left, CtElement right) {
+        String baseSource = SourceExtractor.getOriginalSource(base);
+        String leftSource = SourceExtractor.getOriginalSource(left);
+        String rightSource = SourceExtractor.getOriginalSource(right);
+        return LineBasedMerge.merge(baseSource, leftSource, rightSource);
     }
 }

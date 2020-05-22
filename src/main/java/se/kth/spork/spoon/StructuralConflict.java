@@ -16,14 +16,32 @@ public class StructuralConflict {
     public static final String METADATA_KEY = "SPORK_STRUCTURAL_CONFLICT";
     public final List<CtElement> left;
     public final List<CtElement> right;
+    public final Optional<List<CtElement>> base;
+    public final Optional<String> lineBasedMerge;
 
     /**
-     * @param left The left part of the conflict.
+     * @param left  The left part of the conflict.
      * @param right The right part of the conflict.
      */
     public StructuralConflict(List<CtElement> left, List<CtElement> right) {
         this.left = left;
         this.right = right;
+        base = Optional.empty();
+        lineBasedMerge = Optional.empty();
+    }
+
+    /**
+     * Create an approximated conflict.
+     */
+    public StructuralConflict(CtElement base, CtElement left, CtElement right, String lineBasedMerge) {
+        this.base = Optional.of(Collections.singletonList(base));
+        this.left = Collections.singletonList(left);
+        this.right = Collections.singletonList(right);
+        this.lineBasedMerge = Optional.of(lineBasedMerge);
+    }
+
+    public Optional<String> lineBasedMerge() {
+        return lineBasedMerge;
     }
 
     public static boolean isRootConflict(Pcs<?> left, Pcs<?> right) {

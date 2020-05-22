@@ -31,6 +31,7 @@ public class Util {
     public static final Path LEFT_MODIFIED_DIRPATH = CLEAN_MERGE_DIRPATH.resolve("left_modified");
     public static final Path CONFLICT_DIRPATH = Paths.get("src/test/resources/conflict");
     public static final Path UNHANDLED_INCONSISTENCY_PATH = Paths.get("src/test/resources/unhandled_inconsistency");
+    public static final Path CLEAN_LINEBASED_FALLBACK = Paths.get("src/test/resources/clean_linebased_fallback");
 
 
     private static Stream<? extends Arguments> getArgumentSourcesStream(File testDir) {
@@ -143,6 +144,13 @@ public class Util {
         @Override
         public Stream<? extends Arguments> provideArguments(ExtensionContext extensionContext) throws Exception {
             return getArgumentSourcesStream(UNHANDLED_INCONSISTENCY_PATH.toFile(), TestSources::fromTestDirectoryWithoutExpected);
+        }
+    }
+
+    public static class CleanLineBasedFallbackProvider implements ArgumentsProvider {
+        @Override
+        public Stream<? extends Arguments> provideArguments(ExtensionContext extensionContext) throws Exception {
+            return getArgumentSourcesStream(CLEAN_LINEBASED_FALLBACK.toFile(), TestSources::fromTestDirectoryWithoutExpected);
         }
     }
 

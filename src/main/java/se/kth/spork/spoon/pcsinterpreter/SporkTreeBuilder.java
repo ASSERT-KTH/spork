@@ -2,10 +2,14 @@ package se.kth.spork.spoon.pcsinterpreter;
 
 import se.kth.spork.base3dm.*;
 import se.kth.spork.exception.ConflictException;
+import se.kth.spork.spoon.matching.SpoonMapping;
 import se.kth.spork.spoon.wrappers.NodeFactory;
 import se.kth.spork.spoon.wrappers.RoledValues;
 import se.kth.spork.spoon.wrappers.SpoonNode;
 import se.kth.spork.spoon.StructuralConflict;
+import se.kth.spork.util.LazyLogger;
+import se.kth.spork.util.LineBasedMerge;
+import se.kth.spork.util.Pair;
 import spoon.reflect.path.CtRole;
 
 import java.util.*;
@@ -18,6 +22,7 @@ import java.util.stream.Stream;
  * @author Simon Larsén
  */
 class SporkTreeBuilder {
+    private static final LazyLogger LOGGER = new LazyLogger(SporkTreeBuilder.class);
 
     private final Map<SpoonNode, Map<SpoonNode, Pcs<SpoonNode>>> rootToChildren;
     private final Map<Pcs<SpoonNode>, Set<Pcs<SpoonNode>>> structuralConflicts;
@@ -32,13 +37,18 @@ class SporkTreeBuilder {
     // if any have not been used when the tree has been built, there's something wrong
     private Set<Pcs<SpoonNode>> remainingInconsistencies;
 
+    private final SpoonMapping baseLeft;
+    private final SpoonMapping baseRight;
+
     /**
      * Create a builder.
      *
      * @param delta A merged change set.
      */
-    public SporkTreeBuilder(ChangeSet<SpoonNode, RoledValues> delta) {
+    public SporkTreeBuilder(ChangeSet<SpoonNode, RoledValues> delta, SpoonMapping baseLeft, SpoonMapping baseRight) {
         this.rootToChildren = buildRootToChildren(delta.getPcsSet());
+        this.baseLeft = baseLeft;
+        this.baseRight = baseRight;
         structuralConflicts = delta.getStructuralConflicts();
         contents = delta.getContents();
         numStructuralConflicts = 0;
@@ -84,9 +94,6 @@ class SporkTreeBuilder {
 
     public SporkTree buildTree() {
         SporkTree tree = build(NodeFactory.ROOT);
-        if (!remainingInconsistencies.isEmpty()) {
-            throw new ConflictException("Unhandled inconsistencies remain: " + remainingInconsistencies);
-        }
         return tree;
     }
 
@@ -108,30 +115,84 @@ class SporkTreeBuilder {
         if (children == null) // leaf node
             return tree;
 
-        while (true) {
-            Pcs<SpoonNode> nextPcs = children.get(next);
-            tree.addRevision(nextPcs.getRevision());
+        try {
+            while (true) {
+                Pcs<SpoonNode> nextPcs = children.get(next);
+                tree.addRevision(nextPcs.getRevision());
 
-            next = nextPcs.getSuccessor();
-            if (next.isEndOfList()) {
-                break;
+                next = nextPcs.getSuccessor();
+                if (next.isEndOfList()) {
+                    break;
+                }
+
+                Set<Pcs<SpoonNode>> conflicts = structuralConflicts.get(nextPcs);
+                Optional<Pcs<SpoonNode>> successorConflict = conflicts == null ? Optional.empty() :
+                        conflicts.stream().filter(confPcs ->
+                                StructuralConflict.isSuccessorConflict(nextPcs, confPcs)).findFirst();
+
+                // successor conflicts mark the start of a conflict, any other conflict is to be ignored
+                if (successorConflict.isPresent()) {
+                    Pcs<SpoonNode> conflicting = successorConflict.get();
+                    next = traverseConflict(nextPcs, conflicting, children, tree);
+                } else {
+                    addChild(tree, build(next));
+                }
             }
 
-            Set<Pcs<SpoonNode>> conflicts = structuralConflicts.get(nextPcs);
-            Optional<Pcs<SpoonNode>> successorConflict = conflicts == null ? Optional.empty() :
-                    conflicts.stream().filter(confPcs ->
-                            StructuralConflict.isSuccessorConflict(nextPcs, confPcs)).findFirst();
-
-            // successor conflicts mark the start of a conflict, any other conflict is to be ignored
-            if (successorConflict.isPresent()) {
-                Pcs<SpoonNode> conflicting = successorConflict.get();
-                next = traverseConflict(nextPcs, conflicting, children, tree);
-            } else {
-                addChild(tree, build(next));
+            for (Pcs<SpoonNode> inconsistent : remainingInconsistencies) {
+                if (inconsistent.getRoot().equals(tree.getNode())) {
+                    throw new ConflictException("Missed conflict: " + inconsistent);
+                }
             }
+        } catch (NullPointerException | ConflictException e) {
+            // could not resolve the child list
+            // TODO improve design, should not have to catch exceptions like this
+            LOGGER.warn(() ->
+                    "Failed to resolve child list of " + currentRoot.getElement().getShortRepresentation()
+                            + ". Falling back to line-based merge of this element.");
+            StructuralConflict conflict = approximateConflict(currentRoot);
+            tree = new SporkTree(currentRoot, currentContent, conflict);
+            tree.setRevisions(Arrays.asList(Revision.BASE, Revision.LEFT, Revision.RIGHT));
         }
 
         return tree;
+    }
+
+    /**
+     * When a conflict in the child list of a node is not possible to resolve, we approximate the conflict by finding
+     * the node's matches in the left and right revisions and have them make up the conflict instead. This is a rough
+     * estimation, and if they nodes have large child lists it will result in very large conflicts.
+     *
+     * @param node A node for which the child list could not be constructed.
+     * @return An approximated conflict between the left and right matches of the node.
+     */
+    private StructuralConflict approximateConflict(SpoonNode node) {
+        SpoonNode base;
+        SpoonNode left;
+        SpoonNode right;
+        switch (node.getRevision()) {
+            case LEFT:
+                left = node;
+                base = baseLeft.getSrc(left);
+                right = baseRight.getDst(base);
+                break;
+            case RIGHT:
+                right = node;
+                base = baseRight.getSrc(right);
+                left = baseLeft.getDst(base);
+                break;
+            case BASE:
+                base = node;
+                left = baseLeft.getDst(node);
+                right = baseRight.getDst(node);
+                break;
+            default:
+                throw new ConflictException("Unexpected revision: " + node.getRevision());
+        }
+
+        Pair<String, Integer> rawMerge = LineBasedMerge.merge(base.getElement(), left.getElement(), right.getElement());
+        numStructuralConflicts += rawMerge.second;
+        return new StructuralConflict(base.getElement(), left.getElement(), right.getElement(), rawMerge.first);
     }
 
     private SpoonNode traverseConflict(

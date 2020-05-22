@@ -129,7 +129,7 @@ public class SpoonTreeBuilder {
     }
 
     /**
-     * @return The amount of content conflicts.
+     * @return The amount of conflicts.
      */
     public int numContentConflicts() {
         return numContentConflicts;
@@ -200,10 +200,12 @@ public class SpoonTreeBuilder {
      * @param conflict The current structural conflict.
      */
     private CtElement visitConflicting(SpoonNode parent, StructuralConflict conflict) {
+        final CtElement dummy = conflict.left.size() > 0 ? conflict.left.get(0) : conflict.right.get(0);
+
         CtElement mergeParent = nodes.get(parent).getElement();
-        CtElement dummy = conflict.left.size() > 0 ? conflict.left.get(0) : conflict.right.get(0);
 
         dummy.putMetadata(StructuralConflict.METADATA_KEY, conflict);
+
         SpoonNode dummyNode = NodeFactory.wrap(dummy);
         CtRole role = resolveRole(dummyNode);
 

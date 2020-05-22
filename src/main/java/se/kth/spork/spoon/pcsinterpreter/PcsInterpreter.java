@@ -1,7 +1,6 @@
 package se.kth.spork.spoon.pcsinterpreter;
 
 import se.kth.spork.base3dm.ChangeSet;
-import se.kth.spork.spoon.wrappers.NodeFactory;
 import se.kth.spork.spoon.wrappers.RoledValues;
 import se.kth.spork.spoon.matching.SpoonMapping;
 import se.kth.spork.spoon.wrappers.SpoonNode;
@@ -26,7 +25,7 @@ public class PcsInterpreter {
             ChangeSet<SpoonNode, RoledValues> delta,
             SpoonMapping baseLeft,
             SpoonMapping baseRight) {
-        SporkTreeBuilder sporkTreeBuilder = new SporkTreeBuilder(delta);
+        SporkTreeBuilder sporkTreeBuilder = new SporkTreeBuilder(delta, baseLeft, baseRight);
         SporkTree sporkTreeRoot = sporkTreeBuilder.buildTree();
 
         // this is a bit of a hack, get any used environment such that the SpoonTreeBuilder can copy environment
