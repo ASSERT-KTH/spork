@@ -44,19 +44,11 @@ public class Cli {
      */
     public static String prettyPrint(CtModule spoonRoot) {
         LOGGER.info(() -> "Pre-processing tree for pretty-printing");
-        CtPackage activePackage = spoonRoot.getRootPackage();
-        while (!activePackage.getPackages().isEmpty()) {
-            Set<CtPackage> subPkgs = activePackage.getPackages();
-            Optional<CtPackage> pkgOpt = subPkgs.stream()
-                    .filter(pkg -> !pkg.getTypes().isEmpty() || !pkg.getPackages().isEmpty())
-                    .findFirst();
+        Optional<CtPackage> pkgOpt = findActivePackage(spoonRoot.getRootPackage());
+        if (!pkgOpt.isPresent())
+            throw new RuntimeException("could not find the active package");
 
-            if (!pkgOpt.isPresent())
-                throw new RuntimeException("could not find the active package");
-
-            activePackage = pkgOpt.get();
-        }
-
+        CtPackage activePackage = pkgOpt.get();
         Collection<?> imports = (Collection<?>) spoonRoot.getMetadata(Parser.IMPORT_STATEMENTS);
         List<String> importNames = imports.stream()
                 .map(Object::toString)
@@ -79,6 +71,15 @@ public class Cli {
         }
 
         return sb.toString();
+    }
+
+    private static Optional<CtPackage> findActivePackage(CtPackage pkg) {
+        if (!pkg.getTypes().isEmpty()) {
+            return Optional.of(pkg);
+        }
+
+        return pkg.getPackages().stream().map(Cli::findActivePackage)
+                .filter(Optional::isPresent).map(Optional::get).findFirst();
     }
 
     @CommandLine.Command(
