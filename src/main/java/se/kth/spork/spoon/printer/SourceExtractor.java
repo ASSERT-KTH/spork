@@ -9,6 +9,7 @@ import spoon.reflect.declaration.CtElement;
 import spoon.reflect.declaration.CtTypeMember;
 
 import java.io.IOException;
+import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -23,7 +24,8 @@ public class SourceExtractor {
 
     /**
      * Get the original source fragment corresponding to the nodes provided, or an empty string if the list is
-     * empty. Note that the nodes must be adjacent in the source file, and in the same order as in the source.
+     * empty. The input elements must not be in order, their source positions are used to find the first and last
+     * elements.
      *
      * @param nodes A possibly empty list of adjacent nodes.
      * @return The original source code fragment, including any leading indentation on the first line.
@@ -32,8 +34,12 @@ public class SourceExtractor {
         if (nodes.isEmpty())
             return "";
 
-        SourcePosition firstElemPos = getSourcePos(nodes.get(0));
-        SourcePosition lastElemPos = getSourcePos(nodes.get(nodes.size() - 1));
+        Comparator<CtElement> comp = Comparator.comparingInt(e -> {
+            SourcePosition pos = getSourcePos(e);
+            return pos.isValidPosition() ? pos.getSourceStart() + pos.getSourceEnd() : -1;
+        });
+        SourcePosition firstElemPos = getSourcePos(nodes.stream().min(comp).get());
+        SourcePosition lastElemPos = getSourcePos(nodes.stream().max(comp).get());
         return getOriginalSource(firstElemPos, lastElemPos);
     }
 
