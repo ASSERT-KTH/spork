@@ -3,15 +3,21 @@ package se.kth.spork.spoon.wrappers;
 import se.kth.spork.base3dm.Revision;
 import se.kth.spork.base3dm.TdmMerge;
 import spoon.reflect.declaration.CtElement;
+import spoon.reflect.declaration.CtExecutable;
 import spoon.reflect.factory.ModuleFactory;
+import spoon.reflect.meta.RoleHandler;
+import spoon.reflect.meta.impl.RoleHandlerHelper;
 import spoon.reflect.path.CtRole;
+import spoon.reflect.reference.CtExecutableReference;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -26,6 +32,37 @@ public class NodeFactory {
     private static long currentKey = 0;
     public static final SpoonNode ROOT = new Root();
 
+    private static final Map<Class<? extends CtElement>, List<CtRole>> EXPLODED_TYPE_ROLES;
+    private static final List<Class<? extends CtElement>> EXPLODED_TYPES = Arrays.asList(
+            CtExecutableReference.class, CtExecutable.class
+    );
+
+    // These are roles that are present in the EXPLODED_TYPES types, but are not structural and therefore
+    // do not add any value in the PCS structure. When adding a new exploded type,
+    private static final Set<CtRole> IGNORED_ROLES = Stream.of(
+            CtRole.IS_IMPLICIT,
+            CtRole.IS_DEFAULT,
+            CtRole.IS_VARARGS,
+            CtRole.IS_FINAL,
+            CtRole.IS_SHADOW,
+            CtRole.IS_STATIC,
+            CtRole.DECLARING_TYPE,
+            CtRole.MODIFIER,
+            CtRole.EMODIFIER,
+            CtRole.COMMENT,
+            CtRole.NAME,
+            CtRole.BODY,
+            CtRole.POSITION
+    ).collect(Collectors.toSet());
+
+    static {
+        Map<Class<? extends CtElement>, List<CtRole>> rolesPerClass = new HashMap<>();
+        for (Class<? extends CtElement> cls : EXPLODED_TYPES) {
+            rolesPerClass.put(cls, getRoles(cls).filter(role -> !IGNORED_ROLES.contains(role)).collect(Collectors.toList()));
+        }
+        EXPLODED_TYPE_ROLES = Collections.unmodifiableMap(rolesPerClass);
+    }
+
     /**
      * Wrap a CtElement in a CtWrapper. The wrapper is stored in the CtElement's metadata. If a CtElement that has
      * already been wrapped is passed in, then its existing wrapper is returned. In other words, each CtElement gets
@@ -38,23 +75,43 @@ public class NodeFactory {
         Object wrapper = elem.getMetadata(WRAPPER_METADATA);
 
         if (wrapper == null) {
-            //throw new IllegalStateException("wrapper not initialized for " + elem);
-            CtElement parent = elem.getParent();
-            return initializeWrapper(elem, parent == null ? ROOT : wrap(parent));
+            return initializeWrapper(elem);
         }
 
         return (Node) wrapper;
     }
 
-    public static Node initializeRoledWrapper(CtElement elem, Node parent) {
-        SpoonNode effectiveParent = parent.getRoleNode(elem.getRoleInParent());
+    private static Node initializeWrapper(CtElement elem) {
+        if (elem instanceof ModuleFactory.CtUnnamedModule)
+            return initializeWrapper(elem, ROOT);
+
+        CtElement spoonParent = elem.getParent();
+        CtRole roleInParent = elem.getRoleInParent();
+        Node actualParent = wrap(spoonParent);
+        SpoonNode effectiveParent = actualParent.hasRoleNodeFor(roleInParent) ?
+                        actualParent.getRoleNode(roleInParent) : actualParent;
         return initializeWrapper(elem, effectiveParent);
     }
 
-    public static Node initializeWrapper(CtElement elem, SpoonNode parent) {
-        Node node = new Node(elem, parent, currentKey++);
+    private static Node initializeWrapper(CtElement elem, SpoonNode parent) {
+
+        List<CtRole> availableChildRoles = Collections.emptyList();
+        Class<? extends CtElement> cls = elem.getClass();
+        for (Class<? extends CtElement> explodedType : EXPLODED_TYPES) {
+            if (explodedType.isAssignableFrom(cls)) {
+                availableChildRoles = EXPLODED_TYPE_ROLES.get(explodedType);
+                break;
+            }
+        }
+
+
+        Node node = new Node(elem, parent, currentKey++, availableChildRoles);
         elem.putMetadata(WRAPPER_METADATA, node);
         return node;
+    }
+
+    private static Stream<CtRole> getRoles(Class<? extends CtElement> cls) {
+        return RoleHandlerHelper.getRoleHandlers(cls).stream().map(RoleHandler::getRole);
     }
 
     /**
@@ -91,10 +148,15 @@ public class NodeFactory {
         private final Map<CtRole, RoleNode> childRoles;
         private final CtRole role;
 
-        Node(CtElement element, SpoonNode parent, long key) {
+        Node(CtElement element, SpoonNode parent, long key, List<CtRole> availableChildRoles) {
             this.element = element;
             this.key = key;
+
             childRoles = new TreeMap<>();
+            for (CtRole role : availableChildRoles) {
+                childRoles.put(role, new RoleNode(role, this));
+            }
+
             this.role = element.getRoleInParent();
             this.parent = parent;
         }
@@ -159,10 +221,13 @@ public class NodeFactory {
         public RoleNode getRoleNode(CtRole role) {
             RoleNode roleNode = childRoles.get(role);
             if (roleNode == null) {
-                roleNode = new RoleNode(role, this);
-                childRoles.put(role, roleNode);
+                throw new IllegalArgumentException("No role node for " + role);
             }
             return roleNode;
+        }
+
+        boolean hasRoleNodeFor(CtRole role) {
+            return role != null && childRoles.containsKey(role);
         }
 
         public List<RoleNode> getChildRoles() {

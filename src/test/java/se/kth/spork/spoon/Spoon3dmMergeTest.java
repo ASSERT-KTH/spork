@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ArgumentsSource;
 import se.kth.spork.Util;
+import se.kth.spork.cli.Cli;
 import se.kth.spork.exception.ConflictException;
 import se.kth.spork.util.Pair;
 import spoon.reflect.declaration.*;

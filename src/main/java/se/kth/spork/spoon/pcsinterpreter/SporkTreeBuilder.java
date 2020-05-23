@@ -107,7 +107,6 @@ class SporkTreeBuilder {
     public SporkTree build(SpoonNode currentRoot) {
         Map<SpoonNode, Pcs<SpoonNode>> children = rootToChildren.get(currentRoot);
 
-
         Set<Content<SpoonNode, RoledValues>> currentContent = contents.getOrDefault(currentRoot, Collections.emptySet());
         SporkTree tree = new SporkTree(currentRoot, currentContent);
 
@@ -116,6 +115,12 @@ class SporkTreeBuilder {
 
         try {
             build(NodeFactory.startOfChildList(currentRoot), tree, children);
+
+            for (Pcs<SpoonNode> inconsistent : remainingInconsistencies) {
+                if (inconsistent.getRoot().equals(tree.getNode())) {
+                    throw new ConflictException("Missed conflict: " + inconsistent);
+                }
+            }
         } catch (NullPointerException | ConflictException e) {
             // could not resolve the child list
             // TODO improve design, should not have to catch exceptions like this
@@ -131,6 +136,10 @@ class SporkTreeBuilder {
     }
 
     private void build(SpoonNode start, SporkTree tree, Map<SpoonNode, Pcs<SpoonNode>> children) {
+        if (children == null) // leaf node
+            return;
+
+
         SpoonNode next = start;
         while (true) {
             Pcs<SpoonNode> nextPcs = children.get(next);
@@ -155,12 +164,6 @@ class SporkTreeBuilder {
                     next = traverseConflict(nextPcs, conflicting, children, tree);
                 } else {
                     addChild(tree, build(next));
-                }
-            }
-
-            for (Pcs<SpoonNode> inconsistent : remainingInconsistencies) {
-                if (inconsistent.getRoot().equals(tree.getNode())) {
-                    throw new ConflictException("Missed conflict: " + inconsistent);
                 }
             }
         }

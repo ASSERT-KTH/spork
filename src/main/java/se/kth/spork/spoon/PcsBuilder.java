@@ -5,6 +5,7 @@ import se.kth.spork.base3dm.Revision;
 import se.kth.spork.spoon.wrappers.NodeFactory;
 import se.kth.spork.spoon.wrappers.SpoonNode;
 import spoon.reflect.declaration.CtElement;
+import spoon.reflect.declaration.CtMethod;
 import spoon.reflect.visitor.CtScanner;
 
 import java.util.*;
@@ -42,18 +43,11 @@ class PcsBuilder extends CtScanner {
 
     @Override
     protected void enter(CtElement e) {
-        SpoonNode wrapped;
-        SpoonNode parent;
+        SpoonNode wrapped = NodeFactory.wrap(e);
+        SpoonNode parent = wrapped.getParent();
 
-        if (root == null) {
-            parent = NodeFactory.ROOT;
-            wrapped = NodeFactory.initializeWrapper(e, parent);
+        if (root == null)
             root = wrapped;
-        } else {
-            NodeFactory.Node actualParent = NodeFactory.wrap(e.getParent());
-            wrapped = NodeFactory.initializeRoledWrapper(e, actualParent);
-            parent = wrapped.getParent();
-        }
 
         parentToLastSibling.put(wrapped, NodeFactory.startOfChildList(wrapped));
 
@@ -71,10 +65,9 @@ class PcsBuilder extends CtScanner {
                 // we just need to close their child lists
                 pcses.add(new Pcs<>(parent, lastSibling, NodeFactory.endOfChildList(parent), revision));
             } else {
-                // this is a concrete node, we must add all of its virtual children to the PCS structure
+                // this is a concrete node, we must add all of its virtual children to the PCS structure, except for
+                // the start of the child list as it has all ready been added
                 List<SpoonNode> virtualNodes = parent.getVirtualNodes();
-                assert lastSibling.isStartOfList();
-                assert virtualNodes.get(0).equals(lastSibling);
                 SpoonNode pred = lastSibling;
                 for (SpoonNode succ : virtualNodes.subList(1, virtualNodes.size())) {
                     pcses.add(new Pcs<>(parent, pred, succ, revision));
