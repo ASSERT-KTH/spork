@@ -187,6 +187,9 @@ public class SpoonTreeBuilder {
             }
         }
 
+        // NOTE: Super important that the parent of the merge tree is set no matter what, as wrapping a spoon CtElement
+        // in a SpoonNode requires access to its parent.
+        mergeTree.setParent(mergeParent);
         nodes.put(origTreeNode, NodeFactory.wrap(mergeTree));
 
         return mergeTree;
