@@ -21,6 +21,10 @@ public class Pcs<T extends ListNode> {
      * @param revision The revision this PCS is related to.
      */
     public Pcs(T root, T predecessor, T successor, Revision revision) {
+        if (root == null || predecessor == null || successor == null) {
+            throw new IllegalArgumentException("nodes may not be null");
+        }
+
         this.root = root;
         this.predecessor = predecessor;
         this.successor = successor;

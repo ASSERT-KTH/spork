@@ -77,6 +77,11 @@ public class Spoon3dmMerge {
         Matcher baseRightGumtreeMatch = matchTrees(baseGumtree, rightGumtree);
         Matcher leftRightGumtreeMatch = matchTreesXY(leftGumtree, rightGumtree);
 
+        LOGGER.info(() -> "Converting Spoon trees to PCS triples");
+        Set<Pcs<SpoonNode>> t0 = PcsBuilder.fromSpoon(base, Revision.BASE);
+        Set<Pcs<SpoonNode>> t1 = PcsBuilder.fromSpoon(left, Revision.LEFT);
+        Set<Pcs<SpoonNode>> t2 = PcsBuilder.fromSpoon(right, Revision.RIGHT);
+
         LOGGER.info(() -> "Converting GumTree matches to Spoon matches");
         SpoonMapping baseLeft = SpoonMapping.fromGumTreeMapping(baseLeftGumtreeMatch.getMappings());
         SpoonMapping baseRight = SpoonMapping.fromGumTreeMapping(baseRightGumtreeMatch.getMappings());
@@ -86,11 +91,6 @@ public class Spoon3dmMerge {
         LOGGER.info(() -> "Mapping nodes to class representatives");
         Map<SpoonNode, SpoonNode> classRepMap = ClassRepresentatives.createClassRepresentativesMapping(
                 base, left, right, baseLeft, baseRight, leftRight);
-
-        LOGGER.info(() -> "Converting Spoon trees to PCS triples");
-        Set<Pcs<SpoonNode>> t0 = PcsBuilder.fromSpoon(base, Revision.BASE);
-        Set<Pcs<SpoonNode>> t1 = PcsBuilder.fromSpoon(left, Revision.LEFT);
-        Set<Pcs<SpoonNode>> t2 = PcsBuilder.fromSpoon(right, Revision.RIGHT);
 
         LOGGER.info(() -> "Computing raw PCS merge");
         ChangeSet<SpoonNode, RoledValues> delta = new ChangeSet<>(classRepMap, new ContentResolver(), t0, t1, t2);

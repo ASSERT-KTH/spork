@@ -107,7 +107,6 @@ class SporkTreeBuilder {
     public SporkTree build(SpoonNode currentRoot) {
         Map<SpoonNode, Pcs<SpoonNode>> children = rootToChildren.get(currentRoot);
 
-        SpoonNode next = NodeFactory.startOfChildList(currentRoot);
 
         Set<Content<SpoonNode, RoledValues>> currentContent = contents.getOrDefault(currentRoot, Collections.emptySet());
         SporkTree tree = new SporkTree(currentRoot, currentContent);
@@ -116,15 +115,35 @@ class SporkTreeBuilder {
             return tree;
 
         try {
-            while (true) {
-                Pcs<SpoonNode> nextPcs = children.get(next);
-                tree.addRevision(nextPcs.getRevision());
+            build(NodeFactory.startOfChildList(currentRoot), tree, children);
+        } catch (NullPointerException | ConflictException e) {
+            // could not resolve the child list
+            // TODO improve design, should not have to catch exceptions like this
+            LOGGER.warn(() ->
+                    "Failed to resolve child list of " + currentRoot.getElement().getShortRepresentation()
+                            + ". Falling back to line-based merge of this element.");
+            StructuralConflict conflict = approximateConflict(currentRoot);
+            tree = new SporkTree(currentRoot, currentContent, conflict);
+            tree.setRevisions(Arrays.asList(Revision.BASE, Revision.LEFT, Revision.RIGHT));
+        }
 
-                next = nextPcs.getSuccessor();
-                if (next.isEndOfList()) {
-                    break;
-                }
+        return tree;
+    }
 
+    private void build(SpoonNode start, SporkTree tree, Map<SpoonNode, Pcs<SpoonNode>> children) {
+        SpoonNode next = start;
+        while (true) {
+            Pcs<SpoonNode> nextPcs = children.get(next);
+            tree.addRevision(nextPcs.getRevision());
+
+            next = nextPcs.getSuccessor();
+            if (next.isEndOfList()) {
+                break;
+            }
+
+            if (next.isVirtual()) {
+                build(NodeFactory.startOfChildList(next), tree, rootToChildren.get(next));
+            } else {
                 Set<Pcs<SpoonNode>> conflicts = structuralConflicts.get(nextPcs);
                 Optional<Pcs<SpoonNode>> successorConflict = conflicts == null ? Optional.empty() :
                         conflicts.stream().filter(confPcs ->
@@ -144,18 +163,7 @@ class SporkTreeBuilder {
                     throw new ConflictException("Missed conflict: " + inconsistent);
                 }
             }
-        } catch (NullPointerException | ConflictException e) {
-            // could not resolve the child list
-            // TODO improve design, should not have to catch exceptions like this
-            LOGGER.warn(() ->
-                    "Failed to resolve child list of " + currentRoot.getElement().getShortRepresentation()
-                            + ". Falling back to line-based merge of this element.");
-            StructuralConflict conflict = approximateConflict(currentRoot);
-            tree = new SporkTree(currentRoot, currentContent, conflict);
-            tree.setRevisions(Arrays.asList(Revision.BASE, Revision.LEFT, Revision.RIGHT));
         }
-
-        return tree;
     }
 
     /**

@@ -27,4 +27,11 @@ public interface ListNode {
     default boolean isListEdge() {
         return isStartOfList() || isEndOfList();
     }
+
+    /**
+     * @return true iff this node is a virtual node.
+     */
+    default boolean isVirtual() {
+        return isListEdge();
+    }
 }

@@ -196,7 +196,7 @@ public class ChangeSet<T extends ListNode,V> {
                 addToLookupTable(classRepPred, classRepPcs, predecessors);
                 addToLookupTable(classRepSucc, classRepPcs, successors);
             }
-            if (!pred.isListEdge()) {
+            if (!pred.isVirtual()) {
                 Content<T,V> c = new Content<T,V>(pcs, getContent.apply(pred));
                 addToLookupTable(classRepPred, c, content);
             }
@@ -204,10 +204,10 @@ public class ChangeSet<T extends ListNode,V> {
     }
 
     private Pcs<T> addToStar(Pcs<T> pcs) {
-        T root = pcs.getRoot();
-        T pred = pcs.getPredecessor();
-        T succ = pcs.getSuccessor();
-        Pcs<T> classRepPcs = new Pcs<T>(classRepMap.get(root), classRepMap.get(pred), classRepMap.get(succ), pcs.getRevision());
+        T root = classRepMap.get(pcs.getRoot());
+        T pred = classRepMap.get(pcs.getPredecessor());
+        T succ = classRepMap.get(pcs.getSuccessor());
+        Pcs<T> classRepPcs = new Pcs<T>(root, pred, succ, pcs.getRevision());
         pcsSet.add(classRepPcs);
         return classRepPcs;
     }
