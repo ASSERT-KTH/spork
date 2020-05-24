@@ -79,8 +79,8 @@ public class MappingRemover extends CtScanner {
         SpoonNode node = NodeFactory.wrap(element);
 
         mapping.remove(node);
-        mapping.remove(NodeFactory.startOfChildList(node));
-        mapping.remove(NodeFactory.startOfChildList(node));
+        mapping.remove(node.getStartOfChildList());
+        mapping.remove(node.getStartOfChildList());
 
         super.scan(element);
     }

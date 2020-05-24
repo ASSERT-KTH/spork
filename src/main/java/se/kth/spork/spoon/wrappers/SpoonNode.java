@@ -14,4 +14,8 @@ public interface SpoonNode extends ListNode {
     Revision getRevision();
 
     List<SpoonNode> getVirtualNodes();
+
+    SpoonNode getStartOfChildList();
+
+    SpoonNode getEndOfChildList();
 }

@@ -24,7 +24,7 @@ class PcsBuilder extends CtScanner {
     public PcsBuilder(Revision revision) {
        super();
        this.revision = revision;
-       parentToLastSibling.put(NodeFactory.ROOT, NodeFactory.startOfChildList(NodeFactory.ROOT));
+       parentToLastSibling.put(NodeFactory.ROOT, NodeFactory.ROOT.getStartOfChildList());
     }
 
     /**
@@ -49,9 +49,9 @@ class PcsBuilder extends CtScanner {
         if (root == null)
             root = wrapped;
 
-        parentToLastSibling.put(wrapped, NodeFactory.startOfChildList(wrapped));
+        parentToLastSibling.put(wrapped, wrapped.getStartOfChildList());
 
-        SpoonNode predecessor = parentToLastSibling.getOrDefault(parent, NodeFactory.startOfChildList(parent));
+        SpoonNode predecessor = parentToLastSibling.getOrDefault(parent, parent.getStartOfChildList());
         pcses.add(new Pcs<>(parent, predecessor, wrapped, revision));
         parentToLastSibling.put(parent, wrapped);
     }
@@ -63,7 +63,7 @@ class PcsBuilder extends CtScanner {
             if (parent.isVirtual()) {
                 // this is either the virtual root, or a RoleNode
                 // we just need to close their child lists
-                pcses.add(new Pcs<>(parent, lastSibling, NodeFactory.endOfChildList(parent), revision));
+                pcses.add(new Pcs<>(parent, lastSibling, parent.getEndOfChildList(), revision));
             } else {
                 // this is a concrete node, we must add all of its virtual children to the PCS structure, except for
                 // the start of the child list as it has all ready been added
@@ -86,7 +86,7 @@ class PcsBuilder extends CtScanner {
     }
 
     private Pcs<SpoonNode> createLeafPcs(SpoonNode node) {
-        return new Pcs<>(node, NodeFactory.startOfChildList(node), NodeFactory.endOfChildList(node), revision);
+        return new Pcs<>(node, node.getStartOfChildList(), node.getEndOfChildList(), revision);
     }
 
     public Set<Pcs<SpoonNode>> getPcses() {

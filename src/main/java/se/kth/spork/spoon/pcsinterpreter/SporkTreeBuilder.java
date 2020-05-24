@@ -114,7 +114,7 @@ class SporkTreeBuilder {
             return tree;
 
         try {
-            build(NodeFactory.startOfChildList(currentRoot), tree, children);
+            build(currentRoot.getStartOfChildList(), tree, children);
 
             for (Pcs<SpoonNode> inconsistent : remainingInconsistencies) {
                 if (inconsistent.getRoot().equals(tree.getNode())) {
@@ -154,7 +154,7 @@ class SporkTreeBuilder {
             }
 
             if (next.isVirtual() && !next.isListEdge()) {
-                build(NodeFactory.startOfChildList(next), tree, rootToChildren.get(next));
+                build(next.getStartOfChildList(), tree, rootToChildren.get(next));
             } else {
                 Optional<Pcs<SpoonNode>> successorConflict = getSuccessorConflict(nextPcs);
                 if (successorConflict.isPresent()) {

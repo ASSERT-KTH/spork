@@ -26,7 +26,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
- * Wraps a CtElement and stores the wrapper in the CtElement's metadata.
+ * Factory for wrapping a Spoon {@link CtElement} in a {@link SpoonNode}.
  *
  * @author Simon Larsén
  */
@@ -141,7 +141,7 @@ public class NodeFactory {
      * @param node A Spoon node.
      * @return The start of the child list of the given node.
      */
-    public static SpoonNode startOfChildList(SpoonNode node) {
+    private static SpoonNode startOfChildList(SpoonNode node) {
         return new ListEdge(node, ListEdge.Side.START);
     }
 
@@ -151,8 +151,31 @@ public class NodeFactory {
      * @param elem A Spoon node.
      * @return The end of the child list of the given node.
      */
-    public static SpoonNode endOfChildList(SpoonNode elem) {
+    private static SpoonNode endOfChildList(SpoonNode elem) {
         return new ListEdge(elem, ListEdge.Side.END);
+    }
+
+    /**
+     * Base class for any {@link SpoonNode} that has a child list.
+     */
+    private static abstract class ParentSpoonNode implements SpoonNode {
+        private final SpoonNode startOfChildList;
+        private final SpoonNode endOfChildList;
+
+        ParentSpoonNode() {
+            this.startOfChildList = startOfChildList(this);
+            this.endOfChildList = endOfChildList(this);
+        }
+
+        @Override
+        public SpoonNode getStartOfChildList() {
+            return startOfChildList;
+        }
+
+        @Override
+        public SpoonNode getEndOfChildList() {
+            return endOfChildList;
+        }
     }
 
     /**
@@ -162,12 +185,15 @@ public class NodeFactory {
      *
      * This class should only be instantiated by {@link #wrap(CtElement)}.
      */
-    private static class Node implements SpoonNode {
+    private static class Node extends ParentSpoonNode {
         private final CtElement element;
         private final long key;
         private final SpoonNode parent;
         private final Map<CtRole, RoleNode> virtualRoleChildNodes;
         private final CtRole role;
+
+        private final SpoonNode startOfChildList;
+        private final SpoonNode endOfChildList;
 
         Node(CtElement element, SpoonNode parent, long key, List<CtRole> virtualNodeChildRoles) {
             this.element = element;
@@ -177,6 +203,9 @@ public class NodeFactory {
             for (CtRole role : virtualNodeChildRoles) {
                 virtualRoleChildNodes.put(role, new RoleNode(role, this));
             }
+
+            startOfChildList = startOfChildList(this);
+            endOfChildList = endOfChildList(this);
 
             this.role = element.getRoleInParent();
             this.parent = parent;
@@ -250,12 +279,22 @@ public class NodeFactory {
         boolean hasRoleNodeFor(CtRole role) {
             return role != null && virtualRoleChildNodes.containsKey(role);
         }
+
+        @Override
+        public SpoonNode getStartOfChildList() {
+            return startOfChildList;
+        }
+
+        @Override
+        public SpoonNode getEndOfChildList() {
+            return endOfChildList;
+        }
     }
 
     /**
      * The root virtual node. This is a singleton, there should only be the one that exists in {@link #ROOT}.
      */
-    private static class Root implements SpoonNode {
+    private static class Root extends ParentSpoonNode {
         @Override
         public CtElement getElement() {
             return null;
@@ -353,13 +392,23 @@ public class NodeFactory {
         public String toString() {
             return side.toString();
         }
+
+        @Override
+        public SpoonNode getStartOfChildList() {
+            throw new UnsupportedOperationException("A list edge has no child list");
+        }
+
+        @Override
+        public SpoonNode getEndOfChildList() {
+            throw new UnsupportedOperationException("A list edge has no child list");
+        }
     }
 
     /**
      * A RoleNode is a virtual node used to separate child lists in nodes with multiple types of child lists. See
      * https://github.com/KTH/spork/issues/132 for details.
      */
-    private static class RoleNode implements SpoonNode {
+    private static class RoleNode extends ParentSpoonNode {
         private final Node parent;
         private final CtRole role;
 
