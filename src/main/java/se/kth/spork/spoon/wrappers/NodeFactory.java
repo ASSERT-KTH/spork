@@ -5,6 +5,8 @@ import se.kth.spork.base3dm.TdmMerge;
 import spoon.reflect.declaration.CtElement;
 import spoon.reflect.declaration.CtExecutable;
 import spoon.reflect.declaration.CtType;
+import spoon.reflect.declaration.CtTypeMember;
+import spoon.reflect.declaration.CtTypeParameter;
 import spoon.reflect.factory.ModuleFactory;
 import spoon.reflect.meta.RoleHandler;
 import spoon.reflect.meta.impl.RoleHandlerHelper;
@@ -99,20 +101,30 @@ public class NodeFactory {
     }
 
     private static Node initializeWrapper(CtElement elem, SpoonNode parent) {
-
-        List<CtRole> availableChildRoles = Collections.emptyList();
-        Class<? extends CtElement> cls = elem.getClass();
-        for (Class<? extends CtElement> explodedType : EXPLODED_TYPES) {
-            if (explodedType.isAssignableFrom(cls)) {
-                availableChildRoles = EXPLODED_TYPE_ROLES.get(explodedType);
-                break;
-            }
-        }
-
-
+        List<CtRole> availableChildRoles = getVirtualNodeChildRoles(elem);
         Node node = new Node(elem, parent, currentKey++, availableChildRoles);
         elem.putMetadata(WRAPPER_METADATA, node);
         return node;
+    }
+
+    /**
+     * Return a list of child nodes that should be exploded into virtual types for the given element.
+     *
+     * Note that for most types, the list will be empty.
+     */
+    private static List<CtRole> getVirtualNodeChildRoles(CtElement elem) {
+        if (CtTypeParameter.class.isAssignableFrom(elem.getClass())) {
+            // we ignore any subtype of CtTypeParameter as exploding them causes a large performance hit
+            return Collections.emptyList();
+        }
+
+        Class<? extends CtElement> cls = elem.getClass();
+        for (Class<? extends CtElement> explodedType : EXPLODED_TYPES) {
+            if (explodedType.isAssignableFrom(cls)) {
+                return EXPLODED_TYPE_ROLES.get(explodedType);
+            }
+        }
+        return Collections.emptyList();
     }
 
     private static Stream<CtRole> getRoles(Class<? extends CtElement> cls) {
@@ -150,16 +162,16 @@ public class NodeFactory {
         private final CtElement element;
         private final long key;
         private final SpoonNode parent;
-        private final Map<CtRole, RoleNode> childRoles;
+        private final Map<CtRole, RoleNode> virtualRoleChildNodes;
         private final CtRole role;
 
-        Node(CtElement element, SpoonNode parent, long key, List<CtRole> availableChildRoles) {
+        Node(CtElement element, SpoonNode parent, long key, List<CtRole> virtualNodeChildRoles) {
             this.element = element;
             this.key = key;
 
-            childRoles = new TreeMap<>();
-            for (CtRole role : availableChildRoles) {
-                childRoles.put(role, new RoleNode(role, this));
+            virtualRoleChildNodes = new TreeMap<>();
+            for (CtRole role : virtualNodeChildRoles) {
+                virtualRoleChildNodes.put(role, new RoleNode(role, this));
             }
 
             this.role = element.getRoleInParent();
@@ -204,7 +216,7 @@ public class NodeFactory {
             return Stream.concat(
                     Stream.concat(
                             Stream.of(NodeFactory.startOfChildList(this)),
-                            childRoles.values().stream()
+                            virtualRoleChildNodes.values().stream()
                     ),
                     Stream.of(NodeFactory.endOfChildList(this)))
                     .collect(Collectors.toList());
@@ -224,7 +236,7 @@ public class NodeFactory {
         }
 
         public RoleNode getRoleNode(CtRole role) {
-            RoleNode roleNode = childRoles.get(role);
+            RoleNode roleNode = virtualRoleChildNodes.get(role);
             if (roleNode == null) {
                 throw new IllegalArgumentException("No role node for " + role);
             }
@@ -232,11 +244,7 @@ public class NodeFactory {
         }
 
         boolean hasRoleNodeFor(CtRole role) {
-            return role != null && childRoles.containsKey(role);
-        }
-
-        public List<RoleNode> getChildRoles() {
-            return new ArrayList<>(childRoles.values());
+            return role != null && virtualRoleChildNodes.containsKey(role);
         }
     }
 
