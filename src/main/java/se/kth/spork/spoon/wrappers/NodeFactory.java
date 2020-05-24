@@ -4,6 +4,7 @@ import se.kth.spork.base3dm.Revision;
 import se.kth.spork.base3dm.TdmMerge;
 import spoon.reflect.declaration.CtElement;
 import spoon.reflect.declaration.CtExecutable;
+import spoon.reflect.declaration.CtType;
 import spoon.reflect.factory.ModuleFactory;
 import spoon.reflect.meta.RoleHandler;
 import spoon.reflect.meta.impl.RoleHandlerHelper;
@@ -34,12 +35,13 @@ public class NodeFactory {
 
     private static final Map<Class<? extends CtElement>, List<CtRole>> EXPLODED_TYPE_ROLES;
     private static final List<Class<? extends CtElement>> EXPLODED_TYPES = Arrays.asList(
-            CtExecutableReference.class, CtExecutable.class
+            CtExecutableReference.class, CtExecutable.class, CtType.class
     );
 
-    // These are roles that are present in the EXPLODED_TYPES types, but are not structural and therefore
-    // do not add any value in the PCS structure. When adding a new exploded type,
+    // These are roles that are present in the EXPLODED_TYPES types, but are either not structural
+    // or are always present as a single node (such as a method body)
     private static final Set<CtRole> IGNORED_ROLES = Stream.of(
+            /* START NON-STRUCTURAL ROLES */
             CtRole.IS_IMPLICIT,
             CtRole.IS_DEFAULT,
             CtRole.IS_VARARGS,
@@ -49,10 +51,13 @@ public class NodeFactory {
             CtRole.DECLARING_TYPE,
             CtRole.MODIFIER,
             CtRole.EMODIFIER,
-            CtRole.COMMENT,
             CtRole.NAME,
-            CtRole.BODY,
-            CtRole.POSITION
+            CtRole.POSITION,
+            /* END NON-STRUCTURAL ROLES */
+            CtRole.BODY,        // always present as a single node
+            CtRole.NESTED_TYPE, // falls under type member
+            CtRole.FIELD,       // falls under type member
+            CtRole.METHOD       // falls under type member
     ).collect(Collectors.toSet());
 
     static {
