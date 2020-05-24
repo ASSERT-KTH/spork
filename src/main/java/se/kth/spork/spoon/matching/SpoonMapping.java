@@ -4,6 +4,7 @@ import com.github.gumtreediff.matchers.Mapping;
 import com.github.gumtreediff.matchers.MappingStore;
 import com.github.gumtreediff.tree.ITree;
 import com.github.gumtreediff.utils.Pair;
+import gumtree.spoon.builder.CtWrapper;
 import gumtree.spoon.builder.SpoonGumTreeBuilder;
 import se.kth.spork.spoon.wrappers.SpoonNode;
 import se.kth.spork.spoon.wrappers.NodeFactory;
@@ -97,6 +98,9 @@ public class SpoonMapping {
             // that the keys in the annotation map aren't proper nodes.
             return true;
         } else if (isPrimitiveType(src) != isPrimitiveType(dst)) {
+            return true;
+        } else if (src instanceof CtWrapper || dst instanceof CtWrapper) {
+            // the CtWrapper elements do not represent real Spoon nodes, and so are just noise
             return true;
         }
         return false;

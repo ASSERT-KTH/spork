@@ -5,10 +5,12 @@ import se.kth.spork.base3dm.TdmMerge;
 import se.kth.spork.spoon.wrappers.SpoonNode;
 import se.kth.spork.spoon.wrappers.NodeFactory;
 import spoon.reflect.declaration.CtElement;
+import spoon.reflect.reference.CtReference;
 import spoon.reflect.visitor.CtScanner;
 
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -126,13 +128,19 @@ public class ClassRepresentatives {
         classRepMap.put(from, to);
 
         // map the virtual nodes
-        SpoonNode fromSOL = NodeFactory.startOfChildList(from);
-        SpoonNode toSOL = NodeFactory.startOfChildList(to);
-        SpoonNode fromEOL = NodeFactory.endOfChildList(from);
-        SpoonNode toEOL = NodeFactory.endOfChildList(to);
+        List<SpoonNode> fromVirtualNodes = from.getVirtualNodes();
+        List<SpoonNode> toVirtualNodes = to.getVirtualNodes();
 
-        classRepMap.put(fromSOL, toSOL);
-        classRepMap.put(fromEOL, toEOL);
+        for (int i = 0; i < fromVirtualNodes.size(); i++) {
+            SpoonNode fromVirt = fromVirtualNodes.get(i);
+            SpoonNode toVirt = toVirtualNodes.get(i);
+
+            if (fromVirt.isListEdge()) {
+                classRepMap.put(fromVirt, toVirt);
+            } else {
+                mapNodes(fromVirt, toVirt, classRepMap);
+            }
+        }
     }
 
     /**

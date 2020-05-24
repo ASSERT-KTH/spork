@@ -107,8 +107,6 @@ class SporkTreeBuilder {
     public SporkTree build(SpoonNode currentRoot) {
         Map<SpoonNode, Pcs<SpoonNode>> children = rootToChildren.get(currentRoot);
 
-        SpoonNode next = NodeFactory.startOfChildList(currentRoot);
-
         Set<Content<SpoonNode, RoledValues>> currentContent = contents.getOrDefault(currentRoot, Collections.emptySet());
         SporkTree tree = new SporkTree(currentRoot, currentContent);
 
@@ -116,28 +114,7 @@ class SporkTreeBuilder {
             return tree;
 
         try {
-            while (true) {
-                Pcs<SpoonNode> nextPcs = children.get(next);
-                tree.addRevision(nextPcs.getRevision());
-
-                next = nextPcs.getSuccessor();
-                if (next.isEndOfList()) {
-                    break;
-                }
-
-                Set<Pcs<SpoonNode>> conflicts = structuralConflicts.get(nextPcs);
-                Optional<Pcs<SpoonNode>> successorConflict = conflicts == null ? Optional.empty() :
-                        conflicts.stream().filter(confPcs ->
-                                StructuralConflict.isSuccessorConflict(nextPcs, confPcs)).findFirst();
-
-                // successor conflicts mark the start of a conflict, any other conflict is to be ignored
-                if (successorConflict.isPresent()) {
-                    Pcs<SpoonNode> conflicting = successorConflict.get();
-                    next = traverseConflict(nextPcs, conflicting, children, tree);
-                } else {
-                    addChild(tree, build(next));
-                }
-            }
+            build(NodeFactory.startOfChildList(currentRoot), tree, children);
 
             for (Pcs<SpoonNode> inconsistent : remainingInconsistencies) {
                 if (inconsistent.getRoot().equals(tree.getNode())) {
@@ -156,6 +133,49 @@ class SporkTreeBuilder {
         }
 
         return tree;
+    }
+
+    private void build(SpoonNode start, SporkTree tree, Map<SpoonNode, Pcs<SpoonNode>> children) {
+        if (children == null) // leaf node
+            return;
+
+
+        SpoonNode next = start;
+        while (true) {
+            Pcs<SpoonNode> nextPcs = children.get(next);
+            tree.addRevision(nextPcs.getRevision());
+
+            next = nextPcs.getSuccessor();
+
+            if (next.isListEdge()) {
+                // can still have a conflict at the end of the child list
+                getSuccessorConflict(nextPcs).map(conflicting -> traverseConflict(nextPcs, conflicting, children, tree));
+                break;
+            }
+
+            if (next.isVirtual() && !next.isListEdge()) {
+                build(NodeFactory.startOfChildList(next), tree, rootToChildren.get(next));
+            } else {
+                Optional<Pcs<SpoonNode>> successorConflict = getSuccessorConflict(nextPcs);
+                if (successorConflict.isPresent()) {
+                    Pcs<SpoonNode> conflicting = successorConflict.get();
+                    next = traverseConflict(nextPcs, conflicting, children, tree);
+                } else {
+                    addChild(tree, build(next));
+                }
+
+                if (next.isEndOfList()) {
+                    break;
+                }
+            }
+        }
+    }
+
+    private Optional<Pcs<SpoonNode>> getSuccessorConflict(Pcs<SpoonNode> pcs) {
+        Set<Pcs<SpoonNode>> conflicts = structuralConflicts.get(pcs);
+        return conflicts == null ? Optional.empty() :
+                conflicts.stream().filter(confPcs ->
+                        StructuralConflict.isSuccessorConflict(pcs, confPcs)).findFirst();
     }
 
     /**
@@ -211,6 +231,9 @@ class SporkTreeBuilder {
         List<SpoonNode> rightNodes = extractConflictList(rightPcs, children);
 
         Optional<List<SpoonNode>> resolved = tryResolveConflict(leftNodes, rightNodes);
+
+        // if nextPcs happens to be the final PCS of a child list, next may be a virtual node
+        next = leftNodes.isEmpty() ? rightNodes.get(rightNodes.size() - 1) : leftNodes.get(leftNodes.size() - 1);
         if (resolved.isPresent()) {
             resolved.get().forEach(child ->
                     addChild(tree, build(child))
@@ -225,7 +248,7 @@ class SporkTreeBuilder {
             tree.addChild(new SporkTree(next, contents.get(next), conflict));
         }
         // by convention, build left tree
-        return leftNodes.isEmpty() ? next : leftNodes.get(leftNodes.size() - 1);
+        return next;
     }
 
     private void addChild(SporkTree tree, SporkTree child) {

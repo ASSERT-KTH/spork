@@ -3,9 +3,27 @@ package se.kth.spork.spoon.wrappers;
 import se.kth.spork.base3dm.Revision;
 import se.kth.spork.base3dm.TdmMerge;
 import spoon.reflect.declaration.CtElement;
+import spoon.reflect.declaration.CtExecutable;
+import spoon.reflect.declaration.CtType;
+import spoon.reflect.declaration.CtTypeMember;
+import spoon.reflect.declaration.CtTypeParameter;
 import spoon.reflect.factory.ModuleFactory;
+import spoon.reflect.meta.RoleHandler;
+import spoon.reflect.meta.impl.RoleHandlerHelper;
+import spoon.reflect.path.CtRole;
+import spoon.reflect.reference.CtExecutableReference;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.TreeMap;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Wraps a CtElement and stores the wrapper in the CtElement's metadata.
@@ -17,6 +35,41 @@ public class NodeFactory {
     private static long currentKey = 0;
     public static final SpoonNode ROOT = new Root();
 
+    private static final Map<Class<? extends CtElement>, List<CtRole>> EXPLODED_TYPE_ROLES;
+    private static final List<Class<? extends CtElement>> EXPLODED_TYPES = Arrays.asList(
+            CtExecutableReference.class, CtExecutable.class, CtType.class
+    );
+
+    // These are roles that are present in the EXPLODED_TYPES types, but are either not structural
+    // or are always present as a single node (such as a method body)
+    private static final Set<CtRole> IGNORED_ROLES = Stream.of(
+            /* START NON-STRUCTURAL ROLES */
+            CtRole.IS_IMPLICIT,
+            CtRole.IS_DEFAULT,
+            CtRole.IS_VARARGS,
+            CtRole.IS_FINAL,
+            CtRole.IS_SHADOW,
+            CtRole.IS_STATIC,
+            CtRole.DECLARING_TYPE,
+            CtRole.MODIFIER,
+            CtRole.EMODIFIER,
+            CtRole.NAME,
+            CtRole.POSITION,
+            /* END NON-STRUCTURAL ROLES */
+            CtRole.BODY,        // always present as a single node
+            CtRole.NESTED_TYPE, // falls under type member
+            CtRole.FIELD,       // falls under type member
+            CtRole.METHOD       // falls under type member
+    ).collect(Collectors.toSet());
+
+    static {
+        Map<Class<? extends CtElement>, List<CtRole>> rolesPerClass = new HashMap<>();
+        for (Class<? extends CtElement> cls : EXPLODED_TYPES) {
+            rolesPerClass.put(cls, getRoles(cls).filter(role -> !IGNORED_ROLES.contains(role)).collect(Collectors.toList()));
+        }
+        EXPLODED_TYPE_ROLES = Collections.unmodifiableMap(rolesPerClass);
+    }
+
     /**
      * Wrap a CtElement in a CtWrapper. The wrapper is stored in the CtElement's metadata. If a CtElement that has
      * already been wrapped is passed in, then its existing wrapper is returned. In other words, each CtElement gets
@@ -26,14 +79,60 @@ public class NodeFactory {
      * @return A wrapper around the CtElement that is more practical for hashing purposes.
      */
     public static SpoonNode wrap(CtElement elem) {
+        return wrapInternal(elem);
+    }
+
+    private static Node wrapInternal(CtElement elem) {
         Object wrapper = elem.getMetadata(WRAPPER_METADATA);
 
         if (wrapper == null) {
-            wrapper = new Node(elem, currentKey++);
-            elem.putMetadata(WRAPPER_METADATA, wrapper);
+            return initializeWrapper(elem);
         }
 
-        return (SpoonNode) wrapper;
+        return (Node) wrapper;
+    }
+
+    private static Node initializeWrapper(CtElement elem) {
+        if (elem instanceof ModuleFactory.CtUnnamedModule)
+            return initializeWrapper(elem, ROOT);
+
+        CtElement spoonParent = elem.getParent();
+        CtRole roleInParent = elem.getRoleInParent();
+        Node actualParent = wrapInternal(spoonParent);
+        SpoonNode effectiveParent = actualParent.hasRoleNodeFor(roleInParent) ?
+                        actualParent.getRoleNode(roleInParent) : actualParent;
+        return initializeWrapper(elem, effectiveParent);
+    }
+
+    private static Node initializeWrapper(CtElement elem, SpoonNode parent) {
+        List<CtRole> availableChildRoles = getVirtualNodeChildRoles(elem);
+        Node node = new Node(elem, parent, currentKey++, availableChildRoles);
+        elem.putMetadata(WRAPPER_METADATA, node);
+        return node;
+    }
+
+    /**
+     * Return a list of child nodes that should be exploded into virtual types for the given element.
+     *
+     * Note that for most types, the list will be empty.
+     */
+    private static List<CtRole> getVirtualNodeChildRoles(CtElement elem) {
+        if (CtTypeParameter.class.isAssignableFrom(elem.getClass())) {
+            // we ignore any subtype of CtTypeParameter as exploding them causes a large performance hit
+            return Collections.emptyList();
+        }
+
+        Class<? extends CtElement> cls = elem.getClass();
+        for (Class<? extends CtElement> explodedType : EXPLODED_TYPES) {
+            if (explodedType.isAssignableFrom(cls)) {
+                return EXPLODED_TYPE_ROLES.get(explodedType);
+            }
+        }
+        return Collections.emptyList();
+    }
+
+    private static Stream<CtRole> getRoles(Class<? extends CtElement> cls) {
+        return RoleHandlerHelper.getRoleHandlers(cls).stream().map(RoleHandler::getRole);
     }
 
     /**
@@ -61,15 +160,26 @@ public class NodeFactory {
      * uses lookup tables, and CtElements have very heavy-duty equals and hash functions. For the purpose of 3DM merge,
      * only reference equality is needed, not deep equality.
      *
-     * This class should only be instantiated with the CtWrapperFactory singleton.
+     * This class should only be instantiated by {@link #wrap(CtElement)}.
      */
     private static class Node implements SpoonNode {
         private final CtElement element;
         private final long key;
+        private final SpoonNode parent;
+        private final Map<CtRole, RoleNode> virtualRoleChildNodes;
+        private final CtRole role;
 
-        Node(CtElement element, long key) {
+        Node(CtElement element, SpoonNode parent, long key, List<CtRole> virtualNodeChildRoles) {
             this.element = element;
             this.key = key;
+
+            virtualRoleChildNodes = new TreeMap<>();
+            for (CtRole role : virtualNodeChildRoles) {
+                virtualRoleChildNodes.put(role, new RoleNode(role, this));
+            }
+
+            this.role = element.getRoleInParent();
+            this.parent = parent;
         }
 
         @Override
@@ -79,9 +189,7 @@ public class NodeFactory {
 
         @Override
         public SpoonNode getParent() {
-            if (element instanceof ModuleFactory.CtUnnamedModule)
-                return NodeFactory.ROOT;
-            return wrap(element.getParent());
+            return parent;
         }
 
         @Override
@@ -103,6 +211,22 @@ public class NodeFactory {
         }
 
         @Override
+        public boolean isVirtual() {
+            return false;
+        }
+
+        @Override
+        public List<SpoonNode> getVirtualNodes() {
+            return Stream.concat(
+                    Stream.concat(
+                            Stream.of(NodeFactory.startOfChildList(this)),
+                            virtualRoleChildNodes.values().stream()
+                    ),
+                    Stream.of(NodeFactory.endOfChildList(this)))
+                    .collect(Collectors.toList());
+        }
+
+        @Override
         public boolean equals(Object o) {
             if (this == o) return true;
             if (o == null || getClass() != o.getClass()) return false;
@@ -114,8 +238,23 @@ public class NodeFactory {
         public int hashCode() {
             return Objects.hash(key);
         }
+
+        public RoleNode getRoleNode(CtRole role) {
+            RoleNode roleNode = virtualRoleChildNodes.get(role);
+            if (roleNode == null) {
+                throw new IllegalArgumentException("No role node for " + role);
+            }
+            return roleNode;
+        }
+
+        boolean hasRoleNodeFor(CtRole role) {
+            return role != null && virtualRoleChildNodes.containsKey(role);
+        }
     }
 
+    /**
+     * The root virtual node. This is a singleton, there should only be the one that exists in {@link #ROOT}.
+     */
     private static class Root implements SpoonNode {
         @Override
         public CtElement getElement() {
@@ -124,7 +263,7 @@ public class NodeFactory {
 
         @Override
         public SpoonNode getParent() {
-            return null;
+            throw new UnsupportedOperationException("The virtual root has no parent");
         }
 
         @Override
@@ -135,6 +274,16 @@ public class NodeFactory {
         @Override
         public Revision getRevision() {
             throw new UnsupportedOperationException("The virtual root has no revision");
+        }
+
+        @Override
+        public boolean isVirtual() {
+            return true;
+        }
+
+        @Override
+        public List<SpoonNode> getVirtualNodes() {
+            return Arrays.asList(NodeFactory.startOfChildList(this), NodeFactory.endOfChildList(this));
         }
     }
 
@@ -171,6 +320,11 @@ public class NodeFactory {
         }
 
         @Override
+        public List<SpoonNode> getVirtualNodes() {
+            throw new UnsupportedOperationException("Can't get virtual nodes from a list edge");
+        }
+
+        @Override
         public boolean isEndOfList() {
             return side == Side.END;
         }
@@ -198,6 +352,64 @@ public class NodeFactory {
         @Override
         public String toString() {
             return side.toString();
+        }
+    }
+
+    /**
+     * A RoleNode is a virtual node used to separate child lists in nodes with multiple types of child lists. See
+     * https://github.com/KTH/spork/issues/132 for details.
+     */
+    private static class RoleNode implements SpoonNode {
+        private final Node parent;
+        private final CtRole role;
+
+        RoleNode(CtRole role, Node parent) {
+            this.role = role;
+            this.parent = parent;
+        }
+
+        @Override
+        public CtElement getElement() {
+            throw new UnsupportedOperationException("Can't get element from a RoleNode");
+        }
+
+        @Override
+        public SpoonNode getParent() {
+            return parent;
+        }
+
+        @Override
+        public Revision getRevision() {
+            return parent.getRevision();
+        }
+
+        @Override
+        public List<SpoonNode> getVirtualNodes() {
+            return Arrays.asList(NodeFactory.startOfChildList(this), NodeFactory.endOfChildList(this));
+        }
+
+        @Override
+        public String toString() {
+            return "RoleNode#" + role.toString();
+        }
+
+        @Override
+        public boolean isVirtual() {
+            return true;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            RoleNode roleNode = (RoleNode) o;
+            return Objects.equals(parent, roleNode.parent) &&
+                    role == roleNode.role;
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(parent, role);
         }
     }
 }

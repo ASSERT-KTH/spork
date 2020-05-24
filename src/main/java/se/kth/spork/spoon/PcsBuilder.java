@@ -5,6 +5,7 @@ import se.kth.spork.base3dm.Revision;
 import se.kth.spork.spoon.wrappers.NodeFactory;
 import se.kth.spork.spoon.wrappers.SpoonNode;
 import spoon.reflect.declaration.CtElement;
+import spoon.reflect.declaration.CtMethod;
 import spoon.reflect.visitor.CtScanner;
 
 import java.util.*;
@@ -15,7 +16,7 @@ import java.util.*;
  * @author Simon Larsén
  */
 class PcsBuilder extends CtScanner {
-    private Map<SpoonNode, SpoonNode> rootTolastSibling = new HashMap<>();
+    private Map<SpoonNode, SpoonNode> parentToLastSibling = new HashMap<>();
     private Set<Pcs<SpoonNode>> pcses = new HashSet<>();
     private SpoonNode root = null;
     private Revision revision;
@@ -23,7 +24,7 @@ class PcsBuilder extends CtScanner {
     public PcsBuilder(Revision revision) {
        super();
        this.revision = revision;
-       rootTolastSibling.put(NodeFactory.ROOT, NodeFactory.startOfChildList(NodeFactory.ROOT));
+       parentToLastSibling.put(NodeFactory.ROOT, NodeFactory.startOfChildList(NodeFactory.ROOT));
     }
 
     /**
@@ -36,34 +37,56 @@ class PcsBuilder extends CtScanner {
     public static Set<Pcs<SpoonNode>> fromSpoon(CtElement spoonClass, Revision revision) {
         PcsBuilder scanner = new PcsBuilder(revision);
         scanner.scan(spoonClass);
+        scanner.finishPcses();
         return scanner.getPcses();
     }
 
     @Override
     protected void enter(CtElement e) {
         SpoonNode wrapped = NodeFactory.wrap(e);
+        SpoonNode parent = wrapped.getParent();
+
         if (root == null)
             root = wrapped;
 
-        rootTolastSibling.put(wrapped, NodeFactory.startOfChildList(wrapped));
+        parentToLastSibling.put(wrapped, NodeFactory.startOfChildList(wrapped));
 
-        SpoonNode parent = wrapped.getParent();
-        SpoonNode predecessor = rootTolastSibling.get(parent);
+        SpoonNode predecessor = parentToLastSibling.getOrDefault(parent, NodeFactory.startOfChildList(parent));
         pcses.add(new Pcs<>(parent, predecessor, wrapped, revision));
-        rootTolastSibling.put(parent, wrapped);
+        parentToLastSibling.put(parent, wrapped);
     }
 
-    @Override
-    protected void exit(CtElement e) {
-        SpoonNode current = NodeFactory.wrap(e);
-        SpoonNode predecessor = rootTolastSibling.get(current);
-        SpoonNode successor = NodeFactory.endOfChildList(current);
-        pcses.add(new Pcs<>(current, predecessor, successor, revision));
+    private void finishPcses() {
+        for (Map.Entry<SpoonNode, SpoonNode> nodePair : parentToLastSibling.entrySet()) {
+            SpoonNode parent = nodePair.getKey();
+            SpoonNode lastSibling = nodePair.getValue();
+            if (parent.isVirtual()) {
+                // this is either the virtual root, or a RoleNode
+                // we just need to close their child lists
+                pcses.add(new Pcs<>(parent, lastSibling, NodeFactory.endOfChildList(parent), revision));
+            } else {
+                // this is a concrete node, we must add all of its virtual children to the PCS structure, except for
+                // the start of the child list as it has all ready been added
+                List<SpoonNode> virtualNodes = parent.getVirtualNodes();
+                SpoonNode pred = lastSibling;
+                for (SpoonNode succ : virtualNodes.subList(1, virtualNodes.size())) {
+                    pcses.add(new Pcs<>(parent, pred, succ, revision));
 
-        if (current.getParent() == NodeFactory.ROOT) {
-            // need to finish the virtual root's child list artificially as it is not a real node
-            pcses.add(new Pcs<>(NodeFactory.ROOT, current, NodeFactory.endOfChildList(NodeFactory.ROOT), revision));
+                    // also need to create "leaf child lists" for any non-list-edge virtual node that does not have any
+                    // children, or Spork will not discover removals that entirely empty the child list.
+                    // The problem is detailed in https://github.com/KTH/spork/issues/116
+                    if (!pred.isListEdge() && !parentToLastSibling.containsKey(pred)) {
+                        pcses.add(createLeafPcs(pred));
+                    }
+
+                    pred = succ;
+                }
+            }
         }
+    }
+
+    private Pcs<SpoonNode> createLeafPcs(SpoonNode node) {
+        return new Pcs<>(node, NodeFactory.startOfChildList(node), NodeFactory.endOfChildList(node), revision);
     }
 
     public Set<Pcs<SpoonNode>> getPcses() {
