@@ -7,6 +7,7 @@ import subprocess
 import shutil
 import sys
 import os
+import hashlib
 from typing import List, Iterable, Tuple, Iterator, Optional
 
 import daiquiri
@@ -78,7 +79,9 @@ def compare_classfiles(
     expected_pkg = extract_java_package(expected)
     replayed_pkg = extract_java_package(replayed)
 
-    basedir = eval_dir / expected.name
+    path_sha = hashlib.sha1(str(pair.expected.original_relpath).encode(sys.getdefaultencoding())).hexdigest()
+    dirname = f"{expected.name}_{path_sha}"
+    basedir = eval_dir / dirname
     expected_basedir = basedir / "expected"
     replayed_basedir = basedir / merge_driver
 

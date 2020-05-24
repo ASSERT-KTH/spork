@@ -8,6 +8,7 @@ import dataclasses
 import subprocess
 import re
 import tempfile
+import hashlib
 from typing import List, Mapping, Tuple, Iterable
 
 import git
@@ -37,7 +38,9 @@ def create_merge_dirs(
         right_filename = "Right.java"
         result_filename = "Expected.java"
 
-        merge_dir = merge_dir_base / merge_commit.hexsha / result_blob.name
+        path_sha = hashlib.sha1(result_blob.path.encode(sys.getdefaultencoding())).hexdigest()
+        merge_dir_name = f"{result_blob.name}_{path_sha}"
+        merge_dir = merge_dir_base / merge_commit.hexsha / merge_dir_name
         merge_dir.mkdir(parents=True, exist_ok=True)
 
         _write_blob_to_file(merge_dir / result_filename, result_blob)
