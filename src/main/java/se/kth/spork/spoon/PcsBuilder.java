@@ -71,10 +71,22 @@ class PcsBuilder extends CtScanner {
                 SpoonNode pred = lastSibling;
                 for (SpoonNode succ : virtualNodes.subList(1, virtualNodes.size())) {
                     pcses.add(new Pcs<>(parent, pred, succ, revision));
+
+                    // also need to create "leaf child lists" for any non-list-edge virtual node that does not have any
+                    // children, or Spork will not discover removals that entirely empty the child list.
+                    // The problem is detailed in https://github.com/KTH/spork/issues/116
+                    if (!pred.isListEdge() && !parentToLastSibling.containsKey(pred)) {
+                        pcses.add(createLeafPcs(pred));
+                    }
+
                     pred = succ;
                 }
             }
         }
+    }
+
+    private Pcs<SpoonNode> createLeafPcs(SpoonNode node) {
+        return new Pcs<>(node, NodeFactory.startOfChildList(node), NodeFactory.endOfChildList(node), revision);
     }
 
     public Set<Pcs<SpoonNode>> getPcses() {
