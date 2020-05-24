@@ -101,17 +101,6 @@ public class ClassRepresentatives {
             CtElement t = descIt.next();
             mapToClassRep(mappings, classRepMap, rev, t);
         }
-
-        descIt = tree.descendantIterator();
-        while (descIt.hasNext()) {
-            CtElement t = descIt.next();
-            SpoonNode node = NodeFactory.wrap(t);
-            SpoonNode parent = node.getParent();
-            SpoonNode parentClassRep = classRepMap.get(parent);
-            if (parentClassRep == null) {
-                System.out.println();
-            }
-        }
     }
 
     private static void mapToClassRep(SpoonMapping mappings, Map<SpoonNode, SpoonNode> classRepMap, Revision rev, CtElement t) {
