@@ -7,7 +7,7 @@ import subprocess
 import shutil
 import sys
 import os
-from typing import List, Iterable, Tuple, Iterator
+from typing import List, Iterable, Tuple, Iterator, Optional
 
 import daiquiri
 
@@ -55,7 +55,7 @@ def compare_compiled_bytecode(
 
 def compare_classfiles(
     pair: conts.ClassfilePair, eval_dir: pathlib.Path, merge_driver: str
-) -> bool:
+) -> Optional[bool]:
     """Compare two classfiles with normalized bytecode equality using sootdiff.
     Requires sootdiff to be on the path.
 
@@ -65,7 +65,8 @@ def compare_classfiles(
         merge_driver: The merge driver that produced the merge. Used to give
             the storage directory a name.
     Returns:
-        True if the files are equal
+        True if the files are equal, False if they are not, or None if the
+        comparison could not be performed.
     """
     expected = pair.expected.copy_abspath
     replayed = pair.replayed
@@ -105,7 +106,7 @@ def compare_classfiles(
         )
     except:
         LOGGER.exception("error running sootdiff")
-        return False
+        return None
 
     return proc.returncode == 0
 
