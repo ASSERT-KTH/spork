@@ -8,6 +8,7 @@ import spoon.Launcher;
 import spoon.compiler.Environment;
 import spoon.reflect.CtModel;
 import spoon.reflect.code.CtComment;
+import spoon.reflect.cu.CompilationUnit;
 import spoon.reflect.declaration.*;
 import spoon.support.compiler.FileSystemFile;
 import spoon.support.compiler.VirtualFile;
@@ -17,6 +18,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.function.Consumer;
+import java.util.stream.Stream;
 
 /**
  * A class for dealing with parsing.
@@ -89,10 +91,7 @@ public class Parser {
 
         CtModule module = model.getUnnamedModule();
 
-        // FIXME This is an ugly workaround for merging compliation unit comments
-        List<CtComment> cuComments = module.getFactory().CompilationUnit().getMap().values().iterator().next().getComments();
-        String cuComment = cuComments.isEmpty() ? "" : cuComments.get(0).getRawContent();
-        module.putMetadata(COMPILATION_UNIT_COMMENT, cuComment);
+        module.putMetadata(COMPILATION_UNIT_COMMENT, getCuComment(module));
 
         // TODO preserve order of import statements
         List<CtImport> imports = new ArrayList<>(parseImportStatements(model));
@@ -100,6 +99,13 @@ public class Parser {
         module.putMetadata(IMPORT_STATEMENTS, imports);
 
         return module;
+    }
+
+    private static String getCuComment(CtModule module) {
+        // FIXME This is an ugly workaround for merging compliation unit comments
+        return module.getFactory().CompilationUnit().getMap().values().stream()
+                .findFirst().map(cu -> cu.getComments().stream()
+        ).flatMap(Stream::findFirst).map(CtComment::getRawContent).orElse("");
     }
 
     /**
