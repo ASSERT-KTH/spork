@@ -78,7 +78,11 @@ public class NodeFactory {
      * @param elem An element to wrap.
      * @return A wrapper around the CtElement that is more practical for hashing purposes.
      */
-    public static Node wrap(CtElement elem) {
+    public static SpoonNode wrap(CtElement elem) {
+        return wrapInternal(elem);
+    }
+
+    private static Node wrapInternal(CtElement elem) {
         Object wrapper = elem.getMetadata(WRAPPER_METADATA);
 
         if (wrapper == null) {
@@ -94,7 +98,7 @@ public class NodeFactory {
 
         CtElement spoonParent = elem.getParent();
         CtRole roleInParent = elem.getRoleInParent();
-        Node actualParent = wrap(spoonParent);
+        Node actualParent = wrapInternal(spoonParent);
         SpoonNode effectiveParent = actualParent.hasRoleNodeFor(roleInParent) ?
                         actualParent.getRoleNode(roleInParent) : actualParent;
         return initializeWrapper(elem, effectiveParent);
@@ -155,10 +159,10 @@ public class NodeFactory {
      * A simple wrapper class for a Spoon CtElement. The reason it is needed is that the 3DM merge implementation
      * uses lookup tables, and CtElements have very heavy-duty equals and hash functions. For the purpose of 3DM merge,
      * only reference equality is needed, not deep equality.
-     * <p>
-     * This class should only be instantiated {@link NodeFactory#wrap(CtElement)}.
+     *
+     * This class should only be instantiated by {@link #wrap(CtElement)}.
      */
-    public static class Node implements SpoonNode {
+    private static class Node implements SpoonNode {
         private final CtElement element;
         private final long key;
         private final SpoonNode parent;
@@ -248,6 +252,9 @@ public class NodeFactory {
         }
     }
 
+    /**
+     * The root virtual node. This is a singleton, there should only be the one that exists in {@link #ROOT}.
+     */
     private static class Root implements SpoonNode {
         @Override
         public CtElement getElement() {
@@ -256,7 +263,7 @@ public class NodeFactory {
 
         @Override
         public SpoonNode getParent() {
-            return null;
+            throw new UnsupportedOperationException("The virtual root has no parent");
         }
 
         @Override
@@ -314,7 +321,7 @@ public class NodeFactory {
 
         @Override
         public List<SpoonNode> getVirtualNodes() {
-            return null;
+            throw new UnsupportedOperationException("Can't get virtual nodes from a list edge");
         }
 
         @Override
@@ -348,7 +355,11 @@ public class NodeFactory {
         }
     }
 
-    public static class RoleNode implements SpoonNode {
+    /**
+     * A RoleNode is a virtual node used to separate child lists in nodes with multiple types of child lists. See
+     * https://github.com/KTH/spork/issues/132 for details.
+     */
+    private static class RoleNode implements SpoonNode {
         private final Node parent;
         private final CtRole role;
 
