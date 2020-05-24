@@ -29,7 +29,7 @@ and then run it!
 
 ```bash
 # Download Spork
-wget https://github.com/KTH/spork/releases/download/v0.3.0/spork-0.3.0.jar -O spork.jar
+wget https://github.com/KTH/spork/releases/download/v0.4.0/spork-0.4.0.jar -O spork.jar
 
 # Download a sample merge scenario
 wget https://raw.githubusercontent.com/KTH/spork/fe906f537d1bb7205256d1fe81fda9f323849a60/src/test/resources/clean/both_modified/move_if/Left.java
