@@ -7,6 +7,7 @@ import se.kth.spork.util.Pair;
 import spoon.Launcher;
 import spoon.compiler.Environment;
 import spoon.reflect.CtModel;
+import spoon.reflect.code.CtComment;
 import spoon.reflect.declaration.*;
 import spoon.support.compiler.FileSystemFile;
 import spoon.support.compiler.VirtualFile;
@@ -24,6 +25,7 @@ import java.util.function.Consumer;
  */
 public class Parser {
     public static final String IMPORT_STATEMENTS = "spork_import_statements";
+    public static final String COMPILATION_UNIT_COMMENT = "spork_cu_comment";
 
     private static final LazyLogger LOGGER = new LazyLogger(Parser.class);
 
@@ -86,6 +88,11 @@ public class Parser {
         setSporkEnvironment(launcher.getEnvironment(), indentationGuess.first, indentationGuess.second);
 
         CtModule module = model.getUnnamedModule();
+
+        // FIXME This is an ugly workaround for merging compliation unit comments
+        List<CtComment> cuComments = module.getFactory().CompilationUnit().getMap().values().iterator().next().getComments();
+        String cuComment = cuComments.isEmpty() ? "" : cuComments.get(0).getRawContent();
+        module.putMetadata(COMPILATION_UNIT_COMMENT, cuComment);
 
         // TODO preserve order of import statements
         List<CtImport> imports = new ArrayList<>(parseImportStatements(model));

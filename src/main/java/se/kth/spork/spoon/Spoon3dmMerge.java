@@ -12,6 +12,7 @@ import se.kth.spork.spoon.pcsinterpreter.PcsInterpreter;
 import se.kth.spork.spoon.wrappers.RoledValues;
 import se.kth.spork.spoon.wrappers.SpoonNode;
 import se.kth.spork.util.LazyLogger;
+import se.kth.spork.util.LineBasedMerge;
 import se.kth.spork.util.Pair;
 import spoon.reflect.declaration.*;
 
@@ -129,9 +130,31 @@ public class Spoon3dmMerge {
         List<CtImport> mergedImports = mergeImportStatements(base, left, right);
         mergeTree.putMetadata(Parser.IMPORT_STATEMENTS, mergedImports);
 
+        LOGGER.info(() -> "Merging compilation unit comments");
+        Pair<String, Integer> cuCommentMerge = mergeCuComments(base, left, right);
+        int cuCommentConflicts = cuCommentMerge.second;
+        mergeTree.putMetadata(Parser.COMPILATION_UNIT_COMMENT, cuCommentMerge.first);
+
         LOGGER.info(() -> "Merged in " + (double) (System.nanoTime() - start) / 1e9 + " seconds");
 
-        return Pair.of(mergeTree, numConflicts);
+        return Pair.of(mergeTree, numConflicts + cuCommentConflicts);
+    }
+
+    /**
+     * Perform a line-based merge of the compilation unit comments.
+     *
+     * @return A pair with the merge and the amount of conflicts.
+     */
+    private static Pair<String, Integer> mergeCuComments(CtElement base, CtElement left, CtElement right) {
+        String baseComment = getCuComment(base);
+        String leftComment = getCuComment(left);
+        String rightComment = getCuComment(right);
+        return LineBasedMerge.merge(baseComment, leftComment, rightComment);
+    }
+
+    private static String getCuComment(CtElement mod) {
+        String comment = (String) mod.getMetadata(Parser.COMPILATION_UNIT_COMMENT);
+        return comment == null ? "" : comment;
     }
 
     /**

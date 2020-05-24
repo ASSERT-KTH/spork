@@ -52,19 +52,24 @@ class Spoon3dmMergeTest {
     private static void runTestMerge(Util.TestSources sources) {
         CtModule expected = Parser.parse(sources.expected);
         Object expectedImports = expected.getMetadata(Parser.IMPORT_STATEMENTS);
+        Object expectedCuComment = expected.getMetadata(Parser.COMPILATION_UNIT_COMMENT);
         assert expectedImports != null;
+        assert expectedCuComment != null;
 
         Pair<CtModule, Integer> merged = Spoon3dmMerge.merge(sources.base, sources.left, sources.right);
         CtModule mergeTree = merged.first;
         Object mergedImports = mergeTree.getMetadata(Parser.IMPORT_STATEMENTS);
+        Object mergedCuComment = mergeTree.getMetadata(Parser.COMPILATION_UNIT_COMMENT);
 
         // this assert is just to give a better overview of obvious errors, but it relies on the pretty printer's
         // correctness
         // assertEquals(Cli.prettyPrint(expected), Cli.prettyPrint(mergeTree));
+        System.out.println(Cli.prettyPrint(mergeTree));
 
         // these asserts are what actually matters
         assertEquals(expected, mergeTree);
         assertEquals(expectedImports, mergedImports);
+        assertEquals(expectedCuComment, mergedCuComment);
     }
 }
 

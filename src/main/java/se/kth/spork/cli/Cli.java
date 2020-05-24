@@ -56,8 +56,13 @@ public class Cli {
                 .collect(Collectors.toList());
         new PrinterPreprocessor(importNames, activePackage.getQualifiedName()).scan(spoonRoot);
 
-
         StringBuilder sb = new StringBuilder();
+
+        String cuComment = (String) spoonRoot.getMetadata(Parser.COMPILATION_UNIT_COMMENT);
+        if (!cuComment.isEmpty()) {
+            sb.append(cuComment).append("\n");
+        }
+
         if (!activePackage.isUnnamedPackage()) {
             sb.append("package ").append(activePackage.getQualifiedName()).append(";").append("\n\n");
         }
