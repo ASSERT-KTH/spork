@@ -38,8 +38,7 @@ def create_merge_dirs(
         right_filename = "Right.java"
         result_filename = "Expected.java"
 
-        path_sha = hashlib.sha1(result_blob.path.encode(sys.getdefaultencoding())).hexdigest()
-        merge_dir_name = f"{result_blob.name}_{path_sha}"
+        merge_dir_name = create_unique_filename(path=result_blob.path, name=result_blob.name)
         merge_dir = merge_dir_base / merge_commit.hexsha / merge_dir_name
         merge_dir.mkdir(parents=True, exist_ok=True)
 
@@ -87,3 +86,8 @@ def read_non_empty_lines(path: pathlib.Path) -> List[str]:
         )
         if line.strip()
     ]
+
+def create_unique_filename(path, name: str) -> str:
+    """Create a unique name for the stem of this path."""
+    path_sha = hashlib.sha1(str(path).encode(sys.getdefaultencoding())).hexdigest()
+    return f"{name}_{path_sha}"

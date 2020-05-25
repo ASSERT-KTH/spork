@@ -174,7 +174,8 @@ class MergeResult:
 @dataclasses.dataclass(frozen=True, order=True)
 class GitMergeResult:
     merge_commit: str
-    classfile_path: str
+    classfile_dir: str
+    original_classfile_path: str
     merge_driver: str
     build_ok: bool
     merge_ok: bool
@@ -206,6 +207,7 @@ class MergeEvaluationStatistics:
 @dataclasses.dataclass
 class ExpectedClassfile:
     copy_abspath: pathlib.Path
+    copy_basedir: pathlib.Path
     original_relpath: pathlib.Path
 
 

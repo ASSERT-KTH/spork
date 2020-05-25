@@ -23,7 +23,8 @@ from . import javautils
 
 LOGGER = daiquiri.getLogger(__name__)
 
-MERGE_TIMEOUT = 5*60
+MERGE_TIMEOUT = 5 * 60
+
 
 def run_file_merges(
     file_merge_dirs: List[pathlib.Path], merge_cmd: str
@@ -245,6 +246,7 @@ def run_git_merge(
             if eval_dir:
                 for (
                     expected_classfile_path,
+                    copy_basedir,
                     equal,
                 ) in javautils.compare_compiled_bytecode(
                     pathlib.Path(repo.working_tree_dir),
@@ -254,7 +256,8 @@ def run_git_merge(
                 ):
                     yield conts.GitMergeResult(
                         merge_commit=ms.expected.hexsha,
-                        classfile_path=expected_classfile_path,
+                        classfile_dir=copy_basedir.relative_to(base_eval_dir),
+                        original_classfile_path=expected_classfile_path,
                         merge_driver=merge_driver,
                         build_ok=build_ok,
                         merge_ok=merge_ok,
@@ -301,13 +304,17 @@ def _extract_expected_revision_classfiles(
         for src in sources
     ):
         for classfile in classfiles:
-            copy_basedir = eval_dir / classfile.name / "expected"
+            original_relpath = classfile.relative_to(worktree_dir)
+            copy_basedir = eval_dir / fileutils.create_unique_filename(
+                path=original_relpath, name=classfile.name
+            )
             classfile_copy = javautils.copy_to_pkg_dir(
-                classfile, pkg, copy_basedir
+                classfile, pkg, copy_basedir / "expected"
             )
             tup = conts.ExpectedClassfile(
                 copy_abspath=classfile_copy,
-                original_relpath=classfile.relative_to(worktree_dir),
+                copy_basedir=copy_basedir,
+                original_relpath=original_relpath,
             )
             expected_classfiles.append(tup)
 

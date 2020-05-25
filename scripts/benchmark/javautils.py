@@ -7,7 +7,6 @@ import subprocess
 import shutil
 import sys
 import os
-import hashlib
 from typing import List, Iterable, Tuple, Iterator, Optional
 
 import daiquiri
@@ -22,7 +21,7 @@ def compare_compiled_bytecode(
     expected_classfiles: List[conts.ExpectedClassfile],
     eval_dir: pathlib.Path,
     merge_driver: str,
-) -> Iterator[Tuple[pathlib.Path, bool]]:
+) -> Iterator[Tuple[pathlib.Path, pathlib.Path, bool]]:
     """Run the bytecode comparison evaluation.
 
     Args:
@@ -49,9 +48,10 @@ def compare_compiled_bytecode(
 
             LOGGER.info(f"Comparing {pair.replayed.name} revisions ...")
             equal = compare_classfiles(pair, eval_dir, merge_driver)
-            LOGGER.info(f"{pair.replayed.name} {'equal' if equal else 'not equal'}")
-            yield pair.expected.original_relpath, equal
-
+            LOGGER.info(
+                f"{pair.replayed.name} {'equal' if equal else 'not equal'}"
+            )
+            yield pair.expected.original_relpath, pair.expected.copy_basedir, equal
 
 
 def compare_classfiles(
@@ -79,9 +79,7 @@ def compare_classfiles(
     expected_pkg = extract_java_package(expected)
     replayed_pkg = extract_java_package(replayed)
 
-    path_sha = hashlib.sha1(str(pair.expected.original_relpath).encode(sys.getdefaultencoding())).hexdigest()
-    dirname = f"{expected.name}_{path_sha}"
-    basedir = eval_dir / dirname
+    basedir = pair.expected.copy_basedir
     expected_basedir = basedir / "expected"
     replayed_basedir = basedir / merge_driver
 
@@ -167,12 +165,12 @@ def locate_classfiles(
 
     return (sorted(classfiles), expected_pkg)
 
+
 def _closest_pomfile(path: pathlib.Path) -> pathlib.Path:
     for parent in path.parents:
         if list(parent.glob("pom.xml")):
             return parent / "pom.xml"
     raise ValueError(f"{path} has no parent directory with a pomfile")
-
 
 
 def generate_classfile_pairs(
@@ -214,7 +212,9 @@ def remove_duplicate_checkcasts(path: pathlib.Path) -> None:
     if not path.suffix == ".class":
         raise ValueError(f"Not a .class file: {path}")
 
-    proc = subprocess.run(["duplicate-checkcast-remover", str(path)], timeout=60)
+    proc = subprocess.run(
+        ["duplicate-checkcast-remover", str(path)], timeout=60
+    )
     if proc.returncode != 0:
         raise RuntimeError(
             f"Failed to run duplicate-checkast-remover on {path}"
@@ -226,7 +226,12 @@ def extract_java_package(path: pathlib.Path) -> str:
     pkgextractor to be on the path.
     """
     try:
-        proc = subprocess.run(["pkgextractor", str(path)], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=60)
+        proc = subprocess.run(
+            ["pkgextractor", str(path)],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            timeout=60,
+        )
     except:
         LOGGER.exception("error running pkgextractor")
         return ""
@@ -261,7 +266,7 @@ def mvn_compile(workdir: pathlib.Path) -> Tuple[bool, bytes]:
             cwd=workdir,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
-            timeout=5*60,
+            timeout=5 * 60,
         )
     except:
         LOGGER.exception("error compiling project")
@@ -271,6 +276,8 @@ def mvn_compile(workdir: pathlib.Path) -> Tuple[bool, bytes]:
 
 def mvn_test(workdir: pathlib.Path):
     """Run the project's test suite."""
-    proc = subprocess.run("mvn clean test".split(), cwd=workdir, timeout=5*60)
+    proc = subprocess.run(
+        "mvn clean test".split(), cwd=workdir, timeout=5 * 60
+    )
     return proc.returncode == 0
 
