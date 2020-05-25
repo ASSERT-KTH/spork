@@ -39,7 +39,7 @@ def compare_compiled_bytecode(
             LOGGER.warning(
                 f"No replayed classfile corresponding to {pair.expected.copy_abspath.name}"
             )
-            yield pair.expected.original_relpath, False
+            yield pair.expected.original_relpath, pair.expected.copy_basedir, False
         else:
             LOGGER.info(
                 f"Removing duplicate checkcasts from replayed revision of {pair.replayed.name}"
