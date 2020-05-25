@@ -190,10 +190,10 @@ def run_and_evaluate(
     merge_commands: Iterable[str],
     base_merge_dir: pathlib.Path,
 ) -> Iterable[conts.MergeEvaluation]:
-    for merge_cmd in merge_commands:
-        for merge_result in run.run_file_merges(merge_dirs, merge_cmd):
+    for merge_dir in merge_dirs:
+        for merge_cmd in merge_commands:
+            merge_result = run.run_individual_file_merge(merge_dir, merge_cmd)
             yield evaluation_result(merge_result, base_merge_dir)
-
 
 def gather_java_blob_metainfos(
     merge_dirs: List[pathlib.Path],

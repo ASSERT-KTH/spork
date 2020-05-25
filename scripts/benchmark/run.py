@@ -41,53 +41,63 @@ def run_file_merges(
     Returns:
         A generator that yields one conts.MergeResult per merge directory.
     """
-    for merge_result in _run_file_merges(file_merge_dirs, merge_cmd):
-        yield merge_result
+    yield from _run_file_merges(file_merge_dirs, merge_cmd)
 
+def run_individual_file_merge(merge_dir: pathlib.Path, merge_cmd: str) -> conts.MergeResult:
+    """Run a single file merge using the specified merge command.
+
+    Args:
+        merge_dir: A merge directory containing Base.java, Left.java,
+            Right.java and Expected.java
+        merge_cmd: The merge command to execute on the merge scenario
+    Returns:
+        A MergeResult.
+    """
+    sanitized_merge_cmd = pathlib.Path(merge_cmd).name.replace(" ", "_")
+    filenames = [f.name for f in merge_dir.iterdir() if f.is_file()]
+
+    def get_filename(prefix: str) -> str:
+        matches = [name for name in filenames if name.startswith(prefix)]
+        assert len(matches) == 1
+        return matches[0]
+
+    merge_file = merge_dir / f"{sanitized_merge_cmd}.java"
+    base = merge_dir / get_filename("Base")
+    left = merge_dir / get_filename("Left")
+    right = merge_dir / get_filename("Right")
+    expected = merge_dir / get_filename("Expected")
+
+    assert base.is_file()
+    assert left.is_file()
+    assert right.is_file()
+    assert expected.is_file()
+
+    outcome, runtime = _run_file_merge(
+        merge_dir,
+        merge_cmd,
+        base=base,
+        left=left,
+        right=right,
+        expected=expected,
+        merge=merge_file,
+    )
+    return conts.MergeResult(
+        merge_dir=merge_dir,
+        merge_file=merge_file,
+        base_file=base,
+        left_file=left,
+        right_file=right,
+        expected_file=expected,
+        merge_cmd=sanitized_merge_cmd,
+        outcome=outcome,
+        runtime=runtime,
+    )
 
 def _run_file_merges(
     file_merge_dirs: List[pathlib.Path], merge_cmd: str
 ) -> Iterable:
-    sanitized_merge_cmd = pathlib.Path(merge_cmd).name.replace(" ", "_")
     for merge_dir in file_merge_dirs:
-        filenames = [f.name for f in merge_dir.iterdir() if f.is_file()]
-
-        def get_filename(prefix: str) -> str:
-            matches = [name for name in filenames if name.startswith(prefix)]
-            assert len(matches) == 1
-            return matches[0]
-
-        merge_file = merge_dir / f"{sanitized_merge_cmd}.java"
-        base = merge_dir / get_filename("Base")
-        left = merge_dir / get_filename("Left")
-        right = merge_dir / get_filename("Right")
-        expected = merge_dir / get_filename("Expected")
-
-        assert base.is_file()
-        assert left.is_file()
-        assert right.is_file()
-        assert expected.is_file()
-
-        outcome, runtime = _run_file_merge(
-            merge_dir,
-            merge_cmd,
-            base=base,
-            left=left,
-            right=right,
-            expected=expected,
-            merge=merge_file,
-        )
-        yield conts.MergeResult(
-            merge_dir=merge_dir,
-            merge_file=merge_file,
-            base_file=base,
-            left_file=left,
-            right_file=right,
-            expected_file=expected,
-            merge_cmd=sanitized_merge_cmd,
-            outcome=outcome,
-            runtime=runtime,
-        )
+        yield run_individual_file_merge(merge_dir, merge_cmd)
 
 
 def _run_file_merge(
@@ -105,6 +115,7 @@ def _run_file_merge(
     except subprocess.TimeoutExpired:
         LOGGER.exception(merge_cmd)
         timed_out = True
+        LOGGER.error(f"{merge_cmd} timed out")
         proc = None
     except:
         LOGGER.exception(f"error running {merge_cmd}")
