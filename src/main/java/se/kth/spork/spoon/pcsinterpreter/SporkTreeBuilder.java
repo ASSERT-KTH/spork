@@ -4,6 +4,7 @@ import se.kth.spork.base3dm.*;
 import se.kth.spork.exception.ConflictException;
 import se.kth.spork.spoon.matching.SpoonMapping;
 import se.kth.spork.spoon.wrappers.NodeFactory;
+import se.kth.spork.spoon.wrappers.RoledValue;
 import se.kth.spork.spoon.wrappers.RoledValues;
 import se.kth.spork.spoon.wrappers.SpoonNode;
 import se.kth.spork.spoon.StructuralConflict;
@@ -29,9 +30,9 @@ class SporkTreeBuilder {
     private final Map<SpoonNode, Set<Content<SpoonNode, RoledValues>>> contents;
     private int numStructuralConflicts;
 
-    // keeps track of which nodes have been added to the tree all ready
-    // if any node is added twice, there's an unresolved move conflict
-    private Set<SpoonNode> usedNodes;
+    // keeps track of which nodes have yet to be inserted into the tree in order to detect delete/edit conflicts
+    // and move conflicts
+    private final Set<SpoonNode> remainingNodes;
 
     // keeps track of all structural inconsistencies that are used
     // if any have not been used when the tree has been built, there's something wrong
@@ -46,22 +47,29 @@ class SporkTreeBuilder {
      * @param delta A merged change set.
      */
     public SporkTreeBuilder(ChangeSet<SpoonNode, RoledValues> delta, SpoonMapping baseLeft, SpoonMapping baseRight) {
+        remainingNodes = new HashSet<>();
         this.rootToChildren = buildRootToChildren(delta.getPcsSet());
         this.baseLeft = baseLeft;
         this.baseRight = baseRight;
         structuralConflicts = delta.getStructuralConflicts();
         contents = delta.getContents();
         numStructuralConflicts = 0;
-        usedNodes = new HashSet<>();
         remainingInconsistencies = new HashSet<>();
         structuralConflicts.values().forEach(remainingInconsistencies::addAll);
     }
 
-    private static <T extends ListNode> Map<T, Map<T, Pcs<T>>> buildRootToChildren(Set<Pcs<T>> pcses) {
-        Map<T, Map<T, Pcs<T>>> rootToChildren = new HashMap<>();
-        for (Pcs<T> pcs : pcses) {
-            Map<T, Pcs<T>> children = rootToChildren.getOrDefault(pcs.getRoot(), new HashMap<>());
+    private Map<SpoonNode, Map<SpoonNode, Pcs<SpoonNode>>> buildRootToChildren(Set<Pcs<SpoonNode>> pcses) {
+        Map<SpoonNode, Map<SpoonNode, Pcs<SpoonNode>>> rootToChildren = new HashMap<>();
+        for (Pcs<SpoonNode> pcs : pcses) {
+            Map<SpoonNode, Pcs<SpoonNode>> children = rootToChildren.getOrDefault(pcs.getRoot(), new HashMap<>());
             if (children.isEmpty()) rootToChildren.put(pcs.getRoot(), children);
+
+            Arrays.asList(pcs.getRoot(), pcs.getPredecessor(), pcs.getSuccessor()).forEach(node -> {
+                        if (!node.isVirtual()) {
+                            remainingNodes.add(node);
+                        }
+                    }
+            );
 
             children.put(pcs.getPredecessor(), pcs);
         }
@@ -94,7 +102,20 @@ class SporkTreeBuilder {
 
     public SporkTree buildTree() {
         SporkTree tree = build(NodeFactory.ROOT);
+        if (hasDeleteEditConflict()) {
+            LOGGER.warn(() -> "Delete/edit conflict detected");
+        }
         return tree;
+    }
+
+    private boolean hasDeleteEditConflict() {
+        for (SpoonNode node : remainingNodes) {
+            if (node.getRevision() != Revision.BASE || contents.get(node).stream()
+                    .anyMatch(c -> c.getContext().getRevision() != Revision.BASE)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -252,12 +273,11 @@ class SporkTreeBuilder {
     }
 
     private void addChild(SporkTree tree, SporkTree child) {
-        if (usedNodes.contains(child.getNode())) {
+        if (!remainingNodes.remove(child.getNode())) {
             // if this happens, then there is a duplicate node in the tree, indicating a move conflict
             throw new ConflictException("Move conflict detected");
         }
         tree.addChild(child);
-        usedNodes.add(child.getNode());
     }
 
     /**
