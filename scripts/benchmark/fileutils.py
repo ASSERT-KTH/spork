@@ -16,6 +16,8 @@ import daiquiri
 
 LOGGER = daiquiri.getLogger(__name__)
 
+UNSAFE_FILENAME_CHARS_PATTERN = re.compile(r"[^a-zA-Z0-9_.\-]")
+
 
 def create_merge_dirs(
     merge_dir_base: pathlib.Path, file_merges,
@@ -90,4 +92,8 @@ def read_non_empty_lines(path: pathlib.Path) -> List[str]:
 def create_unique_filename(path, name: str) -> str:
     """Create a unique name for the stem of this path."""
     path_sha = hashlib.sha1(str(path).encode(sys.getdefaultencoding())).hexdigest()
-    return f"{name}_{path_sha}"
+    return f"{safe_filename(name)}_{path_sha}"
+
+def safe_filename(name: str, replacement: str = "_") -> str:
+    """Replace any potentially unsafe characters from the filename."""
+    return re.sub(UNSAFE_FILENAME_CHARS_PATTERN, replacement, name)

@@ -12,6 +12,7 @@ from typing import List, Iterable, Tuple, Iterator, Optional
 import daiquiri
 
 from . import containers as conts
+from . import fileutils
 
 LOGGER = daiquiri.getLogger(__name__)
 
@@ -118,7 +119,7 @@ def copy_to_pkg_dir(
     pkg_relpath = pathlib.Path(*pkg.split("."))
     pkg_abspath = basedir / pkg_relpath
     pkg_abspath.mkdir(parents=True, exist_ok=True)
-    classfile_dst = pkg_abspath / classfile.name
+    classfile_dst = pkg_abspath / fileutils.safe_filename(classfile.name)
 
     if classfile_dst.exists():
         raise FileExistsError(f"Classfile {classfile_dst} all ready exists!")
