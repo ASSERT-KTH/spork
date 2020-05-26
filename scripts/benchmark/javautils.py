@@ -74,7 +74,7 @@ def compare_classfiles(
     replayed = pair.replayed
     if expected.name != replayed.name:
         raise ValueError(
-            "Cannot compare two classfiles from different classes"
+            f"Cannot compare two classfiles from different classes: expected={expected.name}, replayed={replayed.name}"
         )
 
     expected_pkg = extract_java_package(expected)
@@ -119,7 +119,7 @@ def copy_to_pkg_dir(
     pkg_relpath = pathlib.Path(*pkg.split("."))
     pkg_abspath = basedir / pkg_relpath
     pkg_abspath.mkdir(parents=True, exist_ok=True)
-    classfile_dst = pkg_abspath / fileutils.safe_filename(classfile.name)
+    classfile_dst = pkg_abspath / classfile.name
 
     if classfile_dst.exists():
         raise FileExistsError(f"Classfile {classfile_dst} all ready exists!")
@@ -172,6 +172,7 @@ def locate_classfiles(
 
     return (sorted(classfiles), expected_pkg)
 
+
 def _from_source_name(classfile: pathlib.Path, src_name: pathlib.Path) -> bool:
     """Check that the provided classfile comes from a source file with the
     correct name. This is to avoid the remote possibility of a source file
@@ -180,14 +181,15 @@ def _from_source_name(classfile: pathlib.Path, src_name: pathlib.Path) -> bool:
     the former.
     """
     try:
-        proc = subprocess.run(["javap", str(classfile)], capture_output=True, timeout=5)
+        proc = subprocess.run(
+            ["javap", str(classfile)], capture_output=True, timeout=5
+        )
     except:
         LOGGER.exception("error analyzing classfile source")
         return False
 
     line = proc.stdout.decode(sys.getdefaultencoding()).split("\n")[0].strip()
-    return line == f"Compiled from \"{src_name}\""
-
+    return line == f'Compiled from "{src_name}"'
 
 
 def _closest_pomfile(path: pathlib.Path) -> pathlib.Path:
