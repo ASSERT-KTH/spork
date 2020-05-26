@@ -31,7 +31,7 @@ def main():
         .split("\n")
     ]
 
-    random.shuffle(projects)
+    np.random.shuffle(projects)
     merge_dirs = pathlib.Path("merge_dirs")
 
     total_num_merge_scenarios = 0
