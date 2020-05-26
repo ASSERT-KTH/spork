@@ -22,7 +22,7 @@ def compare_compiled_bytecode(
     expected_classfiles: List[conts.ExpectedClassfile],
     eval_dir: pathlib.Path,
     merge_driver: str,
-) -> Iterator[Tuple[pathlib.Path, pathlib.Path, bool]]:
+) -> Iterator[Tuple[conts.ClassfilePair, bool]]:
     """Run the bytecode comparison evaluation.
 
     Args:
@@ -30,7 +30,7 @@ def compare_compiled_bytecode(
             original_classfile_relpath), where the relative path is relative to
             the root of the repository.
     Returns:
-        An iterator yielding (expected_path, equal) tuples.
+        An iterator yielding (classfile_pair, equal) tuples.
     """
     classfile_pairs = generate_classfile_pairs(
         expected_classfiles, replayed_compile_basedir
@@ -40,7 +40,7 @@ def compare_compiled_bytecode(
             LOGGER.warning(
                 f"No replayed classfile corresponding to {pair.expected.copy_abspath.name}"
             )
-            yield pair.expected.original_relpath, pair.expected.copy_basedir, False
+            yield pair, False
         else:
             LOGGER.info(
                 f"Removing duplicate checkcasts from replayed revision of {pair.replayed.name}"
@@ -52,7 +52,7 @@ def compare_compiled_bytecode(
             LOGGER.info(
                 f"{pair.replayed.name} {'equal' if equal else 'not equal'}"
             )
-            yield pair.expected.original_relpath, pair.expected.copy_basedir, equal
+            yield pair, equal
 
 
 def compare_classfiles(

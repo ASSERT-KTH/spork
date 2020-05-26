@@ -43,7 +43,10 @@ def run_file_merges(
     """
     yield from _run_file_merges(file_merge_dirs, merge_cmd)
 
-def run_individual_file_merge(merge_dir: pathlib.Path, merge_cmd: str) -> conts.MergeResult:
+
+def run_individual_file_merge(
+    merge_dir: pathlib.Path, merge_cmd: str
+) -> conts.MergeResult:
     """Run a single file merge using the specified merge command.
 
     Args:
@@ -92,6 +95,7 @@ def run_individual_file_merge(merge_dir: pathlib.Path, merge_cmd: str) -> conts.
         outcome=outcome,
         runtime=runtime,
     )
+
 
 def _run_file_merges(
     file_merge_dirs: List[pathlib.Path], merge_cmd: str
@@ -256,8 +260,7 @@ def run_git_merge(
 
             if eval_dir:
                 for (
-                    expected_classfile_path,
-                    copy_basedir,
+                    classfile_pair,
                     equal,
                 ) in javautils.compare_compiled_bytecode(
                     pathlib.Path(repo.working_tree_dir),
@@ -265,10 +268,18 @@ def run_git_merge(
                     eval_dir,
                     merge_driver,
                 ):
+                    expected_classfile_relpath = (
+                        classfile_pair.expected.original_relpath
+                    )
+                    expected_src_relpath = (
+                        classfile_pair.expected.original_src_relpath
+                    )
+                    classfile_dir = classfile_pair.expected.copy_basedir.relative_to(base_eval_dir)
                     yield conts.GitMergeResult(
                         merge_commit=ms.expected.hexsha,
-                        classfile_dir=copy_basedir.relative_to(base_eval_dir),
-                        original_classfile_path=expected_classfile_path,
+                        classfile_dir=classfile_dir,
+                        expected_classfile_relpath=expected_classfile_relpath,
+                        expected_src_relpath=expected_src_relpath,
                         merge_driver=merge_driver,
                         build_ok=build_ok,
                         merge_ok=merge_ok,
@@ -280,7 +291,9 @@ def run_git_merge(
                     merge_driver=merge_driver,
                     merge_ok=merge_ok,
                     build_ok=build_ok,
-                    classfile_path=None,
+                    classfile_dir="",
+                    expected_classfile_relpath="",
+                    expected_src_relpath="",
                     eval_ok=False,
                 )
 
@@ -310,12 +323,13 @@ def _extract_expected_revision_classfiles(
     LOGGER.info(f"Extracted unmerged files: {sources}")
 
     expected_classfiles = []
-    for classfiles, pkg in (
-        javautils.locate_classfiles(src, basedir=worktree_dir)
+    for src, classfiles, pkg in (
+        (src, *javautils.locate_classfiles(src, basedir=worktree_dir))
         for src in sources
     ):
         for classfile in classfiles:
             original_relpath = classfile.relative_to(worktree_dir)
+            original_src_relpath = src.relative_to(worktree_dir)
             copy_basedir = eval_dir / fileutils.create_unique_filename(
                 path=original_relpath, name=classfile.name
             )
@@ -326,6 +340,7 @@ def _extract_expected_revision_classfiles(
                 copy_abspath=classfile_copy,
                 copy_basedir=copy_basedir,
                 original_relpath=original_relpath,
+                original_src_relpath=original_src_relpath,
             )
             expected_classfiles.append(tup)
 

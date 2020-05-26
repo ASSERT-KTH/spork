@@ -175,10 +175,11 @@ class MergeResult:
 class GitMergeResult:
     merge_commit: str
     classfile_dir: str
-    original_classfile_path: str
+    expected_classfile_relpath: str
+    expected_src_relpath: str
     merge_driver: str
-    build_ok: bool
     merge_ok: bool
+    build_ok: bool
     eval_ok: bool
 
 
@@ -209,6 +210,7 @@ class ExpectedClassfile:
     copy_abspath: pathlib.Path
     copy_basedir: pathlib.Path
     original_relpath: pathlib.Path
+    original_src_relpath: pathlib.Path
 
 
 @dataclasses.dataclass
