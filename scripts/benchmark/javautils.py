@@ -150,7 +150,13 @@ def locate_classfiles(
         )
         return []
     name = src.stem
-    matches = [file for file in basedir.rglob("*.class") if file.stem == name]
+    sub_classfile_prefix = f"{name}$"  # nested types have this prefix
+    matches = [
+        file
+        for file in basedir.rglob("*.class")
+        if (file.stem == name or file.stem.startswith(sub_classfile_prefix))
+        and _from_source_name(classfile=file, src_name=src.name)
+    ]
     expected_pkg = extract_java_package(src)
 
     classfiles = [
@@ -164,6 +170,23 @@ def locate_classfiles(
         LOGGER.warning(f"Found no classfiles corresponding to {src}")
 
     return (sorted(classfiles), expected_pkg)
+
+def _from_source_name(classfile: pathlib.Path, src_name: pathlib.Path) -> bool:
+    """Check that the provided classfile comes from a source file with the
+    correct name. This is to avoid the remote possibility of a source file
+    named `Something.java` and another named `Something$.java`, in which case
+    the classfiles from the latter may be assumed to belong to nested types in
+    the former.
+    """
+    try:
+        proc = subprocess.run(["javap", str(classfile)], capture_output=True, timeout=5)
+    except:
+        LOGGER.exception("error analyzing classfile source")
+        return False
+
+    line = proc.stdout.decode(sys.getdefaultencoding()).split("\n")[0].strip()
+    return line == f"Compiled from \"{src_name}\""
+
 
 
 def _closest_pomfile(path: pathlib.Path) -> pathlib.Path:
@@ -280,4 +303,3 @@ def mvn_test(workdir: pathlib.Path):
         "mvn clean test".split(), cwd=workdir, timeout=5 * 60
     )
     return proc.returncode == 0
-
