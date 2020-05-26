@@ -5,10 +5,11 @@ package se.kth.spork.exception;
  *
  * @author Simon Larsén
  */
-public class ConflictException extends RuntimeException {
+public class ConflictException extends SporkException {
     public ConflictException(String s) {
         super(s);
     }
+
     public ConflictException(String s, Throwable throwable) {
         super(s, throwable);
     }

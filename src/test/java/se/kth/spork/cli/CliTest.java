@@ -1,10 +1,12 @@
 package se.kth.spork.cli;
 
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ArgumentsSource;
 import picocli.CommandLine;
 import se.kth.spork.Util;
+import se.kth.spork.exception.MergeException;
 import se.kth.spork.spoon.Parser;
 import se.kth.spork.spoon.Spoon3dmMerge;
 import se.kth.spork.util.Pair;
@@ -38,6 +40,28 @@ class CliTest {
         int exitCode = new CommandLine(new Cli.Merge()).execute(args);
 
         assertEquals(0, exitCode);
+    }
+
+    @Test
+    void merge_shouldThrowOnMissingType_whenGlobalFallbackIsDisabled() {
+        Util.TestSources sources = Util.TestSources.fromTestDirectoryWithoutExpected(Util.MISSING_TYPE_SCENARIO.toFile());
+
+        assertThrows(
+                MergeException.class,
+                () -> Cli.merge(sources.base, sources.left, sources.right, /*exitOnError=*/true),
+                "Merge contained no types and global line-based fallback is disabled"
+        );
+    }
+
+    @Test
+    void merge_shouldMexgeCorrectlyOnMissingType_whenGlobalFallbackIsEnabled() {
+        Util.TestSources sources = Util.TestSources.fromTestDirectory(Util.MISSING_TYPE_SCENARIO.toFile());
+        String expected = Parser.read(sources.expected);
+
+        Pair<String, Integer> merge = Cli.merge(sources.base, sources.left, sources.right, /*exitOnError=*/false);
+
+        assertEquals(0, merge.second);
+        assertEquals(expected, merge.first);
     }
 
     @ParameterizedTest

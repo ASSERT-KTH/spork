@@ -26,12 +26,14 @@ import java.util.stream.Stream;
  * @author Simon Larsén
  */
 public class Util {
-    public static final Path CLEAN_MERGE_DIRPATH = Paths.get("src/test/resources/clean");
+    public static final Path RESOURCES_BASE_DIR = Paths.get("src/test/resources");
+    public static final Path CLEAN_MERGE_DIRPATH = RESOURCES_BASE_DIR.resolve("clean");
     public static final Path BOTH_MODIFIED_DIRPATH = CLEAN_MERGE_DIRPATH.resolve("both_modified");
     public static final Path LEFT_MODIFIED_DIRPATH = CLEAN_MERGE_DIRPATH.resolve("left_modified");
-    public static final Path CONFLICT_DIRPATH = Paths.get("src/test/resources/conflict");
-    public static final Path UNHANDLED_INCONSISTENCY_PATH = Paths.get("src/test/resources/unhandled_inconsistency");
-    public static final Path CLEAN_LINEBASED_FALLBACK = Paths.get("src/test/resources/clean_linebased_fallback");
+    public static final Path CONFLICT_DIRPATH = RESOURCES_BASE_DIR.resolve("conflict");
+    public static final Path UNHANDLED_INCONSISTENCY_PATH = RESOURCES_BASE_DIR.resolve("unhandled_inconsistency");
+    public static final Path CLEAN_LINEBASED_FALLBACK = RESOURCES_BASE_DIR.resolve("clean_linebased_fallback");
+    public static final Path MISSING_TYPE_SCENARIO = RESOURCES_BASE_DIR.resolve("missing_type");
 
 
     private static Stream<? extends Arguments> getArgumentSourcesStream(File testDir) {
@@ -142,14 +144,14 @@ public class Util {
 
     public static class UnhandledInconsistencyProvider implements ArgumentsProvider {
         @Override
-        public Stream<? extends Arguments> provideArguments(ExtensionContext extensionContext) throws Exception {
+        public Stream<? extends Arguments> provideArguments(ExtensionContext extensionContext) {
             return getArgumentSourcesStream(UNHANDLED_INCONSISTENCY_PATH.toFile(), TestSources::fromTestDirectoryWithoutExpected);
         }
     }
 
     public static class CleanLineBasedFallbackProvider implements ArgumentsProvider {
         @Override
-        public Stream<? extends Arguments> provideArguments(ExtensionContext extensionContext) throws Exception {
+        public Stream<? extends Arguments> provideArguments(ExtensionContext extensionContext) {
             return getArgumentSourcesStream(CLEAN_LINEBASED_FALLBACK.toFile(), TestSources::fromTestDirectoryWithoutExpected);
         }
     }

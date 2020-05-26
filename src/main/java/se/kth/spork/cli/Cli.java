@@ -5,6 +5,7 @@ import ch.qos.logback.classic.joran.JoranConfigurator;
 import ch.qos.logback.core.joran.spi.JoranException;
 import org.slf4j.LoggerFactory;
 import picocli.CommandLine;
+import se.kth.spork.exception.MergeException;
 import se.kth.spork.spoon.Parser;
 import se.kth.spork.spoon.Spoon3dmMerge;
 import se.kth.spork.spoon.printer.PrinterPreprocessor;
@@ -148,7 +149,7 @@ public class Cli {
                 rightPath.toFile().deleteOnExit();
             }
 
-            Pair<String, Integer> merged = merge(basePath, leftPath, rightPath, !exitOnError);
+            Pair<String, Integer> merged = merge(basePath, leftPath, rightPath, exitOnError);
             String pretty = merged.first;
             int numConflicts = merged.second;
 
@@ -176,12 +177,12 @@ public class Cli {
      * @return A pair on the form (prettyPrint, numConflicts)
      */
     public static Pair<String, Integer> merge(Path base, Path left, Path right, boolean exitOnError) {
-        LOGGER.info(() -> "Parsing input files");
-        CtModule baseModule = Parser.parse(base);
-        CtModule leftModule = Parser.parse(left);
-        CtModule rightModule = Parser.parse(right);
-
         try {
+            LOGGER.info(() -> "Parsing input files");
+            CtModule baseModule = Parser.parse(base);
+            CtModule leftModule = Parser.parse(left);
+            CtModule rightModule = Parser.parse(right);
+
             LOGGER.info(() -> "Initiating merge");
             Pair<CtElement, Integer> merge = Spoon3dmMerge.merge(baseModule, leftModule, rightModule);
             CtModule mergeTree = (CtModule) merge.first;
@@ -190,20 +191,20 @@ public class Cli {
             LOGGER.info(() -> "Pretty-printing");
             if (containsTypes(mergeTree)) {
                 return Pair.of(prettyPrint(mergeTree), numConflicts);
-            } else if (!exitOnError) {
+            } else if (exitOnError) {
+                throw new MergeException("Merge contained no types and global line-based fallback is disabled");
+            } else {
                 LOGGER.warn(() -> "Merge contains no types (i.e. classes, interfaces, etc), reverting to line-based merge");
                 return lineBasedMerge(base, left, right);
-            } else {
-                throw new IllegalStateException("Merge contained no types and line-based fallback is disabled");
             }
         } catch (Exception e) {
             if (exitOnError) {
+                LOGGER.error(() -> "Spork encountered a fatal error and global line-based merge is disabled");
+                throw e;
+            } else {
                 LOGGER.debug(e::getMessage);
                 LOGGER.info(() -> "Spork encountered an error in structured merge. Falling back to line-based merge");
                 return lineBasedMerge(base, left, right);
-            } else {
-                LOGGER.error(() -> "Spork encountered a fatal error and line-based merge is disabled");
-                throw e;
             }
         }
     }
