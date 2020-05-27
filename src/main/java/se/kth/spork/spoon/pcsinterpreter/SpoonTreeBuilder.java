@@ -22,7 +22,6 @@ import spoon.reflect.reference.CtParameterReference;
 import spoon.reflect.reference.CtTypeReference;
 import spoon.reflect.visitor.printer.CommentOffset;
 
-import javax.xml.soap.Node;
 import java.util.*;
 
 /**
