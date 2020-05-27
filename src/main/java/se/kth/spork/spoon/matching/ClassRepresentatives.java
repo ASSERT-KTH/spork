@@ -59,6 +59,25 @@ public class ClassRepresentatives {
     }
 
     /**
+     * Create a class representatives mapping for a two-way merge.
+     *
+     * @param left The left revision.
+     * @param right The right revision.
+     * @param leftRight A left-to-right matching.
+     * @return
+     */
+    public static Map<SpoonNode, SpoonNode> createClassRepresentativesMapping(
+            CtElement left,
+            CtElement right,
+            SpoonMapping leftRight) {
+        Map<SpoonNode, SpoonNode> classRepMap = new HashMap<>();
+        mapToClassRepresentatives(left, leftRight, classRepMap, Revision.LEFT);
+        mapToClassRepresentatives(right, leftRight, classRepMap, Revision.RIGHT);
+        mapNodes(NodeFactory.ROOT, NodeFactory.ROOT, classRepMap);
+        return classRepMap;
+    }
+
+    /**
      * Initialize the class representatives map by mapping each element in base to itself.
      *
      * @param base The base revision of the trees to be merged.
@@ -69,7 +88,7 @@ public class ClassRepresentatives {
         Iterator<CtElement> descIt = base.descendantIterator();
         while (descIt.hasNext()) {
             CtElement tree = descIt.next();
-            tree.putMetadata(TdmMerge.REV, Revision.BASE);
+            NodeFactory.setRevisionIfUnset(tree, Revision.BASE);
             SpoonNode wrapped = NodeFactory.wrap(tree);
 
             mapNodes(wrapped, wrapped, classRepMap);
@@ -104,7 +123,7 @@ public class ClassRepresentatives {
     }
 
     private static void mapToClassRep(SpoonMapping mappings, Map<SpoonNode, SpoonNode> classRepMap, Revision rev, CtElement t) {
-        t.putMetadata(TdmMerge.REV, rev);
+        NodeFactory.setRevisionIfUnset(t, rev);
         SpoonNode wrapped = NodeFactory.wrap(t);
         SpoonNode classRep = mappings.getSrc(wrapped);
 
@@ -143,6 +162,10 @@ public class ClassRepresentatives {
         }
     }
 
+    private static void augmentClassRepresentatives() {
+
+    }
+
     /**
      * A scanner that conservatively expands the class representatives mapping with matches from a left-to-right
      * tree matching. If a node in the left tree is not mapped to base (i.e. self-mapped in the class
@@ -168,6 +191,7 @@ public class ClassRepresentatives {
     private static class ClassRepresentativeAugmenter extends CtScanner {
         private SpoonMapping leftRightMatch;
         private Map<SpoonNode, SpoonNode> classRepMap;
+        private Map<String, SpoonNode> forcedMappings;
 
         /**
          * @param classRepMap The class representatives map, initialized with left-to-base and right-to-base mappings.
@@ -187,8 +211,6 @@ public class ClassRepresentatives {
         public void scan(CtElement element) {
             if (element == null)
                 return;
-
-            assert element.getMetadata(TdmMerge.REV) == Revision.LEFT;
 
             SpoonNode left = NodeFactory.wrap(element);
             if (classRepMap.get(left) == left) {
