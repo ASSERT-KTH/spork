@@ -1,12 +1,11 @@
 package se.kth.spork.spoon.pcsinterpreter;
 
 import se.kth.spork.base3dm.Content;
-import se.kth.spork.base3dm.Pcs;
 import se.kth.spork.base3dm.Revision;
 import se.kth.spork.spoon.wrappers.NodeFactory;
 import se.kth.spork.spoon.wrappers.RoledValues;
 import se.kth.spork.spoon.wrappers.SpoonNode;
-import se.kth.spork.spoon.StructuralConflict;
+import se.kth.spork.spoon.conflict.StructuralConflict;
 import spoon.reflect.CtModelImpl;
 import spoon.reflect.declaration.CtElement;
 import spoon.reflect.factory.ModuleFactory;

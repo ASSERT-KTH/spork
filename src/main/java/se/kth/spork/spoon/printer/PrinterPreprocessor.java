@@ -1,7 +1,7 @@
 package se.kth.spork.spoon.printer;
 
 import se.kth.spork.exception.ConflictException;
-import se.kth.spork.spoon.ContentConflict;
+import se.kth.spork.spoon.conflict.ContentConflict;
 import se.kth.spork.spoon.pcsinterpreter.ContentMerger;
 import se.kth.spork.spoon.wrappers.RoledValue;
 import se.kth.spork.util.LineBasedMerge;

@@ -3,6 +3,8 @@ package se.kth.spork.spoon.pcsinterpreter;
 import se.kth.spork.base3dm.Revision;
 import se.kth.spork.base3dm.TdmMerge;
 import se.kth.spork.spoon.*;
+import se.kth.spork.spoon.conflict.ContentConflict;
+import se.kth.spork.spoon.conflict.StructuralConflict;
 import se.kth.spork.spoon.matching.SpoonMapping;
 import se.kth.spork.spoon.wrappers.NodeFactory;
 import se.kth.spork.spoon.wrappers.RoledValues;

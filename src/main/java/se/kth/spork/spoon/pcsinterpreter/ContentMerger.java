@@ -1,7 +1,7 @@
 package se.kth.spork.spoon.pcsinterpreter;
 
 import se.kth.spork.base3dm.Content;
-import se.kth.spork.spoon.ContentConflict;
+import se.kth.spork.spoon.conflict.ContentConflict;
 import se.kth.spork.spoon.wrappers.RoledValue;
 import se.kth.spork.spoon.wrappers.RoledValues;
 import se.kth.spork.spoon.wrappers.SpoonNode;
