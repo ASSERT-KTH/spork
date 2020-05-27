@@ -34,4 +34,10 @@ public interface ListNode {
     default boolean isVirtual() {
         return isListEdge();
     }
+
+    /**
+     * @return The revision this node was created from.
+     * @throws UnsupportedOperationException If called on the virtual root.
+     */
+    Revision getRevision();
 }

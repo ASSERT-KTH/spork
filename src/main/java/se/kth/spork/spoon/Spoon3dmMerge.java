@@ -9,6 +9,7 @@ import se.kth.spork.spoon.matching.ClassRepresentatives;
 import se.kth.spork.spoon.matching.MappingRemover;
 import se.kth.spork.spoon.matching.SpoonMapping;
 import se.kth.spork.spoon.pcsinterpreter.PcsInterpreter;
+import se.kth.spork.spoon.wrappers.NodeFactory;
 import se.kth.spork.spoon.wrappers.RoledValues;
 import se.kth.spork.spoon.wrappers.SpoonNode;
 import se.kth.spork.util.LazyLogger;
@@ -18,6 +19,7 @@ import spoon.reflect.declaration.*;
 
 import java.nio.file.Path;
 import java.util.*;
+import java.util.function.BiFunction;
 
 /**
  * Spoon specialization of the 3DM merge algorithm.
@@ -62,9 +64,16 @@ public class Spoon3dmMerge {
      * @param base  The base revision.
      * @param left  The left revision.
      * @param right The right revision.
+     * @param baseMatcher Function that returns a matcher for the base-to-left and base-to-right matchings.
+     * @param leftRightMatcher Function that returns a matcher for the left-to-right matching.
      * @return A pair on the form (mergeTree, numConflicts).
      */
-    public static <T extends CtElement> Pair<T, Integer> merge(T base, T left, T right) {
+    public static <T extends CtElement> Pair<T, Integer> merge(
+            T base,
+            T left,
+            T right,
+            BiFunction<ITree, ITree, Matcher> baseMatcher,
+            BiFunction<ITree, ITree, Matcher> leftRightMatcher) {
         long start = System.nanoTime();
 
         // MATCHING PHASE
@@ -74,9 +83,9 @@ public class Spoon3dmMerge {
         ITree rightGumtree = new SpoonGumTreeBuilder().getTree(right);
 
         LOGGER.info(() -> "Matching trees with GumTree");
-        Matcher baseLeftGumtreeMatch = matchTrees(baseGumtree, leftGumtree);
-        Matcher baseRightGumtreeMatch = matchTrees(baseGumtree, rightGumtree);
-        Matcher leftRightGumtreeMatch = matchTreesXY(leftGumtree, rightGumtree);
+        Matcher baseLeftGumtreeMatch = baseMatcher.apply(baseGumtree, leftGumtree);
+        Matcher baseRightGumtreeMatch = baseMatcher.apply(baseGumtree, rightGumtree);
+        Matcher leftRightGumtreeMatch = leftRightMatcher.apply(leftGumtree, rightGumtree);
 
         LOGGER.info(() -> "Converting GumTree matches to Spoon matches");
         SpoonMapping baseLeft = SpoonMapping.fromGumTreeMapping(baseLeftGumtreeMatch.getMappings());
@@ -125,19 +134,111 @@ public class Spoon3dmMerge {
         T mergeTree = (T) merge.first;
         int numConflicts = merge.second;
 
+        int metadataElementConflicts = mergeMetadataElements(mergeTree, base, left, right);
 
-        LOGGER.info(() -> "Merging import statements");
-        List<CtImport> mergedImports = mergeImportStatements(base, left, right);
-        mergeTree.putMetadata(Parser.IMPORT_STATEMENTS, mergedImports);
-
-        LOGGER.info(() -> "Merging compilation unit comments");
-        Pair<String, Integer> cuCommentMerge = mergeCuComments(base, left, right);
-        int cuCommentConflicts = cuCommentMerge.second;
-        mergeTree.putMetadata(Parser.COMPILATION_UNIT_COMMENT, cuCommentMerge.first);
+        LOGGER.info(() -> "Checking for duplicated members");
+        int duplicateMemberConflicts = eliminateDuplicateMembers(mergeTree);
 
         LOGGER.info(() -> "Merged in " + (double) (System.nanoTime() - start) / 1e9 + " seconds");
 
-        return Pair.of(mergeTree, numConflicts + cuCommentConflicts);
+        return Pair.of(mergeTree, numConflicts + metadataElementConflicts + duplicateMemberConflicts);
+    }
+
+    /**
+     * Merge the left and right revisions. The base revision is used for computing edits, and should be the best common
+     * ancestor of left and right.
+     *
+     * Uses the full GumTree matcher for base-to-left and base-to-right, and the XY matcher for left-to-right matchings.
+     *
+     * @param base  The base revision.
+     * @param left  The left revision.
+     * @param right The right revision.
+     * @return A pair on the form (mergeTree, numConflicts).
+     */
+    public static <T extends CtElement> Pair<T, Integer> merge(T base, T left, T right) {
+        return merge(base, left, right, Spoon3dmMerge::matchTrees, Spoon3dmMerge::matchTreesXY);
+    }
+
+    private static int mergeMetadataElements(CtElement mergeTree, CtElement base, CtElement left, CtElement right) {
+        int numConflicts = 0;
+
+        if (base.getMetadata(Parser.IMPORT_STATEMENTS) != null) {
+            LOGGER.info(() -> "Merging import statements");
+            List<CtImport> mergedImports = mergeImportStatements(base, left, right);
+            mergeTree.putMetadata(Parser.IMPORT_STATEMENTS, mergedImports);
+        }
+
+        if (base.getMetadata(Parser.COMPILATION_UNIT_COMMENT) != null) {
+            LOGGER.info(() -> "Merging compilation unit comments");
+            Pair<String, Integer> cuCommentMerge = mergeCuComments(base, left, right);
+            numConflicts += cuCommentMerge.second;
+            mergeTree.putMetadata(Parser.COMPILATION_UNIT_COMMENT, cuCommentMerge.first);
+        }
+
+        return numConflicts;
+    }
+
+
+    private static int eliminateDuplicateMembers(CtElement merge) {
+        List<CtType<?>> types = merge.getElements(e -> true);
+        int numConflicts = 0;
+        for (CtType<?> type : types) {
+            numConflicts += eliminateDuplicateMembers(type);
+        }
+        return numConflicts;
+    }
+
+    private static int eliminateDuplicateMembers(CtType<?> type) {
+        List<CtTypeMember> members = new ArrayList<>(type.getTypeMembers());
+        Map<String, CtTypeMember> memberMap = new HashMap<>();
+        int numConflicts = 0;
+
+        for (CtTypeMember member : members) {
+            String key;
+            if (member instanceof CtMethod<?>) {
+                key = ((CtMethod<?>) member).getSignature();
+            } else if (member instanceof CtField<?>) {
+                key = member.getSimpleName();
+            } else if (member instanceof CtType<?>) {
+                key = ((CtType<?>) member).getQualifiedName();
+            } else {
+                continue;
+            }
+
+            CtTypeMember duplicate = memberMap.get(key);
+            if (duplicate == null) {
+                memberMap.put(key, member);
+            } else {
+                LOGGER.info(() -> "Merging duplicated member " + key);
+
+                // need to clear the metadata from these members to be able to re-run the merge
+                member.descendantIterator().forEachRemaining(NodeFactory::clearNonRevisionMetadata);
+                duplicate.descendantIterator().forEachRemaining(NodeFactory::clearNonRevisionMetadata);
+                CtTypeMember dummyBase = (CtTypeMember) member.clone();
+                dummyBase.setParent(type);
+                dummyBase.getDirectChildren().forEach(CtElement::delete);
+
+                // we forcibly set the virtual root as parent, as the real parent of these members is outside of the current scope
+                NodeFactory.clearNonRevisionMetadata(member);
+                NodeFactory.clearNonRevisionMetadata(duplicate);
+                NodeFactory.clearNonRevisionMetadata(dummyBase);
+                NodeFactory.forceWrap(member, NodeFactory.ROOT);
+                NodeFactory.forceWrap(duplicate, NodeFactory.ROOT);
+                NodeFactory.forceWrap(dummyBase, NodeFactory.ROOT);
+
+                // use the full gumtree matcher as both base matcher and left-to-right matcher
+                Pair<CtTypeMember, Integer> mergePair = merge(dummyBase, member, duplicate, Spoon3dmMerge::matchTrees, Spoon3dmMerge::matchTrees);
+                numConflicts += mergePair.second;
+                CtTypeMember mergedMember = mergePair.first;
+
+                member.delete();
+                duplicate.delete();
+
+                type.addTypeMember(mergedMember);
+            }
+        }
+
+        return numConflicts;
     }
 
     /**

@@ -146,7 +146,8 @@ public class SpoonTreeBuilder {
         SpoonNode origRootNode = sporkParent.getNode();
         SpoonNode origTreeNode = sporkChild.getNode();
         CtElement originalTree = origTreeNode.getElement();
-        CtElement mergeParent = origRootNode == NodeFactory.ROOT ? null : nodes.get(origRootNode).getElement();
+        Optional<CtElement> mergeParentOpt = Optional.ofNullable(
+                origRootNode == NodeFactory.ROOT ? null : nodes.get(origRootNode).getElement());
         CtElement mergeTree;
 
         if (sporkChild.isSingleRevisionSubtree()) {
@@ -171,7 +172,8 @@ public class SpoonTreeBuilder {
         metadata.put(ORIGINAL_NODE_KEY, originalTree);
         mergeTree.setAllMetadata(metadata);
 
-        if (mergeParent != null) {
+        if (mergeParentOpt.isPresent()) {
+            CtElement mergeParent = mergeParentOpt.get();
             CtRole mergeTreeRole = resolveRole(origTreeNode);
             Object inserted = withSiblings(originalTree, mergeParent, mergeTree, mergeTreeRole);
 
@@ -187,10 +189,17 @@ public class SpoonTreeBuilder {
             }
         }
 
-        // NOTE: Super important that the parent of the merge tree is set no matter what, as wrapping a spoon CtElement
-        // in a SpoonNode requires access to its parent.
-        mergeTree.setParent(mergeParent);
-        nodes.put(origTreeNode, NodeFactory.wrap(mergeTree));
+        SpoonNode mergeNode;
+        if (mergeParentOpt.isPresent()) {
+            // NOTE: Super important that the parent of the merge tree is set no matter what, as wrapping a spoon CtElement
+            // in a SpoonNode requires access to its parent.
+            mergeTree.setParent(mergeParentOpt.get());
+            mergeNode = NodeFactory.wrap(mergeTree);
+        } else {
+            // if the merge tree has no parent, then its parent is the virtual root
+            mergeNode = NodeFactory.forceWrap(mergeTree, NodeFactory.ROOT);
+        }
+        nodes.put(origTreeNode, mergeNode);
 
         return mergeTree;
     }

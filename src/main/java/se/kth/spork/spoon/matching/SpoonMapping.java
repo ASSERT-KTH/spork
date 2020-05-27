@@ -38,7 +38,6 @@ public class SpoonMapping {
     private Map<SpoonNode, SpoonNode> dsts;
 
 
-    // SpoonMapping should only be instantiated with fromGumTreeMapping, which is why the default constructor is private
     private SpoonMapping() {
         srcs = new HashMap<>();
         dsts = new HashMap<>();

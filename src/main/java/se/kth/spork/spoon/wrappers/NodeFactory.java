@@ -82,6 +82,43 @@ public class NodeFactory {
         return wrapInternal(elem);
     }
 
+    /**
+     * Wrap the provided element and forcibly set its parent.
+     *
+     * This will replace any previous wrapper for this element.
+     *
+     * @param elem An element to wrap.
+     * @param parent The SpoonNode parent of the element.
+     * @return A wrapper around a CtElement.
+     */
+    public static SpoonNode forceWrap(CtElement elem, SpoonNode parent) {
+        return initializeWrapper(elem, parent);
+    }
+
+    /**
+     * Clear all non-revision metadata from this element.
+     *
+     * @param elem An element.
+     */
+    public static void clearNonRevisionMetadata(CtElement elem) {
+        Revision rev = (Revision) elem.getMetadata(TdmMerge.REV);
+        Map<String, Object> metadata = new TreeMap<>();
+        metadata.put(TdmMerge.REV, rev);
+        elem.setAllMetadata(metadata);
+    }
+
+    /**
+     * Set the revision of this element only if it is not all ready set.
+     *
+     * @param elem An element.
+     * @param revision A revision.
+     */
+    public static void setRevisionIfUnset(CtElement elem, Revision revision) {
+        if (elem.getMetadata(TdmMerge.REV) == null) {
+            elem.putMetadata(TdmMerge.REV, revision);
+        }
+    }
+
     private static Node wrapInternal(CtElement elem) {
         Object wrapper = elem.getMetadata(WRAPPER_METADATA);
 
