@@ -146,6 +146,10 @@ public final class SporkPrettyPrinter extends DefaultJavaPrettyPrinter {
         Object rawConflict = comment.getMetadata(PrinterPreprocessor.RAW_COMMENT_CONFLICT_KEY);
         if (rawConflict != null) {
             printerHelper.writeRawConflict(rawConflict.toString());
+        } else if (comment.getMetadata(SpoonTreeBuilder.SINGLE_REVISION_KEY) != null) {
+            String source = SourceExtractor.getOriginalSource(comment);
+            int indent = SourceExtractor.getIndentation(comment);
+            printerHelper.writeRawSourceCode(source, indent);
         } else {
             super.visitCtComment(comment);
         }
