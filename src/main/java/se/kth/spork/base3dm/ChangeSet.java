@@ -197,7 +197,7 @@ public class ChangeSet<T extends ListNode,V> {
                 addToLookupTable(classRepSucc, classRepPcs, successors);
             }
             if (!pred.isVirtual()) {
-                Content<T,V> c = new Content<T,V>(pcs, getContent.apply(pred));
+                Content<T,V> c = new Content<T,V>(pcs, getContent.apply(pred), pred.getRevision());
                 addToLookupTable(classRepPred, c, content);
             }
         }

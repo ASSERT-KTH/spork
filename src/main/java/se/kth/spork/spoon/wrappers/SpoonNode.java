@@ -27,12 +27,6 @@ public interface SpoonNode extends ListNode {
     SpoonNode getParent();
 
     /**
-     * @return The revision this node was created from.
-     * @throws UnsupportedOperationException If called on the virtual root.
-     */
-    Revision getRevision();
-
-    /**
      * @return All virtual children belonging to this node.
      * @throws UnsupportedOperationException If called on a list edge.
      */

@@ -7,6 +7,7 @@ import org.junit.jupiter.params.provider.ArgumentsSource;
 import picocli.CommandLine;
 import se.kth.spork.Util;
 import se.kth.spork.exception.MergeException;
+import se.kth.spork.spoon.Compare;
 import se.kth.spork.spoon.Parser;
 import se.kth.spork.spoon.Spoon3dmMerge;
 import se.kth.spork.util.Pair;

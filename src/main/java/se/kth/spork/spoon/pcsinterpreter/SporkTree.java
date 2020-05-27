@@ -41,7 +41,7 @@ public class SporkTree {
         if (node != NodeFactory.ROOT) {
             revisions.add(node.getRevision());
         }
-        content.stream().map(Content::getContext).map(Pcs::getRevision).forEach(revisions::add);
+        content.stream().map(Content::getRevision).forEach(revisions::add);
     }
 
     public SporkTree(SpoonNode node, Set<Content<SpoonNode, RoledValues>> content) {

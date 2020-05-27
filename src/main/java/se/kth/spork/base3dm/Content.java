@@ -8,8 +8,9 @@ import java.util.Objects;
  * @author Simon Larsén
  */
 public class Content<T extends ListNode,V> {
-    private Pcs<T> context;
-    private V value;
+    private final Pcs<T> context;
+    private final V value;
+    private final Revision revision;
 
     /**
      * Create a content container.
@@ -17,13 +18,18 @@ public class Content<T extends ListNode,V> {
      * @param context The context of this content. The value is associated with the predecessor of the context.
      * @param value The value of the this content.
      */
-    public Content(Pcs<T> context, V value) {
+    public Content(Pcs<T> context, V value, Revision revision) {
         this.context = context;
         this.value = value;
+        this.revision = revision;
     }
 
     public Pcs<T> getContext() {
         return context;
+    }
+
+    public Revision getRevision() {
+        return revision;
     }
 
     public V getValue() {

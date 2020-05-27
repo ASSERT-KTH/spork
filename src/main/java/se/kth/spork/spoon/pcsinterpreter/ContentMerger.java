@@ -277,7 +277,7 @@ public class ContentMerger {
         Content<SpoonNode, RoledValues> right = null;
 
         for (Content<SpoonNode, RoledValues> cnt : contents) {
-            switch (cnt.getContext().getRevision()) {
+            switch (cnt.getRevision()) {
                 case BASE:
                     base = cnt;
                     break;
