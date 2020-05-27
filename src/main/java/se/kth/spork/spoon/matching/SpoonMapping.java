@@ -76,13 +76,6 @@ public class SpoonMapping {
         return mapping;
     }
 
-    /**
-     * @return An empty SpoonMapping.
-     */
-    public static SpoonMapping empty() {
-        return new SpoonMapping();
-    }
-
     private List<Pair<CtElement, CtElement>> asList() {
         return srcs.values().stream()
                 .map(dst -> new Pair<>(getSrc(dst).getElement(), dst.getElement()))

@@ -59,25 +59,6 @@ public class ClassRepresentatives {
     }
 
     /**
-     * Create a class representatives mapping for a two-way merge.
-     *
-     * @param left The left revision.
-     * @param right The right revision.
-     * @param leftRight A left-to-right matching.
-     * @return
-     */
-    public static Map<SpoonNode, SpoonNode> createClassRepresentativesMapping(
-            CtElement left,
-            CtElement right,
-            SpoonMapping leftRight) {
-        Map<SpoonNode, SpoonNode> classRepMap = new HashMap<>();
-        mapToClassRepresentatives(left, leftRight, classRepMap, Revision.LEFT);
-        mapToClassRepresentatives(right, leftRight, classRepMap, Revision.RIGHT);
-        mapNodes(NodeFactory.ROOT, NodeFactory.ROOT, classRepMap);
-        return classRepMap;
-    }
-
-    /**
      * Initialize the class representatives map by mapping each element in base to itself.
      *
      * @param base The base revision of the trees to be merged.
@@ -160,10 +141,6 @@ public class ClassRepresentatives {
                 mapNodes(fromVirt, toVirt, classRepMap);
             }
         }
-    }
-
-    private static void augmentClassRepresentatives() {
-
     }
 
     /**
