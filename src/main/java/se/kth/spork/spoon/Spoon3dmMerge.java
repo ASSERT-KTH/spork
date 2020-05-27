@@ -179,46 +179,6 @@ public class Spoon3dmMerge {
     }
 
 
-    public static <T extends CtElement> Pair<T, Integer> merge(T left, T right) {
-        // MATCHING PHASE
-        LOGGER.info(() -> "Computing two-way merge");
-        LOGGER.info(() -> "Converting to GumTree trees");
-        ITree leftGumtree = new SpoonGumTreeBuilder().getTree(left);
-        ITree rightGumtree = new SpoonGumTreeBuilder().getTree(right);
-
-        LOGGER.info(() -> "Matching trees with GumTree");
-        Matcher leftRightGumtreeMatch = matchTrees(leftGumtree, rightGumtree);
-
-        LOGGER.info(() -> "Converting GumTree matches to Spoon matches");
-        SpoonMapping leftRight = SpoonMapping.fromGumTreeMapping(leftRightGumtreeMatch.getMappings());
-
-        // 3DM PHASE
-        LOGGER.info(() -> "Mapping nodes to class representatives");
-        Map<SpoonNode, SpoonNode> classRepMap = ClassRepresentatives.createClassRepresentativesMapping(
-                left, right, leftRight);
-
-        LOGGER.info(() -> "Converting Spoon trees to PCS triples");
-        Set<Pcs<SpoonNode>> t1 = PcsBuilder.fromSpoon(left, Revision.LEFT);
-        Set<Pcs<SpoonNode>> t2 = PcsBuilder.fromSpoon(right, Revision.RIGHT);
-
-        LOGGER.info(() -> "Computing raw PCS merge");
-        ChangeSet<SpoonNode, RoledValues> delta = new ChangeSet<>(classRepMap, new ContentResolver(), t1, t2);
-        ChangeSet<SpoonNode, RoledValues> t0Star = new ChangeSet<>(classRepMap, new ContentResolver());
-
-        LOGGER.info(() -> "Resolving final PCS merge");
-        TdmMerge.resolveRawMerge(t0Star, delta);
-
-        // INTERPRETER PHASE
-        LOGGER.info(() -> "Interpreting resolved PCS merge");
-        Pair<CtElement, Integer> merge = PcsInterpreter.fromMergedPcs(delta, SpoonMapping.empty(), SpoonMapping.empty());
-        // we can be certain that the merge tree has the same root type as the three constituents, so this cast is safe
-        @SuppressWarnings("unchecked")
-        T mergeTree = (T) merge.first;
-        int numConflicts = merge.second;
-
-        return Pair.of(mergeTree, numConflicts);
-    }
-
     private static int eliminateDuplicateMembers(CtElement merge) {
         List<CtType<?>> types = merge.getElements(e -> true);
         int numConflicts = 0;
