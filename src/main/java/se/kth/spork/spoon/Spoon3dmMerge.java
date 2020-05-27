@@ -5,6 +5,11 @@ import com.github.gumtreediff.matchers.Matchers;
 import com.github.gumtreediff.tree.ITree;
 import gumtree.spoon.builder.SpoonGumTreeBuilder;
 import se.kth.spork.base3dm.*;
+import se.kth.spork.spoon.conflict.CommentContentHandler;
+import se.kth.spork.spoon.conflict.ContentConflictHandler;
+import se.kth.spork.spoon.conflict.IsImplicitHandler;
+import se.kth.spork.spoon.conflict.IsUpperHandler;
+import se.kth.spork.spoon.conflict.ModifierHandler;
 import se.kth.spork.spoon.conflict.OptimisticInsertInsertHandler;
 import se.kth.spork.spoon.conflict.StructuralConflict;
 import se.kth.spork.spoon.matching.ClassRepresentatives;
@@ -20,6 +25,7 @@ import se.kth.spork.util.LazyLogger;
 import se.kth.spork.util.LineBasedMerge;
 import se.kth.spork.util.Pair;
 import spoon.reflect.declaration.*;
+import spoon.reflect.path.CtRole;
 
 import java.nio.file.Path;
 import java.util.*;
@@ -132,8 +138,12 @@ public class Spoon3dmMerge {
 
         // INTERPRETER PHASE
         LOGGER.info(() -> "Interpreting resolved PCS merge");
-        List<StructuralConflictHandler> conflictHandlers = Arrays.asList(new MethodOrderingConflictHandler(), new OptimisticInsertInsertHandler());
-        Pair<CtElement, Integer> merge = PcsInterpreter.fromMergedPcs(delta, baseLeft, baseRight, conflictHandlers);
+        List<StructuralConflictHandler> structuralConflictHandlers = Arrays.asList(
+                new MethodOrderingConflictHandler(), new OptimisticInsertInsertHandler());
+        List<ContentConflictHandler> contentConflictHandlers = Arrays.asList(
+                new IsImplicitHandler(), new ModifierHandler(), new IsUpperHandler(), new CommentContentHandler());
+        Pair<CtElement, Integer> merge = PcsInterpreter.fromMergedPcs(
+                delta, baseLeft, baseRight, structuralConflictHandlers, contentConflictHandlers);
         // we can be certain that the merge tree has the same root type as the three constituents, so this cast is safe
         @SuppressWarnings("unchecked")
         T mergeTree = (T) merge.first;

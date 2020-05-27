@@ -2,7 +2,7 @@ package se.kth.spork.spoon.printer;
 
 import se.kth.spork.exception.ConflictException;
 import se.kth.spork.spoon.conflict.ContentConflict;
-import se.kth.spork.spoon.pcsinterpreter.ContentMerger;
+import se.kth.spork.spoon.conflict.ModifierHandler;
 import se.kth.spork.spoon.wrappers.RoledValue;
 import se.kth.spork.util.LineBasedMerge;
 import se.kth.spork.util.Pair;
@@ -153,8 +153,8 @@ public class PrinterPreprocessor extends CtScanner {
             case MODIFIER:
                 Collection<ModifierKind> leftMods = (Collection<ModifierKind>) leftVal;
                 Collection<ModifierKind> rightMods = (Collection<ModifierKind>) rightVal;
-                Set<ModifierKind> leftVisibilities = ContentMerger.categorizeModifiers(leftMods).first;
-                Set<ModifierKind> rightVisibilities = ContentMerger.categorizeModifiers(rightMods).first;
+                Set<ModifierKind> leftVisibilities = ModifierHandler.categorizeModifiers(leftMods).first;
+                Set<ModifierKind> rightVisibilities = ModifierHandler.categorizeModifiers(rightMods).first;
 
                 if (leftVisibilities.isEmpty()) {
                     // use the right-hand visibility in actual tree to force something to be printed

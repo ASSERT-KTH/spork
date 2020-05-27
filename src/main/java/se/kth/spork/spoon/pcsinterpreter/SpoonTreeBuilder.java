@@ -4,6 +4,8 @@ import se.kth.spork.base3dm.Revision;
 import se.kth.spork.base3dm.TdmMerge;
 import se.kth.spork.spoon.*;
 import se.kth.spork.spoon.conflict.ContentConflict;
+import se.kth.spork.spoon.conflict.ContentConflictHandler;
+import se.kth.spork.spoon.conflict.ContentMerger;
 import se.kth.spork.spoon.conflict.StructuralConflict;
 import se.kth.spork.spoon.matching.SpoonMapping;
 import se.kth.spork.spoon.wrappers.NodeFactory;
@@ -39,24 +41,28 @@ public class SpoonTreeBuilder {
     // in a merged tree
     public static final String POSITION_KEY = "spork_position";
 
-    private SpoonMapping baseLeft;
-    private SpoonMapping baseRight;
+    private final SpoonMapping baseLeft;
+    private final SpoonMapping baseRight;
     private int numContentConflicts = 0;
 
-    private Factory factory;
+    private final Factory factory;
 
     // A mapping from the original node to its copy in the merged tree
-    private Map<SpoonNode, SpoonNode> nodes;
+    private final Map<SpoonNode, SpoonNode> nodes;
+
+    private final ContentMerger contentMerger;
 
     /**
      * @param baseLeft  The base-to-left tree matching.
      * @param baseRight The base-to-right tree matching.
      * @param oldEnv    Any environment used in the merge. It's needed to copy some values.
+     * @param contentConflictHandlers A list of conflict handlers.
      */
-    SpoonTreeBuilder(SpoonMapping baseLeft, SpoonMapping baseRight, Environment oldEnv) {
+    SpoonTreeBuilder(SpoonMapping baseLeft, SpoonMapping baseRight, Environment oldEnv, List<ContentConflictHandler> contentConflictHandlers) {
         nodes = new HashMap<>();
         this.baseLeft = baseLeft;
         this.baseRight = baseRight;
+        contentMerger = new ContentMerger(contentConflictHandlers);
 
         // create a new factory
         Launcher launcher = new Launcher();
@@ -157,7 +163,7 @@ public class SpoonTreeBuilder {
             mergeTree.putMetadata(SINGLE_REVISION_KEY, sporkChild.getSingleRevision());
         } else {
             Pair<RoledValues, List<ContentConflict>> mergedContent =
-                    ContentMerger.mergedContent(sporkChild.getContent());
+                    contentMerger.mergedContent(sporkChild.getContent());
 
             mergeTree = shallowCopyTree(originalTree, factory);
             mergedContent.first.forEach(rv -> mergeTree.setValueByRole(rv.getRole(), rv.getValue()));

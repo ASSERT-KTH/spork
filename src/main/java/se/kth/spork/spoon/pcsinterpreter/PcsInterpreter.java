@@ -1,6 +1,7 @@
 package se.kth.spork.spoon.pcsinterpreter;
 
 import se.kth.spork.base3dm.ChangeSet;
+import se.kth.spork.spoon.conflict.ContentConflictHandler;
 import se.kth.spork.spoon.conflict.StructuralConflictHandler;
 import se.kth.spork.spoon.wrappers.RoledValues;
 import se.kth.spork.spoon.matching.SpoonMapping;
@@ -30,7 +31,9 @@ public class PcsInterpreter {
             ChangeSet<SpoonNode, RoledValues> delta,
             SpoonMapping baseLeft,
             SpoonMapping baseRight,
-            List<StructuralConflictHandler> structuralConflictHandlers) {
+            List<StructuralConflictHandler> structuralConflictHandlers,
+            List<ContentConflictHandler> contentConflictHandlers
+            ) {
         SporkTreeBuilder sporkTreeBuilder = new SporkTreeBuilder(delta, baseLeft, baseRight, structuralConflictHandlers);
         SporkTree sporkTreeRoot = sporkTreeBuilder.buildTree();
 
@@ -38,7 +41,7 @@ public class PcsInterpreter {
         // details
         Environment oldEnv = sporkTreeRoot.getChildren().get(0).getNode().getElement().getFactory().getEnvironment();
 
-        SpoonTreeBuilder spoonTreeBuilder = new SpoonTreeBuilder(baseLeft, baseRight, oldEnv);
+        SpoonTreeBuilder spoonTreeBuilder = new SpoonTreeBuilder(baseLeft, baseRight, oldEnv, contentConflictHandlers);
         CtElement spoonTreeRoot = spoonTreeBuilder.build(sporkTreeRoot);
 
         return Pair.of(spoonTreeRoot, sporkTreeBuilder.numStructuralConflicts() + spoonTreeBuilder.numContentConflicts());
