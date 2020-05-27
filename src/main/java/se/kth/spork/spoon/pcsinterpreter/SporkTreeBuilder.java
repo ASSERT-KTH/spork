@@ -2,19 +2,19 @@ package se.kth.spork.spoon.pcsinterpreter;
 
 import se.kth.spork.base3dm.*;
 import se.kth.spork.exception.ConflictException;
+import se.kth.spork.spoon.conflict.ConflictType;
+import se.kth.spork.spoon.conflict.StructuralConflictHandler;
 import se.kth.spork.spoon.matching.SpoonMapping;
 import se.kth.spork.spoon.wrappers.NodeFactory;
 import se.kth.spork.spoon.wrappers.RoledValues;
 import se.kth.spork.spoon.wrappers.SpoonNode;
-import se.kth.spork.spoon.StructuralConflict;
+import se.kth.spork.spoon.conflict.StructuralConflict;
 import se.kth.spork.util.LazyLogger;
 import se.kth.spork.util.LineBasedMerge;
 import se.kth.spork.util.Pair;
-import spoon.reflect.path.CtRole;
 
 import java.util.*;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 /**
  * Class for building a {@link SporkTree} from a merged {@link ChangeSet}.
@@ -31,24 +31,34 @@ class SporkTreeBuilder {
 
     // keeps track of which nodes have been added to the tree all ready
     // if any node is added twice, there's an unresolved move conflict
-    private Set<SpoonNode> usedNodes;
+    private final Set<SpoonNode> usedNodes;
 
     // keeps track of all structural inconsistencies that are used
     // if any have not been used when the tree has been built, there's something wrong
-    private Set<Pcs<SpoonNode>> remainingInconsistencies;
+    private final Set<Pcs<SpoonNode>> remainingInconsistencies;
 
     private final SpoonMapping baseLeft;
     private final SpoonMapping baseRight;
+
+    private final List<StructuralConflictHandler> conflictHandlers;
 
     /**
      * Create a builder.
      *
      * @param delta A merged change set.
+     * @param baseLeft Base-to-left matchings.
+     * @param baseRight Base-to-right matchings.
+     * @param conflictHandlers Conflict handlers for structural conflicts.
      */
-    public SporkTreeBuilder(ChangeSet<SpoonNode, RoledValues> delta, SpoonMapping baseLeft, SpoonMapping baseRight) {
+    public SporkTreeBuilder(
+            ChangeSet<SpoonNode, RoledValues> delta,
+            SpoonMapping baseLeft,
+            SpoonMapping baseRight,
+            List<StructuralConflictHandler> conflictHandlers) {
         this.rootToChildren = buildRootToChildren(delta.getPcsSet());
         this.baseLeft = baseLeft;
         this.baseRight = baseRight;
+        this.conflictHandlers = new ArrayList<>(conflictHandlers);
         structuralConflicts = delta.getStructuralConflicts();
         contents = delta.getContents();
         numStructuralConflicts = 0;
@@ -72,17 +82,17 @@ class SporkTreeBuilder {
     /**
      * Try to resolve a structural conflict automatically.
      */
-    private static Optional<List<SpoonNode>> tryResolveConflict(List<SpoonNode> leftNodes, List<SpoonNode> rightNodes) {
-        SpoonNode firstNode = leftNodes.size() > 0 ? leftNodes.get(0) : rightNodes.get(0);
-        if (!(firstNode.getElement().getRoleInParent() == CtRole.TYPE_MEMBER))
-            return Optional.empty();
-
-        assert leftNodes.stream().allMatch(node -> node.getElement().getRoleInParent() == CtRole.TYPE_MEMBER);
-        assert rightNodes.stream().allMatch(node -> node.getElement().getRoleInParent() == CtRole.TYPE_MEMBER);
-
-        // FIXME this is too liberal. Fields are not unordered, and this approach makes the merge non-commutative.
-        List<SpoonNode> result = Stream.of(leftNodes, rightNodes).flatMap(List::stream).collect(Collectors.toList());
-        return Optional.of(result);
+    private Optional<List<SpoonNode>> tryResolveConflict(List<SpoonNode> leftNodes, List<SpoonNode> rightNodes) {
+        // we can currently only resolve conflict lists for insert/insert conflicts
+        // TODO Expand conflict handling to deal with more than just insert/insert
+        final ConflictType conflictType = ConflictType.INSERT_INSERT;
+        final List<SpoonNode> unmodifiableLeft = Collections.unmodifiableList(leftNodes);
+        final List<SpoonNode> unmodifiableRight = Collections.unmodifiableList(rightNodes);
+        return conflictHandlers.stream()
+                .map(handler -> handler.tryResolveConflict(unmodifiableLeft, unmodifiableRight, conflictType))
+                .filter(Optional::isPresent)
+                .map(Optional::get)
+                .findFirst();
     }
 
     /**

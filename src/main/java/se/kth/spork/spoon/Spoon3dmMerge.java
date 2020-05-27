@@ -5,10 +5,14 @@ import com.github.gumtreediff.matchers.Matchers;
 import com.github.gumtreediff.tree.ITree;
 import gumtree.spoon.builder.SpoonGumTreeBuilder;
 import se.kth.spork.base3dm.*;
+import se.kth.spork.spoon.conflict.OptimisticInsertInsertHandler;
+import se.kth.spork.spoon.conflict.StructuralConflict;
 import se.kth.spork.spoon.matching.ClassRepresentatives;
 import se.kth.spork.spoon.matching.MappingRemover;
 import se.kth.spork.spoon.matching.SpoonMapping;
+import se.kth.spork.spoon.conflict.MethodOrderingConflictHandler;
 import se.kth.spork.spoon.pcsinterpreter.PcsInterpreter;
+import se.kth.spork.spoon.conflict.StructuralConflictHandler;
 import se.kth.spork.spoon.wrappers.NodeFactory;
 import se.kth.spork.spoon.wrappers.RoledValues;
 import se.kth.spork.spoon.wrappers.SpoonNode;
@@ -128,7 +132,8 @@ public class Spoon3dmMerge {
 
         // INTERPRETER PHASE
         LOGGER.info(() -> "Interpreting resolved PCS merge");
-        Pair<CtElement, Integer> merge = PcsInterpreter.fromMergedPcs(delta, baseLeft, baseRight);
+        List<StructuralConflictHandler> conflictHandlers = Arrays.asList(new MethodOrderingConflictHandler(), new OptimisticInsertInsertHandler());
+        Pair<CtElement, Integer> merge = PcsInterpreter.fromMergedPcs(delta, baseLeft, baseRight, conflictHandlers);
         // we can be certain that the merge tree has the same root type as the three constituents, so this cast is safe
         @SuppressWarnings("unchecked")
         T mergeTree = (T) merge.first;

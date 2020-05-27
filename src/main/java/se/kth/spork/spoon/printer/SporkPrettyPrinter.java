@@ -1,8 +1,7 @@
 package se.kth.spork.spoon.printer;
 
 import se.kth.spork.spoon.pcsinterpreter.SpoonTreeBuilder;
-import se.kth.spork.spoon.StructuralConflict;
-import se.kth.spork.util.LineBasedMerge;
+import se.kth.spork.spoon.conflict.StructuralConflict;
 import se.kth.spork.util.Pair;
 import spoon.compiler.Environment;
 import spoon.reflect.code.CtCatchVariable;
