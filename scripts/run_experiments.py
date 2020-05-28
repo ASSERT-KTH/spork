@@ -15,69 +15,70 @@ from benchmark import evaluate
 
 NUM_SCENARIOS = 1000
 MAX_SCENARIOS_PER_PROJECT = 50
-SCENARIO_EXTRACTION_TIME_LIMIT = 60*60 # 1 hour
+SCENARIO_EXTRACTION_TIME_LIMIT = 60 * 60  # 1 hour
 MERGE_COMMANDS = ("spork", "jdime")
 MERGE_DRIVERS = ("spork", "jdime")
+CANDIDATE_PROJECTS_FILE = pathlib.Path("buildable_candidates.txt")
+BASE_EXPERIMENT_DIRECTORY = pathlib.Path("merge_dirs")
+
+# add projects here if a restart was forced and these need to be reprocessed,
+# or if some projects should simply always be processed
+# Example: MANDATORY_PROJECTS = ["awslabs/aws-codedeploy-plugin", "inria/spoon"]
+MANDATORY_PROJECTS = []
 
 
 def main():
     """Run the experiments."""
     setup_logging()
 
-    projects = [
-        proj.strip().split("/")
-        for proj in pathlib.Path("buildable_candidates.txt")
-        .read_text()
-        .strip()
-        .split("\n")
+    candidates = [
+        stripped.split("/")
+        for line in CANDIDATE_PROJECTS_FILE.read_text().strip().split("\n")
+        if (stripped := line.strip()) not in MANDATORY_PROJECTS
     ]
+    np.random.shuffle(candidates)
 
-    np.random.shuffle(projects)
-    merge_dirs = pathlib.Path("merge_dirs")
+    projects = [
+        mandatory.strip().split("/") for mandatory in MANDATORY_PROJECTS
+    ] + candidates
 
     total_num_merge_scenarios = 0
 
     for (github_user, repo_name) in projects:
         project_merge_scenarios = run_benchmarks_on_project(
-            merge_dirs=merge_dirs,
-            repo_name=repo_name,
-            github_user=github_user,
+            repo_name=repo_name, github_user=github_user,
         )
         total_num_merge_scenarios += project_merge_scenarios
         if total_num_merge_scenarios >= NUM_SCENARIOS:
             break
 
 
-def run_benchmarks_on_project(
-    merge_dirs: pathlib.Path,
-    repo_name: str,
-    github_user: str,
-) -> int:
+def run_benchmarks_on_project(repo_name: str, github_user: str,) -> int:
     """Run the benchmarks on a single project.
 
     Args:
-        merge_dirs: The base experiment directory to place output in.
         repo_name: Name of the repository.
         github_user: Name of the user/organization that owns the repository.
     Returns:
         The amount of merge scenarios that were used in the benchmark.
     """
-    base_merge_dir = merge_dirs / f"{github_user}_{repo_name}"
+    base_merge_dir = BASE_EXPERIMENT_DIRECTORY / f"{github_user}_{repo_name}"
     base_merge_dir.mkdir(exist_ok=True, parents=True)
     merge_scenarios_path = base_merge_dir / "merge_scenarios.csv"
     file_merge_output = base_merge_dir / "file_merge_results.csv"
     git_merge_output = base_merge_dir / "git_merge_results.csv"
 
-    command.extract_merge_scenarios(
-        repo_name=repo_name,
-        github_user=github_user,
-        non_trivial=True,
-        buildable=True,
-        testable=False,  # don't want to run tests
-        skip_non_content_conflicts=False,  # implied by non_trivial, more eficient to disable
-        output_file=merge_scenarios_path,
-        timeout=SCENARIO_EXTRACTION_TIME_LIMIT,
-    )
+    if not merge_scenarios_path.exists():
+        command.extract_merge_scenarios(
+            repo_name=repo_name,
+            github_user=github_user,
+            non_trivial=True,
+            buildable=True,
+            testable=False,  # don't want to run tests
+            skip_non_content_conflicts=False,  # implied by non_trivial, more eficient to disable
+            output_file=merge_scenarios_path,
+            timeout=SCENARIO_EXTRACTION_TIME_LIMIT,
+        )
 
     num_merge_scenarios = select_merge_scenarios(
         merge_scenarios_path, limit=MAX_SCENARIOS_PER_PROJECT
