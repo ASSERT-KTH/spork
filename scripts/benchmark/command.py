@@ -8,11 +8,13 @@ import re
 import multiprocessing
 import tempfile
 import shutil
+import time
 
 from typing import List, Optional, Iterable, Mapping, Callable
 
 import daiquiri
 import git
+import numpy as np
 
 from . import evaluate
 from . import run
@@ -114,26 +116,29 @@ def extract_merge_scenarios(
     buildable: bool,
     testable: bool,
     skip_non_content_conflicts: bool,
+    shuffle_commits: bool = False,
+    timeout: Optional[int] = None,
 ):
     """Extract merge commits."""
     original_repo = _get_repo(repo_name, github_user)
     commit_shas = list(gitutils.extract_merge_commit_shas(original_repo))
 
+    if shuffle_commits:
+        np.random.shuffle(commit_shas)
+
     # split the workload
-    num_procs = multiprocessing.cpu_count() // 2  # assume HT
+    num_procs = multiprocessing.cpu_count() // 2  # assume SMT
     LOGGER.info(f"Using {num_procs} CPUs")
 
     pool = multiprocessing.Pool(num_procs)
     results = []
 
-    commits_per_cpu = len(commit_shas) // num_procs
-    for i in range(num_procs):
-        start = i * commits_per_cpu
-        end = (
-            start + commits_per_cpu
-            if i != num_procs - 1
-            else len(commit_shas)
-        )
+    chunk_size = len(commit_shas) // num_procs
+    num_chunks = num_procs
+    deadline = time.perf_counter() + timeout
+    for i in range(num_chunks):
+        start = i * chunk_size
+        end = start + chunk_size if i != num_procs - 1 else len(commit_shas)
 
         commits_chunk = commit_shas[start:end]
 
@@ -144,6 +149,7 @@ def extract_merge_scenarios(
             buildable=buildable,
             testable=testable,
             skip_non_content_conflicts=skip_non_content_conflicts,
+            deadline=deadline,
         )
         result = pool.apply_async(_extract_merge_scenarios, kwds=kwds)
         results.append(result)
@@ -156,8 +162,9 @@ def extract_merge_scenarios(
         try:
             serializable_merge_scenarios += result.get()
         except:
-            LOGGER.exception(f"Exception when extracting commits for {github_user}/{repo_name}")
-
+            LOGGER.exception(
+                f"Exception when extracting commits for {github_user}/{repo_name}"
+            )
 
     reporter.write_csv(
         data=serializable_merge_scenarios,
@@ -174,50 +181,48 @@ def _extract_merge_scenarios(
     buildable: bool,
     testable: bool,
     skip_non_content_conflicts: bool,
+    deadline: Optional[bool],
 ) -> List[conts.SerializableMergeScenario]:
     with tempfile.TemporaryDirectory() as repo_dir:
         repo_path = pathlib.Path(repo_dir) / "repo"
-        repo = git.Repo.clone_from(str(original_repo_path), to_path=str(repo_path))
-
-        merge_scenarios = iter(
-            gitutils.extract_merge_scenarios(
-                repo, non_trivial=non_trivial, merge_commit_shas=commit_shas
-            )
+        repo = git.Repo.clone_from(
+            str(original_repo_path), to_path=str(repo_path)
         )
 
-        if skip_non_content_conflicts:
-            LOGGER.info(
-                "Filtering out merge scenarios containing delete/modify conflicts"
+        merge_scenarios = gitutils.extract_merge_scenarios(
+            repo, non_trivial=non_trivial, merge_commit_shas=commit_shas
+        )
+
+        def is_buildable(ms: conts.MergeScenario) -> bool:
+            return all(
+                run.is_buildable(commit.hexsha, repo)
+                for commit in [ms.base, ms.left, ms.right, ms.expected]
             )
-            merge_scenarios = (
-                ms
-                for ms in merge_scenarios
-                if not gitutils.contains_non_content_conflict(repo, ms)
-            )
-        if buildable or testable:
-            LOGGER.info("Filtering out merge scenarios that do not build")
-            merge_scenarios = (
-                ms
-                for ms in merge_scenarios
-                if all(
-                    run.is_buildable(commit.hexsha, repo)
-                    for commit in [ms.base, ms.left, ms.right, ms.expected]
+
+        serializable_merge_scenarios = []
+        for ms in merge_scenarios:
+            if deadline is not None and time.perf_counter() > deadline:
+                LOGGER.warning(
+                    f"Timed out collecting merge scenarios from {original_repo_path}"
                 )
-            )
-        if testable:
-            LOGGER.info("Filtering out merge scenarios that cannot be tested")
-            merge_scenarios = (
-                ms
-                for ms in merge_scenarios
-                if run.is_testable(ms.expected.hexsha, repo)
-            )
+                break
 
-        return list(
-            map(
-                conts.SerializableMergeScenario.from_merge_scenario,
-                merge_scenarios,
+            if (
+                skip_non_content_conflicts
+                and gitutils.contains_non_content_conflict(repo, ms)
+            ):
+                continue
+            if (buildable or testable) and not is_buildable(ms):
+                continue
+            if testable and not run.is_testable(ms.expected.hexsha, repo):
+                continue
+
+            serializable = conts.SerializableMergeScenario.from_merge_scenario(
+                ms
             )
-        )
+            serializable_merge_scenarios.append(serializable)
+
+        return serializable_merge_scenarios
 
 
 def extract_file_merge_metainfo(

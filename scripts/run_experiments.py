@@ -15,6 +15,7 @@ from benchmark import evaluate
 
 NUM_SCENARIOS = 1000
 MAX_SCENARIOS_PER_PROJECT = 50
+SCENARIO_EXTRACTION_TIME_LIMIT = 60*60 # 1 hour
 MERGE_COMMANDS = ("spork", "jdime")
 MERGE_DRIVERS = ("spork", "jdime")
 
@@ -41,7 +42,6 @@ def main():
             merge_dirs=merge_dirs,
             repo_name=repo_name,
             github_user=github_user,
-            merge_scenario_limit=MAX_SCENARIOS_PER_PROJECT,
         )
         total_num_merge_scenarios += project_merge_scenarios
         if total_num_merge_scenarios >= NUM_SCENARIOS:
@@ -52,7 +52,6 @@ def run_benchmarks_on_project(
     merge_dirs: pathlib.Path,
     repo_name: str,
     github_user: str,
-    merge_scenario_limit: int,
 ) -> int:
     """Run the benchmarks on a single project.
 
@@ -60,8 +59,6 @@ def run_benchmarks_on_project(
         merge_dirs: The base experiment directory to place output in.
         repo_name: Name of the repository.
         github_user: Name of the user/organization that owns the repository.
-        merge_scenario_limit: The maximum amount of scenarios to benchmark from
-            this project.
     Returns:
         The amount of merge scenarios that were used in the benchmark.
     """
@@ -79,10 +76,11 @@ def run_benchmarks_on_project(
         testable=False,  # don't want to run tests
         skip_non_content_conflicts=False,  # implied by non_trivial, more eficient to disable
         output_file=merge_scenarios_path,
+        timeout=SCENARIO_EXTRACTION_TIME_LIMIT,
     )
 
     num_merge_scenarios = select_merge_scenarios(
-        merge_scenarios_path, limit=merge_scenario_limit
+        merge_scenarios_path, limit=MAX_SCENARIOS_PER_PROJECT
     )
 
     if num_merge_scenarios == 0:

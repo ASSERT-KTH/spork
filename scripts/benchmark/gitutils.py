@@ -127,6 +127,8 @@ def extract_conflicting_files(
     LOGGER.info(
         f"Extracting conflicting files for merge {merge_scenario.expected.hexsha}"
     )
+    if not has_unmerged_files(repo, merge_scenario):
+        LOGGER.info(f"No file merges detected, skipping")
 
     left = merge_scenario.left
     right = merge_scenario.right
@@ -207,6 +209,13 @@ def extract_conflicting_files(
                     )
 
     return file_merges
+
+def has_unmerged_files(repo: git.Repo, ms: conts.MergeScenario, file_ext: str = ".java") -> bool:
+    index = repo.index.from_tree(repo, ms.base, ms.left, ms.right)
+    for key in index.unmerged_blobs().keys():
+        if key.endswith(file_ext):
+            return True
+    return False
 
 
 def _missing_blob_warning(blob_sha: str, commit: git.Commit):
