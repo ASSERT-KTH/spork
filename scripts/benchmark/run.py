@@ -132,7 +132,7 @@ def _run_file_merge(
         if proc != None:
             LOGGER.error(out)
         return conts.MergeOutcome.FAIL, runtime
-    elif proc.returncode != 0:
+    elif proc is None or proc.returncode != 0:
         LOGGER.warning(
             f"Merge conflict in {scenario_dir.parent.name}/{scenario_dir.name}"
         )
