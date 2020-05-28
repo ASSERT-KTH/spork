@@ -274,11 +274,13 @@ def run_git_merge(
                     expected_src_relpath = (
                         classfile_pair.expected.original_src_relpath
                     )
+                    expected_classfile_qualname = classfile_pair.expected.qualname
                     classfile_dir = classfile_pair.expected.copy_basedir.relative_to(base_eval_dir)
                     yield conts.GitMergeResult(
                         merge_commit=ms.expected.hexsha,
                         classfile_dir=classfile_dir,
                         expected_classfile_relpath=expected_classfile_relpath,
+                        expected_classfile_qualname=expected_classfile_qualname,
                         expected_src_relpath=expected_src_relpath,
                         merge_driver=merge_driver,
                         build_ok=build_ok,
@@ -294,6 +296,7 @@ def run_git_merge(
                     classfile_dir="",
                     expected_classfile_relpath="",
                     expected_src_relpath="",
+                    expected_classfile_qualname="",
                     eval_ok=False,
                 )
 
@@ -330,6 +333,7 @@ def _extract_expected_revision_classfiles(
         for classfile in classfiles:
             original_relpath = classfile.relative_to(worktree_dir)
             original_src_relpath = src.relative_to(worktree_dir)
+            qualname = f"{pkg}.{classfile.stem}"
             copy_basedir = eval_dir / fileutils.create_unique_filename(
                 path=original_relpath, name=classfile.name
             )
@@ -339,6 +343,7 @@ def _extract_expected_revision_classfiles(
             tup = conts.ExpectedClassfile(
                 copy_abspath=classfile_copy,
                 copy_basedir=copy_basedir,
+                qualname=qualname,
                 original_relpath=original_relpath,
                 original_src_relpath=original_src_relpath,
             )
