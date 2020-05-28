@@ -122,7 +122,7 @@ def _run_file_merge(
         LOGGER.exception(f"error running {merge_cmd}")
         proc = None
 
-    runtime = time.perf_counter() - start if not timed_out else MERGE_TIMEOUT
+    runtime = time.perf_counter() - start if not timed_out else gitutils.MERGE_TIMEOUT
 
     if not merge.is_file():
         LOGGER.error(
