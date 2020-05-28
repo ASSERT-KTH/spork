@@ -20,6 +20,7 @@ from . import gitutils
 from . import fileutils
 from . import containers as conts
 from . import javautils
+from . import procutils
 
 LOGGER = daiquiri.getLogger(__name__)
 
@@ -106,21 +107,21 @@ def _run_file_merge(
 ):
     timed_out = False
     start = time.perf_counter()
+
+    proc = None
+    out = None
+
     try:
-        proc = subprocess.run(
+        proc, out = procutils.run_with_sigkill_timeout(
             f"{merge_cmd} {left} {base} {right} -o {merge}".split(),
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
             timeout=gitutils.MERGE_TIMEOUT,
         )
     except subprocess.TimeoutExpired:
         LOGGER.exception(merge_cmd)
         timed_out = True
         LOGGER.error(f"{merge_cmd} timed out")
-        proc = None
     except:
         LOGGER.exception(f"error running {merge_cmd}")
-        proc = None
 
     runtime = time.perf_counter() - start if not timed_out else gitutils.MERGE_TIMEOUT
 
@@ -129,7 +130,7 @@ def _run_file_merge(
             f"{merge_cmd} failed to produce a merge file on {scenario_dir.parent.name}/{scenario_dir.name}"
         )
         if proc != None:
-            LOGGER.error(proc.stdout.decode(sys.getdefaultencoding()))
+            LOGGER.error(out)
         return conts.MergeOutcome.FAIL, runtime
     elif proc.returncode != 0:
         LOGGER.warning(

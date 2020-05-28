@@ -24,6 +24,7 @@ import git
 import daiquiri
 
 from . import containers as conts
+from . import procutils
 
 START_CONFLICT = "<<<<<<<"
 MID_CONFLICT = "======="
@@ -421,7 +422,7 @@ def merge_no_commit(
                 success, output = _git_merge_no_commit(
                     repo, right_sha, driver_config[0]
                 )
-            except (git.GitCommandError, subprocess.TimeoutExpired) as exc:
+            except Exception as exc:
                 output = str(exc)
                 success = False
             except:
@@ -438,18 +439,12 @@ def merge_no_commit(
 
 
 def _git_merge_no_commit(repo: git.Repo, commit: str, driver_name: str):
+    cmd = f"git merge {commit} --no-commit".split()
     try:
-        proc = subprocess.run(
-            f"git merge {commit} --no-commit".split(),
-            cwd=repo.working_dir,
-            timeout=MERGE_TIMEOUT,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
+        proc, out = procutils.run_with_sigkill_timeout(
+            cmd, cwd=repo.working_dir, timeout=MERGE_TIMEOUT,
         )
-        return (
-            proc.returncode == 0,
-            proc.stdout.decode(sys.getdefaultencoding()),
-        )
+        return proc.returncode == 0, out
     except subprocess.TimeoutExpired as exc:
         LOGGER.exception(f"{driver_name} timed out on merging {commit}")
         # must remove the lock file as git was terminated abnormally
