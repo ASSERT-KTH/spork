@@ -105,7 +105,10 @@ def compare_classfiles(
                 str(replayed_basedir),
             ],
             timeout=30,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
         )
+        LOGGER.info(proc.stdout.decode(sys.getdefaultencoding()))
     except:
         LOGGER.exception("error running sootdiff")
         return None
