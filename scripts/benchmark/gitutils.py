@@ -36,6 +36,9 @@ FILE_MERGE_LOCATOR_OUTPUT_NAME = ".filemergelocator_results"
 
 CONFLICT_PATTERN = re.compile(r"(?m)^CONFLICT \((.*?)\):")
 
+MERGE_TIMEOUT = 5 * 60
+
+
 def extract_merge_scenarios(
     repo: git.Repo,
     non_trivial: bool = False,
@@ -84,7 +87,11 @@ def extract_merge_scenarios(
 
         scenario = conts.MergeScenario(merge, base[0], left, right)
 
-        if non_trivial and is_fast_forward_merge(repo, scenario) or not extract_conflicting_files(repo, scenario):
+        if (
+            non_trivial
+            and is_fast_forward_merge(repo, scenario)
+            or not extract_conflicting_files(repo, scenario)
+        ):
             LOGGER.info(f"Skipping trivial merge commit {merge.hexsha}")
         else:
             LOGGER.info(f"Extracted merge commit {merge.hexsha}")
@@ -93,15 +100,20 @@ def extract_merge_scenarios(
 
     return merge_scenarios
 
+
 def extract_merge_commit_shas(repo: git.Repo) -> Iterable[str]:
     """Extract all merge commit shas from the given repo."""
     return (
-        commit.hexsha for commit in repo.iter_commits() if len(commit.parents) == 2
+        commit.hexsha
+        for commit in repo.iter_commits()
+        if len(commit.parents) == 2
     )
+
 
 def is_fast_forward_merge(repo: git.Repo, ms: conts.MergeScenario) -> bool:
     """Check if the merge scenario is a fast-forward merge."""
     return is_ancestor(repo, ms.left, ms.right)
+
 
 def is_ancestor(repo: git.Repo, left: git.Commit, right: git.Commit) -> bool:
     """Check if left is an ancestor of right."""
@@ -110,6 +122,7 @@ def is_ancestor(repo: git.Repo, left: git.Commit, right: git.Commit) -> bool:
         return True
     except git.GitCommandError:
         return False
+
 
 def extract_all_conflicting_files(
     repo: git.Repo, merge_scenarios: Sequence[conts.MergeScenario],
@@ -186,7 +199,11 @@ def extract_conflicting_files(
                 right_blob = get_blob_by_sha(repo, right, right_blob_sha)
                 base_blob = get_blob_by_sha(repo, base, base_blob_sha)
 
-                if left_blob is None or right_blob is None or base_blob is None:
+                if (
+                    left_blob is None
+                    or right_blob is None
+                    or base_blob is None
+                ):
                     continue
 
                 expected_blob = get_blob_by_path(repo, expected, str(file))
@@ -210,7 +227,10 @@ def extract_conflicting_files(
 
     return file_merges
 
-def has_unmerged_files(repo: git.Repo, ms: conts.MergeScenario, file_ext: str = ".java") -> bool:
+
+def has_unmerged_files(
+    repo: git.Repo, ms: conts.MergeScenario, file_ext: str = ".java"
+) -> bool:
     index = repo.index.from_tree(repo, ms.base, ms.left, ms.right)
     for key in index.unmerged_blobs().keys():
         if key.endswith(file_ext):
@@ -398,13 +418,15 @@ def merge_no_commit(
                 if driver_config:
                     set_merge_driver(repo, *driver_config)
                     LOGGER.info(f"Using merge driver config {driver_config}")
-                output = repo.git.merge(right_sha, "--no-commit")
-                success = True
-            except git.GitCommandError as exc:
+                success, output = _git_merge_no_commit(
+                    repo, right_sha, driver_config[0]
+                )
+            except (git.GitCommandError, subprocess.TimeoutExpired) as exc:
                 output = str(exc)
                 success = False
             except:
-                LOGGER.error("An unexpected error ocurred")
+                LOGGER.exception("An unexpected error ocurred")
+                success = False
                 raise
 
             yield success, output
@@ -413,6 +435,26 @@ def merge_no_commit(
             LOGGER.info(f"Clearing merge driver")
             clear_merge_driver(repo)
         repo.git.reset("--merge")
+
+
+def _git_merge_no_commit(repo: git.Repo, commit: str, driver_name: str):
+    try:
+        proc = subprocess.run(
+            f"git merge {commit} --no-commit".split(),
+            cwd=repo.working_dir,
+            timeout=MERGE_TIMEOUT,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+        )
+        return (
+            proc.returncode == 0,
+            proc.stdout.decode(sys.getdefaultencoding()),
+        )
+    except subprocess.TimeoutExpired as exc:
+        LOGGER.exception(f"{driver_name} timed out on merging {commit}")
+        # must remove the lock file as git was terminated abnormally
+        (pathlib.Path(repo.git_dir) / "index.lock").unlink(missing_ok=True)
+        return False, str(exc)
 
 
 def extract_automerged_files(

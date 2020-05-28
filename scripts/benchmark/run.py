@@ -23,9 +23,6 @@ from . import javautils
 
 LOGGER = daiquiri.getLogger(__name__)
 
-MERGE_TIMEOUT = 5 * 60
-
-
 def run_file_merges(
     file_merge_dirs: List[pathlib.Path], merge_cmd: str
 ) -> Iterable[conts.MergeResult]:
@@ -114,7 +111,7 @@ def _run_file_merge(
             f"{merge_cmd} {left} {base} {right} -o {merge}".split(),
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
-            timeout=MERGE_TIMEOUT,
+            timeout=gitutils.MERGE_TIMEOUT,
         )
     except subprocess.TimeoutExpired:
         LOGGER.exception(merge_cmd)
