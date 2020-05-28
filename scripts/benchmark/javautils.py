@@ -292,7 +292,7 @@ def mvn_compile(workdir: pathlib.Path) -> Tuple[bool, bytes]:
             cwd=workdir,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
-            timeout=5 * 60,
+            timeout=3 * 60,
         )
     except:
         LOGGER.exception("error compiling project")

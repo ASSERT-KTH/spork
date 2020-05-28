@@ -91,11 +91,13 @@ def extract_merge_scenarios(
             expected_merge_commits -= {merge.hexsha}
             merge_scenarios.append(scenario)
 
-    if expected_merge_commits:
-        msg = f"Missing merge commits: {expected_merge_commits}"
-        raise RuntimeError(msg)
-
     return merge_scenarios
+
+def extract_merge_commit_shas(repo: git.Repo) -> Iterable[str]:
+    """Extract all merge commit shas from the given repo."""
+    return (
+        commit.hexsha for commit in repo.iter_commits() if len(commit.parents) == 2
+    )
 
 def is_fast_forward_merge(repo: git.Repo, ms: conts.MergeScenario) -> bool:
     """Check if the merge scenario is a fast-forward merge."""
