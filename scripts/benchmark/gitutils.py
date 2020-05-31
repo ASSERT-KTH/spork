@@ -9,6 +9,7 @@ import shutil
 import contextlib
 import subprocess
 import re
+import collections
 
 from typing import (
     List,
@@ -605,3 +606,43 @@ def _get_blob(repo: git.Repo, commit_sha: str, blob_sha: str) -> git.Blob:
     commit = repo.commit(commit_sha)
     tree = commit.tree
     return tree[blob_sha]
+
+def num_core_contributors(repo: git.Repo, threshold: float) -> int:
+    """Calculate the amount of core contributors. The core contributors is the
+    smallest set of contributors such that their total amount of commits
+    exceeds the ``threshold`` fraction.
+
+    For example, if ``threshold = 0.8``, then the core contributors is the
+    smallest set of contributors that together have at least ``80%`` of the
+    repo's commits.
+
+    There may be several valid sets of core contributors, but the size of these
+    sets are by definition the same.
+
+    Args:
+        repo: A Git repository.
+        threshold: The fraction of commits to target as the amount for the core
+            contributors. Must be a float in the range [0, 1].
+    Returns:
+        The amount of core contributors.
+    """
+    LOGGER.info(f"Extracting commits per author")
+    commits_per_author = collections.Counter(
+        commit.author.name for commit in repo.iter_commits()
+    )
+    LOGGER.info(f"Commits per author: {commits_per_author}")
+
+    total_num_commits = sum(commits_per_author.values())
+    sorted_commits_per_author = sorted(commits_per_author.items(), key=lambda item: item[1], reverse=True)
+
+    agg = 0
+    authors = []
+    for author, num_commits in sorted_commits_per_author:
+        agg += num_commits
+        authors.append(author)
+        LOGGER.info(f"{author} is a core contributor with {num_commits} commits")
+
+        if agg / total_num_commits >= threshold:
+            break
+
+    return len(authors)

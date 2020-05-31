@@ -24,6 +24,7 @@ from . import containers as conts
 
 _CI = os.getenv("TRAVIS_BUILD_DIR")
 
+
 def setup_logging():
     daiquiri.setup(
         level=logging.INFO if not _CI else logging.DEBUG,
@@ -73,14 +74,18 @@ def create_cli_parser():
         "not provided, the repo argument is assumend to be a local directory.",
         type=str,
     )
-    base_parser.add_argument(
+
+    base_output_parser = argparse.ArgumentParser(
+        add_help=False, parents=[base_parser]
+    )
+    base_output_parser.add_argument(
         "-n",
         "--num-merges",
         help="Maximum amount of file merges to recreate.",
         type=int,
         default=None,
     )
-    base_parser.add_argument(
+    base_output_parser.add_argument(
         "-o",
         "--output",
         help="Where to store the output.",
@@ -98,7 +103,7 @@ def create_cli_parser():
     )
 
     base_merge_parser = argparse.ArgumentParser(
-        add_help=False, parents=[base_parser]
+        add_help=False, parents=[base_output_parser]
     )
     base_merge_parser.add_argument(
         "--base-merge-dir",
@@ -140,7 +145,7 @@ def create_cli_parser():
         "run-git-merges",
         help="Replay the merge commits provided using Git and the currently "
         "configured merge driver.",
-        parents=[base_parser],
+        parents=[base_output_parser],
     )
     git_merge_command.add_argument(
         "--merge-drivers",
@@ -196,7 +201,7 @@ def create_cli_parser():
     merge_extractor_command = subparsers.add_parser(
         "extract-merge-scenarios",
         help="Extract merge scenarios from a repo.",
-        parents=[base_parser],
+        parents=[base_output_parser],
     )
     merge_extractor_command.add_argument(
         "--non-trivial",
@@ -226,13 +231,30 @@ def create_cli_parser():
     file_merge_metainfo_command = subparsers.add_parser(
         "extract-file-merge-metainfo",
         help="Extract metainfo for non-trivial file merges.",
-        parents=[base_parser],
+        parents=[base_output_parser],
     )
     file_merge_metainfo_command.add_argument(
         "--merge-scenarios",
         help="Path to a CSV file with merge scenarios to operate on.",
         default=None,
         type=pathlib.Path,
+    )
+
+    core_contributors_command = subparsers.add_parser(
+        "num-core-contributors",
+        help="Calculate the amount of core contributors.",
+        description="The core contributors is the smallest set of "
+        "contributors responsible for at least a certain fraction "
+        "of all commits. The fraction can be set with the "
+        "``--threshold`` argument.",
+        parents=[base_parser],
+    )
+    core_contributors_command.add_argument(
+        "-t",
+        "--threshold",
+        help="The threshold for core contributors. Should be a value in the range [0, 1].",
+        type=float,
+        required=True,
     )
 
     return parser
@@ -282,6 +304,13 @@ def main():
             output_file=args.output or pathlib.Path("runtimes.csv"),
             base_merge_dir=args.base_merge_dir,
             num_merges=args.num_merges,
+        )
+        return
+    elif args.command == "num-core-contributors":
+        command.num_core_contributors(
+            repo_name=args.repo,
+            github_user=args.github_user,
+            threshold=args.threshold,
         )
         return
 

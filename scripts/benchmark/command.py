@@ -9,6 +9,7 @@ import multiprocessing
 import tempfile
 import shutil
 import time
+import collections
 
 from typing import List, Optional, Iterable, Mapping, Callable
 
@@ -234,12 +235,20 @@ def extract_file_merge_metainfo(
 ):
     """Extract metainfo about the file merges."""
     repo = _get_repo(repo_name, github_user)
-    serializable_merge_scenarios = reporter.read_csv(
-        container=conts.SerializableMergeScenario, csv_file=merge_scenarios
-    ) if merge_scenarios else None
-    expected_merge_scenarios = _get_merge_scenarios(repo, serializable_merge_scenarios)
+    serializable_merge_scenarios = (
+        reporter.read_csv(
+            container=conts.SerializableMergeScenario, csv_file=merge_scenarios
+        )
+        if merge_scenarios
+        else None
+    )
+    expected_merge_scenarios = _get_merge_scenarios(
+        repo, serializable_merge_scenarios
+    )
 
-    file_merges = gitutils.extract_all_conflicting_files(repo, expected_merge_scenarios)
+    file_merges = gitutils.extract_all_conflicting_files(
+        repo, expected_merge_scenarios
+    )
     file_merge_metainfos = list(
         map(conts.FileMergeMetainfo.from_file_merge, file_merges)
     )[:num_merges]
@@ -266,7 +275,9 @@ def git_merge(
     serializable_merge_scenarios = reporter.read_csv(
         container=conts.SerializableMergeScenario, csv_file=merge_scenarios
     )
-    expected_merge_scenarios = _get_merge_scenarios(repo, serializable_merge_scenarios)
+    expected_merge_scenarios = _get_merge_scenarios(
+        repo, serializable_merge_scenarios
+    )
     merge_results = run.run_git_merges(
         expected_merge_scenarios, merge_drivers, repo, build, base_eval_dir,
     )
@@ -305,6 +316,15 @@ def runtime_benchmark(
     reporter.write_csv(
         data=runtime_results, container=conts.RuntimeResult, dst=output_file
     )
+
+
+def num_core_contributors(
+    repo_name: str, github_user: Optional[str], threshold: float
+):
+    """Calculate the number of core contributors."""
+    repo = _get_repo(repo_name, github_user)
+    num_core_contributors = gitutils.num_core_contributors(repo, threshold)
+    print(f"Amount of core contributors: {num_core_contributors}")
 
 
 def _run_file_merges(
