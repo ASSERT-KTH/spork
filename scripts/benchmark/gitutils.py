@@ -141,9 +141,6 @@ def extract_conflicting_files(
     LOGGER.info(
         f"Extracting conflicting files for merge {merge_scenario.expected.hexsha}"
     )
-    if not has_unmerged_files(repo, merge_scenario):
-        LOGGER.info(f"No file merges detected, skipping")
-
     left = merge_scenario.left
     right = merge_scenario.right
     base = merge_scenario.base

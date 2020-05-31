@@ -135,7 +135,7 @@ def extract_merge_scenarios(
 
     chunk_size = len(commit_shas) // num_procs
     num_chunks = num_procs
-    deadline = time.perf_counter() + timeout
+    deadline = time.perf_counter() + timeout if timeout else None
     for i in range(num_chunks):
         start = i * chunk_size
         end = start + chunk_size if i != num_procs - 1 else len(commit_shas)
@@ -228,22 +228,18 @@ def _extract_merge_scenarios(
 def extract_file_merge_metainfo(
     repo_name: str,
     github_user: Optional[str],
-    merge_commits: pathlib.Path,
+    merge_scenarios: Optional[pathlib.Path],
     output_file: pathlib.Path,
     num_merges: Optional[int],
 ):
     """Extract metainfo about the file merges."""
     repo = _get_repo(repo_name, github_user)
-    commit_shas = (
-        fileutils.read_non_empty_lines(merge_commits)
-        if merge_commits
-        else None
-    )
+    serializable_merge_scenarios = reporter.read_csv(
+        container=conts.SerializableMergeScenario, csv_file=merge_scenarios
+    ) if merge_scenarios else None
+    expected_merge_scenarios = _get_merge_scenarios(repo, serializable_merge_scenarios)
 
-    merge_scenarios = gitutils.extract_merge_scenarios(
-        repo, merge_commit_shas=commit_shas,
-    )
-    file_merges = gitutils.extract_all_conflicting_files(repo, merge_scenarios)
+    file_merges = gitutils.extract_all_conflicting_files(repo, expected_merge_scenarios)
     file_merge_metainfos = list(
         map(conts.FileMergeMetainfo.from_file_merge, file_merges)
     )[:num_merges]
@@ -270,9 +266,9 @@ def git_merge(
     serializable_merge_scenarios = reporter.read_csv(
         container=conts.SerializableMergeScenario, csv_file=merge_scenarios
     )
-    merge_scenarios = _get_merge_scenarios(repo, serializable_merge_scenarios)
+    expected_merge_scenarios = _get_merge_scenarios(repo, serializable_merge_scenarios)
     merge_results = run.run_git_merges(
-        merge_scenarios, merge_drivers, repo, build, base_eval_dir,
+        expected_merge_scenarios, merge_drivers, repo, build, base_eval_dir,
     )
     reporter.write_csv(
         data=merge_results, container=conts.GitMergeResult, dst=output_file
