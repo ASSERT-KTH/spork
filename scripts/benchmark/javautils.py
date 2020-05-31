@@ -287,11 +287,16 @@ def find_target_directories(project_root: pathlib.Path) -> List[pathlib.Path]:
     ]
 
 
-def mvn_compile(workdir: pathlib.Path) -> Tuple[bool, bytes]:
+def mvn_compile(
+    workdir: pathlib.Path, skip_checkstyle: bool = True
+) -> Tuple[bool, bytes]:
     """Compile the project in workdir with Maven's test-compile command."""
     try:
+        cmd = "mvn clean test-compile".split()
+        if skip_checkstyle:
+            cmd.append("-Dcheckstyle.skip")
         proc = subprocess.run(
-            "mvn clean test-compile".split(),
+            cmd,
             cwd=workdir,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,

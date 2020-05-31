@@ -252,7 +252,7 @@ def run_git_merge(
                     ).write_bytes(output)
                 _log_cond(
                     "Replayed build OK",
-                    "Replayed build failed",
+                    output,
                     use_info=build_ok,
                 )
 
