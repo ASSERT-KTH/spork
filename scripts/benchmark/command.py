@@ -324,7 +324,7 @@ def num_core_contributors(
     """Calculate the number of core contributors."""
     repo = _get_repo(repo_name, github_user)
     num_core_contributors = gitutils.num_core_contributors(repo, threshold)
-    print(f"Amount of core contributors: {num_core_contributors}")
+    print(f"Amount of core contributors for {github_user}/{repo_name}: {num_core_contributors}")
 
 
 def _run_file_merges(
