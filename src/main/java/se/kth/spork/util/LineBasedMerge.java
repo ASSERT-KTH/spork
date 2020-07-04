@@ -32,9 +32,8 @@ public class LineBasedMerge {
      */
     public static Pair<String, Integer> merge(String base, String left, String right) {
         if (base.isEmpty() && (left.isEmpty() || right.isEmpty())) {
-            // For some reason, this merge implementation reports a conflict on pure
-            // additions (i.e. base is empty, and left or right is empty). This is
-            // an easy fix for that. See #144 for details.
+            // For some reason, this merge implementation reports a conflict on pure additions.
+            // This is an easy fix for that. See #144 for details.
             return Pair.of(left.isEmpty() ? right : left, 0);
         }
 
