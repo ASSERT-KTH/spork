@@ -132,6 +132,8 @@ class CliTest {
 
         Object expectedImports = mergeTree.getMetadata(Parser.IMPORT_STATEMENTS);
         assert expectedImports != null;
+        Object expectedCuComment = mergeTree.getMetadata(Parser.COMPILATION_UNIT_COMMENT);
+        assert expectedCuComment != null;
 
         String expectedPrettyPrint = Cli.prettyPrint(mergeTree);
 
@@ -140,6 +142,7 @@ class CliTest {
 
         CtModule reParsedMerge = Parser.parse(outFile);
         Object reParsedImports = reParsedMerge.getMetadata(Parser.IMPORT_STATEMENTS);
+        Object reparsedCuComment = reParsedMerge.getMetadata(Parser.COMPILATION_UNIT_COMMENT);
 
         System.out.println(Cli.prettyPrint(mergeTree));
         assertEquals(Cli.prettyPrint(mergeTree), expectedPrettyPrint);
@@ -147,5 +150,6 @@ class CliTest {
         assertEquals(mergeTree, reParsedMerge);
 
         assertEquals(reParsedImports, expectedImports);
+        assertEquals(reparsedCuComment, expectedCuComment);
     }
 }
