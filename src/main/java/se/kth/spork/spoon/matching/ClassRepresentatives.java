@@ -1,11 +1,9 @@
 package se.kth.spork.spoon.matching;
 
 import se.kth.spork.base3dm.Revision;
-import se.kth.spork.base3dm.TdmMerge;
 import se.kth.spork.spoon.wrappers.SpoonNode;
 import se.kth.spork.spoon.wrappers.NodeFactory;
 import spoon.reflect.declaration.CtElement;
-import spoon.reflect.reference.CtReference;
 import spoon.reflect.visitor.CtScanner;
 
 import java.util.HashMap;

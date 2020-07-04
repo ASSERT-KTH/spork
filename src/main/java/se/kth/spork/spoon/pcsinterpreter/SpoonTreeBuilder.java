@@ -1,7 +1,7 @@
 package se.kth.spork.spoon.pcsinterpreter;
 
 import se.kth.spork.base3dm.Revision;
-import se.kth.spork.base3dm.TdmMerge;
+import se.kth.spork.base3dm.TdmMergeKt;
 import se.kth.spork.spoon.*;
 import se.kth.spork.spoon.conflict.ContentConflict;
 import se.kth.spork.spoon.conflict.ContentConflictHandler;
@@ -296,7 +296,7 @@ public class SpoonTreeBuilder {
 
         Optional<SpoonNode> base = Optional.empty();
 
-        switch ((Revision) tree.getMetadata(TdmMerge.REV)) {
+        switch ((Revision) tree.getMetadata(TdmMergeKt.REV)) {
             case BASE: {
                 base = Optional.of(wrapper);
                 SpoonNode left = baseLeft.getDst(wrapper);

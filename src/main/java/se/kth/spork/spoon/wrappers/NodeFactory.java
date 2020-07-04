@@ -1,7 +1,7 @@
 package se.kth.spork.spoon.wrappers;
 
 import se.kth.spork.base3dm.Revision;
-import se.kth.spork.base3dm.TdmMerge;
+import se.kth.spork.base3dm.TdmMergeKt;
 import spoon.reflect.declaration.CtElement;
 import spoon.reflect.declaration.CtExecutable;
 import spoon.reflect.declaration.CtType;
@@ -101,9 +101,9 @@ public class NodeFactory {
      * @param elem An element.
      */
     public static void clearNonRevisionMetadata(CtElement elem) {
-        Revision rev = (Revision) elem.getMetadata(TdmMerge.REV);
+        Revision rev = (Revision) elem.getMetadata(TdmMergeKt.REV);
         Map<String, Object> metadata = new TreeMap<>();
-        metadata.put(TdmMerge.REV, rev);
+        metadata.put(TdmMergeKt.REV, rev);
         elem.setAllMetadata(metadata);
     }
 
@@ -114,8 +114,8 @@ public class NodeFactory {
      * @param revision A revision.
      */
     public static void setRevisionIfUnset(CtElement elem, Revision revision) {
-        if (elem.getMetadata(TdmMerge.REV) == null) {
-            elem.putMetadata(TdmMerge.REV, revision);
+        if (elem.getMetadata(TdmMergeKt.REV) == null) {
+            elem.putMetadata(TdmMergeKt.REV, revision);
         }
     }
 
@@ -273,7 +273,7 @@ public class NodeFactory {
 
         @Override
         public Revision getRevision() {
-            return (Revision) element.getMetadata(TdmMerge.REV);
+            return (Revision) element.getMetadata(TdmMergeKt.REV);
         }
 
         @Override

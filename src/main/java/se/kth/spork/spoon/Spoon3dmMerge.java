@@ -117,7 +117,7 @@ public class Spoon3dmMerge {
         ChangeSet<SpoonNode, RoledValues> t0Star = new ChangeSet<>(classRepMap, new ContentResolver(), t0);
 
         LOGGER.info(() -> "Resolving final PCS merge");
-        TdmMerge.resolveRawMerge(t0Star, delta);
+        TdmMergeKt.resolveRawMerge(t0Star, delta);
 
         Set<SpoonNode> rootConflictingNodes = StructuralConflict.extractRootConflictingNodes(delta.getStructuralConflicts());
         if (!rootConflictingNodes.isEmpty()) {
@@ -133,7 +133,7 @@ public class Spoon3dmMerge {
             delta = new ChangeSet<>(classRepMap, new ContentResolver(), t0, t1, t2);
 
             LOGGER.info(() -> "Resolving final PCS merge");
-            TdmMerge.resolveRawMerge(t0Star, delta);
+            TdmMergeKt.resolveRawMerge(t0Star, delta);
         }
 
         // INTERPRETER PHASE
