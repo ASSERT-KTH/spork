@@ -62,7 +62,7 @@ private fun <T : ListNode, V> mergeContent(node: T, base: ChangeSet<T, V>, delta
     val contents: Set<Content<T, V>> = delta.getContent(node)
     if (contents.size > 1) {
         val newContent = handleContentConflict(contents, base)
-        delta.setContent(node, newContent)
+        delta.setContent(node, newContent.toMutableSet())
     }
 }
 
