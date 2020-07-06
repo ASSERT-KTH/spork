@@ -123,7 +123,7 @@ public class Spoon3dmMerge {
         if (!rootConflictingNodes.isEmpty()) {
             LOGGER.info(() -> "Root conflicts detected, restarting merge");
             LOGGER.info(() -> "Removing root conflicting nodes from tree matchings");
-            MappingRemover.removeFromMappings(rootConflictingNodes, baseLeft, baseRight, leftRight);
+            MappingRemover.Companion.removeFromMappings(rootConflictingNodes, baseLeft, baseRight, leftRight);
 
             LOGGER.info(() -> "Mapping nodes to class representatives");
             classRepMap = ClassRepresentatives.createClassRepresentativesMapping(
