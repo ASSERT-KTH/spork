@@ -53,7 +53,7 @@ class MappingRemover(private val mapping: SpoonMapping) : CtScanner() {
             for (node in nodes) {
                 when (node.revision!!) {
                     Revision.BASE -> {
-                        leftRightMappingRemover.removeRelatedMappings(baseLeft.getDst(node))
+                        leftRightMappingRemover.removeRelatedMappings(baseLeft.getDst(node)!!)
                         baseLeftMappingRemover.removeRelatedMappings(node)
                         baseRightMappingRemover.removeRelatedMappings(node)
                     }

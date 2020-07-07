@@ -98,9 +98,9 @@ public class Spoon3dmMerge {
         Matcher leftRightGumtreeMatch = leftRightMatcher.apply(leftGumtree, rightGumtree);
 
         LOGGER.info(() -> "Converting GumTree matches to Spoon matches");
-        SpoonMapping baseLeft = SpoonMapping.fromGumTreeMapping(baseLeftGumtreeMatch.getMappings());
-        SpoonMapping baseRight = SpoonMapping.fromGumTreeMapping(baseRightGumtreeMatch.getMappings());
-        SpoonMapping leftRight = SpoonMapping.fromGumTreeMapping(leftRightGumtreeMatch.getMappings());
+        SpoonMapping baseLeft = SpoonMapping.Companion.fromGumTreeMapping(baseLeftGumtreeMatch.getMappings());
+        SpoonMapping baseRight = SpoonMapping.Companion.fromGumTreeMapping(baseRightGumtreeMatch.getMappings());
+        SpoonMapping leftRight = SpoonMapping.Companion.fromGumTreeMapping(leftRightGumtreeMatch.getMappings());
 
         // 3DM PHASE
         LOGGER.info(() -> "Mapping nodes to class representatives");
