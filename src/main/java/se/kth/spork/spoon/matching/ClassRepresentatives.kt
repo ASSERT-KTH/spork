@@ -52,11 +52,9 @@ fun createClassRepresentativesMapping(
  */
 private fun initializeClassRepresentatives(base: CtElement): MutableMap<SpoonNode, SpoonNode> {
     val classRepMap: MutableMap<SpoonNode, SpoonNode> = HashMap()
-    val descIt = base.descendantIterator()
-    while (descIt.hasNext()) {
-        val tree = descIt.next()
-        NodeFactory.setRevisionIfUnset(tree, Revision.BASE)
-        val wrapped = NodeFactory.wrap(tree)
+    base.descendantIterator().forEach {
+        NodeFactory.setRevisionIfUnset(it, Revision.BASE)
+        val wrapped = NodeFactory.wrap(it)
         mapNodes(wrapped, wrapped, classRepMap)
     }
 
