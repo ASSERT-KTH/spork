@@ -12,7 +12,7 @@ import se.kth.spork.spoon.conflict.IsUpperHandler;
 import se.kth.spork.spoon.conflict.ModifierHandler;
 import se.kth.spork.spoon.conflict.OptimisticInsertInsertHandler;
 import se.kth.spork.spoon.conflict.StructuralConflict;
-import se.kth.spork.spoon.matching.ClassRepresentatives;
+import se.kth.spork.spoon.matching.ClassRepresentativesKt;
 import se.kth.spork.spoon.matching.MappingRemover;
 import se.kth.spork.spoon.matching.SpoonMapping;
 import se.kth.spork.spoon.conflict.MethodOrderingConflictHandler;
@@ -25,7 +25,6 @@ import se.kth.spork.util.LazyLogger;
 import se.kth.spork.util.LineBasedMerge;
 import se.kth.spork.util.Pair;
 import spoon.reflect.declaration.*;
-import spoon.reflect.path.CtRole;
 
 import java.nio.file.Path;
 import java.util.*;
@@ -104,7 +103,7 @@ public class Spoon3dmMerge {
 
         // 3DM PHASE
         LOGGER.info(() -> "Mapping nodes to class representatives");
-        Map<SpoonNode, SpoonNode> classRepMap = ClassRepresentatives.createClassRepresentativesMapping(
+        Map<SpoonNode, SpoonNode> classRepMap = ClassRepresentativesKt.createClassRepresentativesMapping(
                 base, left, right, baseLeft, baseRight, leftRight);
 
         LOGGER.info(() -> "Converting Spoon trees to PCS triples");
@@ -126,7 +125,7 @@ public class Spoon3dmMerge {
             MappingRemover.Companion.removeFromMappings(rootConflictingNodes, baseLeft, baseRight, leftRight);
 
             LOGGER.info(() -> "Mapping nodes to class representatives");
-            classRepMap = ClassRepresentatives.createClassRepresentativesMapping(
+            classRepMap = ClassRepresentativesKt.createClassRepresentativesMapping(
                     base, left, right, baseLeft, baseRight, leftRight);
 
             LOGGER.info(() -> "Computing raw PCS merge");
