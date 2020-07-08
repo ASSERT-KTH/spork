@@ -236,9 +236,9 @@ public class Spoon3dmMerge {
                 NodeFactory.clearNonRevisionMetadata(member);
                 NodeFactory.clearNonRevisionMetadata(duplicate);
                 NodeFactory.clearNonRevisionMetadata(dummyBase);
-                NodeFactory.forceWrap(member, NodeFactory.ROOT);
-                NodeFactory.forceWrap(duplicate, NodeFactory.ROOT);
-                NodeFactory.forceWrap(dummyBase, NodeFactory.ROOT);
+                NodeFactory.forceWrap(member, NodeFactory.INSTANCE.getVirtualRoot());
+                NodeFactory.forceWrap(duplicate, NodeFactory.INSTANCE.getVirtualRoot());
+                NodeFactory.forceWrap(dummyBase, NodeFactory.INSTANCE.getVirtualRoot());
 
                 // use the full gumtree matcher as both base matcher and left-to-right matcher
                 Pair<CtTypeMember, Integer> mergePair = merge(dummyBase, member, duplicate, Spoon3dmMerge::matchTrees, Spoon3dmMerge::matchTrees);

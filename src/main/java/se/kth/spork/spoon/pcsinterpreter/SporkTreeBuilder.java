@@ -103,8 +103,7 @@ class SporkTreeBuilder {
     }
 
     public SporkTree buildTree() {
-        SporkTree tree = build(NodeFactory.ROOT);
-        return tree;
+        return build(NodeFactory.INSTANCE.getVirtualRoot());
     }
 
     /**

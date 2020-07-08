@@ -129,7 +129,7 @@ public class SpoonTreeBuilder {
                     .map(structuralConflict -> visitConflicting(root.getNode(), structuralConflict))
                     .orElseGet(() -> visit(root, child));
 
-            if (root.getNode() == NodeFactory.ROOT || !child.isSingleRevisionSubtree())
+            if (root.getNode() == NodeFactory.INSTANCE.getVirtualRoot() || !child.isSingleRevisionSubtree())
                 build(child);
         }
 
@@ -155,7 +155,7 @@ public class SpoonTreeBuilder {
         SpoonNode origTreeNode = sporkChild.getNode();
         CtElement originalTree = origTreeNode.getElement();
         Optional<CtElement> mergeParentOpt = Optional.ofNullable(
-                origRootNode == NodeFactory.ROOT ? null : nodes.get(origRootNode).getElement());
+                origRootNode == NodeFactory.INSTANCE.getVirtualRoot() ? null : nodes.get(origRootNode).getElement());
         CtElement mergeTree;
 
         if (sporkChild.isSingleRevisionSubtree()) {
@@ -205,7 +205,7 @@ public class SpoonTreeBuilder {
             mergeNode = NodeFactory.wrap(mergeTree);
         } else {
             // if the merge tree has no parent, then its parent is the virtual root
-            mergeNode = NodeFactory.forceWrap(mergeTree, NodeFactory.ROOT);
+            mergeNode = NodeFactory.forceWrap(mergeTree, NodeFactory.INSTANCE.getVirtualRoot());
         }
         nodes.put(origTreeNode, mergeNode);
 

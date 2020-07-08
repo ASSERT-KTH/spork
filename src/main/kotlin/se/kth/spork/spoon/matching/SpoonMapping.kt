@@ -31,12 +31,10 @@ import java.util.stream.Collectors
  * @author Simon Larsén
  */
 class SpoonMapping private constructor() {
-    private val srcs: MutableMap<SpoonNode, SpoonNode?>
-    private val dsts: MutableMap<SpoonNode, SpoonNode?>
+    private val srcs: MutableMap<SpoonNode, SpoonNode>
+    private val dsts: MutableMap<SpoonNode, SpoonNode>
     private fun asList(): List<Pair<CtElement, CtElement>> {
-        return srcs.values.stream()
-                .map { dst: SpoonNode? -> Pair(getSrc(dst)!!.element, dst!!.element) }
-                .collect(Collectors.toList())
+        return srcs.values.map { dst -> Pair(getSrc(dst)!!.element, dst.element) }
     }
 
     /**
@@ -86,46 +84,46 @@ class SpoonMapping private constructor() {
         return newMatches
     }
 
-    fun hasSrc(src: SpoonNode?): Boolean {
+    fun hasSrc(src: SpoonNode): Boolean {
         return srcs.containsKey(src)
     }
 
-    fun hasDst(dst: SpoonNode?): Boolean {
+    fun hasDst(dst: SpoonNode): Boolean {
         return dsts.containsKey(dst)
     }
 
-    fun hasSrc(src: CtElement?): Boolean {
+    fun hasSrc(src: CtElement): Boolean {
         return hasSrc(NodeFactory.wrap(src))
     }
 
-    fun hasDst(dst: CtElement?): Boolean {
+    fun hasDst(dst: CtElement): Boolean {
         return hasDst(NodeFactory.wrap(dst))
     }
 
-    fun getDst(src: SpoonNode?): SpoonNode? {
+    fun getDst(src: SpoonNode): SpoonNode? {
         return srcs[src]
     }
 
-    fun getDst(src: CtElement?): CtElement {
+    fun getDst(src: CtElement): CtElement {
         return getDst(NodeFactory.wrap(src))!!.element
     }
 
-    fun getSrc(dst: SpoonNode?): SpoonNode? {
+    fun getSrc(dst: SpoonNode): SpoonNode? {
         return dsts[dst]
     }
 
-    fun getSrc(dst: CtElement?): CtElement {
+    fun getSrc(dst: CtElement): CtElement {
         return getSrc(NodeFactory.wrap(dst))!!.element
     }
 
-    fun remove(element: SpoonNode?) {
+    fun remove(element: SpoonNode) {
         val removedDst = srcs.remove(element)
         val removedSrc = dsts.remove(element)
         dsts.remove(removedDst)
         srcs.remove(removedSrc)
     }
 
-    fun put(src: CtElement?, dst: CtElement?) {
+    fun put(src: CtElement, dst: CtElement) {
         put(NodeFactory.wrap(src), NodeFactory.wrap(dst))
     }
 

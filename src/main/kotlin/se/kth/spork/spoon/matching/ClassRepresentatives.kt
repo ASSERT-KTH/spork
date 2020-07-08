@@ -59,7 +59,7 @@ private fun initializeClassRepresentatives(base: CtElement): MutableMap<SpoonNod
     }
 
     // and finally the virtual root
-    mapNodes(NodeFactory.ROOT, NodeFactory.ROOT, classRepMap)
+    mapNodes(NodeFactory.virtualRoot, NodeFactory.virtualRoot, classRepMap)
     return classRepMap
 }
 

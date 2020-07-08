@@ -37,7 +37,7 @@ public class SporkTree {
         children = new ArrayList<>();
         revisions = new TreeSet<>();
 
-        if (node != NodeFactory.ROOT) {
+        if (node != NodeFactory.INSTANCE.getVirtualRoot()) {
             revisions.add(node.getRevision());
         }
         content.stream().map(Content::getRevision).forEach(revisions::add);
