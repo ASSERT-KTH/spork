@@ -20,9 +20,10 @@ The following results files are available in this directory:
     - See section 6.3 in the thesis for a detailed description of the experiment.
 * [no_stats_collection_file_merge_results.csv](no_stats_collection_file_merge_results.csv)
     - This contains data from an execution of the same experiment as the one
-      above, but with stats collection turned of in JDime. The runtimes for
-      JDime are subsequently slightly better.
-* [stats_collection_bytecode_results.csv](bytecode_experiment_results.csv)
+      above, but with stats collection turned off in JDime. The runtimes for
+      JDime are subsequently slightly better, but the data in the `outcome`
+      column, and all columns relating to conflicts, are invalid.
+* [stats_collection_bytecode_results.csv](stats_collection_bytecode_results.csv)
     - Results from the bytecode comparison experiment.
     - See section 6.4 in the thesis for a detailed description of this
       experiment.
