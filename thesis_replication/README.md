@@ -12,17 +12,17 @@ The following results files are available in this directory:
       the time of the thesis experiments. See section 6.2 of the thesis for details.
 * [projects.csv](projects.csv)
     - A table of projects used in the evaluation.
-* [stats_collection_file_merge_results](stats_collection_file_merge_results.csv)
+* [stats_collection_file_merge_results.csv](stats_collection_file_merge_results.csv)
     - This file contains results from individual file merges with JDime's stats
       collection turned on. Note that JDime's stats collection results in a hit
       to runtime performance. The reason it's turned on is that JDime does not
       report conflicts without it.
     - See section 6.3 in the thesis for a detailed description of the experiment.
-* [no_stats_collection_file_merge_results](no_stats_collection_file_merge_results.csv)
+* [no_stats_collection_file_merge_results.csv](no_stats_collection_file_merge_results.csv)
     - This contains data from an execution of the same experiment as the one
       above, but with stats collection turned of in JDime. The runtimes for
       JDime are subsequently slightly better.
-* [bytecode_experiment_results](bytecode_experiment_results.csv)
+* [stats_collection_bytecode_results.csv](bytecode_experiment_results.csv)
     - Results from the bytecode comparison experiment.
     - See section 6.4 in the thesis for a detailed description of this
       experiment.
