@@ -174,17 +174,8 @@ object NodeFactory {
      * Base class for any [SpoonNode] that has a child list.
      */
     private abstract class ParentSpoonNode internal constructor() : SpoonNode {
-        private val startOfChildList: SpoonNode = startOfChildList(this)
-        private val endOfChildList: SpoonNode = endOfChildList(this)
-
-        override fun getStartOfChildList(): SpoonNode {
-            return startOfChildList
-        }
-
-        override fun getEndOfChildList(): SpoonNode {
-            return endOfChildList
-        }
-
+        override val startOfChildList: SpoonNode = startOfChildList(this)
+        override val endOfChildList: SpoonNode = endOfChildList(this)
     }
 
     /**
@@ -194,20 +185,16 @@ object NodeFactory {
      *
      * This class should only be instantiated by [.wrap].
      */
-    private class Node internal constructor(private val element: CtElement, parent: SpoonNode, private val key: Long, virtualNodeChildRoles: List<CtRole>?) : ParentSpoonNode() {
-        private val parent: SpoonNode
+    private class Node internal constructor(override val element: CtElement, override val parent: SpoonNode, private val key: Long, virtualNodeChildRoles: List<CtRole>?) : ParentSpoonNode() {
         private val virtualRoleChildNodes: MutableMap<CtRole, RoleNode>
         private val role: CtRole
-        private val startOfChildList: SpoonNode
-        private val endOfChildList: SpoonNode
 
-        override fun getElement(): CtElement {
-            return element
-        }
+        override val virtualNodes: List<SpoonNode>
+            get() = listOf(startOfChildList) + virtualRoleChildNodes.values.toList() + listOf(endOfChildList)
 
-        override fun getParent(): SpoonNode {
-            return parent
-        }
+        override val isVirtual: Boolean = false
+
+        override val revision: Revision = element.getMetadata(REV) as Revision
 
         override fun toString(): String {
             val longRep = element.toString()
@@ -216,18 +203,6 @@ object NodeFactory {
                 return shortRep[shortRep.size - 1]
             }
             return longRep
-        }
-
-        override fun getRevision(): Revision {
-            return element.getMetadata(REV) as Revision
-        }
-
-        override fun isVirtual(): Boolean {
-            return false
-        }
-
-        override fun getVirtualNodes(): List<SpoonNode> {
-            return listOf(startOfChildList) + virtualRoleChildNodes.values.toList() + listOf(endOfChildList)
         }
 
         override fun equals(o: Any?): Boolean {
@@ -249,31 +224,19 @@ object NodeFactory {
             return role != null && virtualRoleChildNodes.containsKey(role)
         }
 
-        override fun getStartOfChildList(): SpoonNode {
-            return startOfChildList
-        }
-
-        override fun getEndOfChildList(): SpoonNode {
-            return endOfChildList
-        }
-
         init {
             virtualRoleChildNodes = TreeMap()
             for (role in virtualNodeChildRoles!!) {
                 virtualRoleChildNodes[role] = RoleNode(role, this)
             }
-            startOfChildList = startOfChildList(this)
-            endOfChildList = endOfChildList(this)
             try {
                 role = when (parent) {
                     is Root -> CtRole.DECLARED_MODULE
                     else -> element.roleInParent
                 }
             } catch (e: IllegalStateException) {
-                val role = element.roleInParent
                 throw e
             }
-            this.parent = parent
         }
     }
 
@@ -281,63 +244,37 @@ object NodeFactory {
      * The root virtual node. This is a singleton, there should only be the one that exists in [.ROOT].
      */
     private object Root : ParentSpoonNode() {
-        override fun getElement(): CtElement {
-            throw UnsupportedOperationException("The virtual root has no parent")
-        }
+        override val element: CtElement = throw UnsupportedOperationException("The virtual root has no parent")
 
-        override fun getParent(): SpoonNode {
-            throw UnsupportedOperationException("The virtual root has no parent")
-        }
+        override val parent: SpoonNode = throw UnsupportedOperationException("The virtual root has no parent")
 
-        override fun toString(): String {
-            return "ROOT"
-        }
+        override fun toString(): String = "ROOT"
 
-        override fun getRevision(): Revision {
-            throw UnsupportedOperationException("The virtual root has no revision")
-        }
+        override val revision: Revision = throw UnsupportedOperationException("The virtual root has no revision")
 
-        override fun isVirtual(): Boolean {
-            return true
-        }
+        override val isVirtual: Boolean = true
 
-        override fun getVirtualNodes(): List<SpoonNode> {
-            return listOf(startOfChildList(this), endOfChildList(this))
-        }
+        override val virtualNodes: List<SpoonNode> = listOf(startOfChildList(this), endOfChildList(this))
     }
 
     /**
      * A special SpoonNode that marks the start or end of a child list.
      */
     private class ListEdge internal constructor(// the parent of the child list
-            private val parent: SpoonNode, private val side: Side) : SpoonNode {
+            override val parent: SpoonNode, private val side: Side) : SpoonNode {
         enum class Side {
             START, END
         }
 
-        override fun getElement(): CtElement {
-            throw UnsupportedOperationException("Can't get element from a root node")
-        }
+        override val element: CtElement = throw UnsupportedOperationException("Can't get element from a list edge")
 
-        override fun getParent(): SpoonNode {
-            return parent
-        }
+        override val revision: Revision = parent.revision
 
-        override fun getRevision(): Revision {
-            return parent.revision
-        }
+        override val virtualNodes: List<SpoonNode> = throw UnsupportedOperationException("Can't get virtual nodes from a list edge")
 
-        override fun getVirtualNodes(): List<SpoonNode> {
-            throw UnsupportedOperationException("Can't get virtual nodes from a list edge")
-        }
+        override val isEndOfList: Boolean = side == Side.END
 
-        override fun isEndOfList(): Boolean {
-            return side == Side.END
-        }
-
-        override fun isStartOfList(): Boolean {
-            return side == Side.START
-        }
+        override val isStartOfList: Boolean = side == Side.START
 
         override fun equals(o: Any?): Boolean {
             if (this === o) return true
@@ -355,44 +292,25 @@ object NodeFactory {
             return side.toString()
         }
 
-        override fun getStartOfChildList(): SpoonNode {
-            throw UnsupportedOperationException("A list edge has no child list")
-        }
+        override val startOfChildList: SpoonNode = throw UnsupportedOperationException("A list edge has no child list")
 
-        override fun getEndOfChildList(): SpoonNode {
-            throw UnsupportedOperationException("A list edge has no child list")
-        }
-
+        override val endOfChildList: SpoonNode = throw UnsupportedOperationException("A list edge has no child list")
     }
 
     /**
      * A RoleNode is a virtual node used to separate child lists in nodes with multiple types of child lists. See
      * https://github.com/KTH/spork/issues/132 for details.
      */
-    private class RoleNode internal constructor(private val role: CtRole, private val parent: Node) : ParentSpoonNode() {
-        override fun getElement(): CtElement {
-            throw UnsupportedOperationException("Can't get element from a RoleNode")
-        }
+    private class RoleNode internal constructor(private val role: CtRole, override val parent: Node) : ParentSpoonNode() {
+        override val element: CtElement = throw UnsupportedOperationException("Can't get element from a RoleNode")
 
-        override fun getParent(): SpoonNode {
-            return parent
-        }
+        override val revision: Revision = parent.revision
 
-        override fun getRevision(): Revision {
-            return parent.revision
-        }
+        override val virtualNodes: List<SpoonNode> = listOf(startOfChildList(this), endOfChildList(this))
 
-        override fun getVirtualNodes(): List<SpoonNode> {
-            return Arrays.asList(startOfChildList(this), endOfChildList(this))
-        }
+        override fun toString(): String = "RoleNode#$role"
 
-        override fun toString(): String {
-            return "RoleNode#$role"
-        }
-
-        override fun isVirtual(): Boolean {
-            return true
-        }
+        override val isVirtual: Boolean = true
 
         override fun equals(o: Any?): Boolean {
             if (this === o) return true
@@ -402,8 +320,6 @@ object NodeFactory {
                     role == roleNode.role
         }
 
-        override fun hashCode(): Int {
-            return Objects.hash(parent, role)
-        }
+        override fun hashCode(): Int = Objects.hash(parent, role)
     }
 }
