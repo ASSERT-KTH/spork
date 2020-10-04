@@ -1,6 +1,9 @@
 # Reproduction of thesis experiments
 This directory contains scripts and instructions for reproducing the
-experimental evaluation of the master thesis for which Spork was created.
+experimental evaluation of the master's thesis for which Spork was created.
+The thesis is freely available.
+
+* [Spork: Spork: Move-enabled structured merge for Java with GumTree and 3DM](http://urn.kb.se/resolve?urn=urn:nbn:se:kth:diva-281960)
 
 ## Directory overview
 The following results files are available in this directory:
