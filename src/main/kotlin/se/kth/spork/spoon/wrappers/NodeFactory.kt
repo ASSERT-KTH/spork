@@ -194,7 +194,13 @@ object NodeFactory {
 
         override val isVirtual: Boolean = false
 
-        override val revision: Revision = element.getMetadata(REV) as Revision
+        override val revision: Revision
+            get() {
+                if (element.getMetadata(REV) == null) {
+                    return Revision.BASE;
+                }
+                return element.getMetadata(REV) as Revision
+            }
 
         override fun toString(): String {
             val longRep = element.toString()
@@ -244,13 +250,16 @@ object NodeFactory {
      * The root virtual node. This is a singleton, there should only be the one that exists in [.ROOT].
      */
     private object Root : ParentSpoonNode() {
-        override val element: CtElement = throw UnsupportedOperationException("The virtual root has no parent")
+        override val element: CtElement
+            get() = throw UnsupportedOperationException("The virtual root has no parent")
 
-        override val parent: SpoonNode = throw UnsupportedOperationException("The virtual root has no parent")
+        override val parent: SpoonNode
+            get() = throw UnsupportedOperationException("The virtual root has no parent")
 
         override fun toString(): String = "ROOT"
 
-        override val revision: Revision = throw UnsupportedOperationException("The virtual root has no revision")
+        override val revision: Revision
+            get() = Revision.BASE
 
         override val isVirtual: Boolean = true
 
@@ -266,11 +275,14 @@ object NodeFactory {
             START, END
         }
 
-        override val element: CtElement = throw UnsupportedOperationException("Can't get element from a list edge")
+        override val element: CtElement
+            get() = throw UnsupportedOperationException("Can't get element from a list edge")
 
-        override val revision: Revision = parent.revision
+        override val revision: Revision
+            get() = parent.revision
 
-        override val virtualNodes: List<SpoonNode> = throw UnsupportedOperationException("Can't get virtual nodes from a list edge")
+        override val virtualNodes: List<SpoonNode>
+            get() = throw UnsupportedOperationException("Can't get virtual nodes from a list edge")
 
         override val isEndOfList: Boolean = side == Side.END
 
@@ -292,9 +304,11 @@ object NodeFactory {
             return side.toString()
         }
 
-        override val startOfChildList: SpoonNode = throw UnsupportedOperationException("A list edge has no child list")
+        override val startOfChildList: SpoonNode
+            get() = throw UnsupportedOperationException("A list edge has no child list")
 
-        override val endOfChildList: SpoonNode = throw UnsupportedOperationException("A list edge has no child list")
+        override val endOfChildList: SpoonNode
+            get() = throw UnsupportedOperationException("A list edge has no child list")
     }
 
     /**
@@ -302,7 +316,8 @@ object NodeFactory {
      * https://github.com/KTH/spork/issues/132 for details.
      */
     private class RoleNode internal constructor(private val role: CtRole, override val parent: Node) : ParentSpoonNode() {
-        override val element: CtElement = throw UnsupportedOperationException("Can't get element from a RoleNode")
+        override val element: CtElement
+            get() = throw UnsupportedOperationException("Can't get element from a RoleNode")
 
         override val revision: Revision = parent.revision
 
