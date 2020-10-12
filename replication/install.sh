@@ -15,7 +15,7 @@ REPLICATION_PKG_DIR="$PWD/replication_package"
 ENV_FILE="$REPLICATION_PKG_DIR/env.sh"
 
 function download_replication_package() {
-    curl "$REPLICATION_PKG_URL" -o replication_package.tar.gz
+    wget "$REPLICATION_PKG_URL"
     tar -xvzf replication_package.tar.gz
 }
 
