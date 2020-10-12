@@ -3,9 +3,9 @@
 if [ ! -f ~/jars/sootdiff.jar ]; then
   mkdir -p ~/jars
   echo "Fetching jars"
-  curl -L https://github.com/slarse/sootdiff/releases/download/spork-experiment/sootdiff-1.0-jar-with-dependencies.jar -o ~/jars/sootdiff.jar
-  curl -L https://github.com/slarse/duplicate-checkcast-remover/releases/download/v1.0.0/duplicate-checkcast-remover-1.0.0-jar-with-dependencies.jar -o ~/jars/duplicate-checkcast-remover.jar
-  curl -L https://github.com/slarse/pkgextractor/releases/download/v1.0.0/pkgextractor-1.0.0-jar-with-dependencies.jar -o ~/jars/pkgextractor.jar
+  curl -L https://github.com/slarse/sootdiff/releases/download/spork-experiment/sootdiff-1.0-spork-experiments.jar -o ~/jars/sootdiff.jar
+  curl -L https://github.com/slarse/duplicate-checkcast-remover/releases/download/v1.0.1/duplicate-checkcast-remover-1.0.1-jar-with-dependencies.jar -o ~/jars/duplicate-checkcast-remover.jar
+  curl -L https://github.com/slarse/pkgextractor/releases/download/v1.0.1/pkgextractor-1.0.1-jar-with-dependencies.jar -o ~/jars/pkgextractor.jar
   ls ~/jars
 fi
 
