@@ -22,11 +22,11 @@ class RoledValues : ArrayList<RoledValue?> {
     }
 
     fun add(role: CtRole?, value: Any?) {
-        add(RoledValue(role!!, value!!))
+        add(RoledValue(role!!, value))
     }
 
-    operator fun set(i: Int, role: CtRole?, value: Any?): RoledValue? {
-        return set(i, RoledValue(role!!, value!!))
+    operator fun set(i: Int, role: CtRole?, value: Any): RoledValue? {
+        return set(i, RoledValue(role!!, value))
     }
 
 }

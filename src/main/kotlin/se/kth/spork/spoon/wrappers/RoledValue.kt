@@ -3,7 +3,7 @@ package se.kth.spork.spoon.wrappers
 import spoon.reflect.path.CtRole
 import java.util.*
 
-class RoledValue(val role: CtRole, val value: Any) {
+class RoledValue(val role: CtRole, val value: Any?) {
     private val metadata: MutableMap<Key, Any> = EnumMap(se.kth.spork.spoon.wrappers.RoledValue.Key::class.java)
 
     enum class Key {
