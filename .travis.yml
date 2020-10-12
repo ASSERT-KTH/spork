@@ -1,5 +1,9 @@
 git:
   depth: false
+branches:
+  only:
+  - master
+  - "/^v\\d+\\.\\d+\\.\\d+$/"
 
 matrix:
   include:
