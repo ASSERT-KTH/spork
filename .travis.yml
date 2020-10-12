@@ -34,4 +34,3 @@ notifications:
 cache:
   directories:
     - $HOME/.m2
-    - $HOME/jars
