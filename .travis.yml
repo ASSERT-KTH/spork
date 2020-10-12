@@ -1,5 +1,9 @@
 git:
   depth: false
+branches:
+  only:
+  - master
+  - "/^v\\d+\\.\\d+\\.\\d+$/"
 
 matrix:
   include:
@@ -34,4 +38,3 @@ notifications:
 cache:
   directories:
     - $HOME/.m2
-    - $HOME/jars

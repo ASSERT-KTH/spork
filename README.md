@@ -6,8 +6,24 @@ Spork is an AST based structured merge tool for Java. This means that instead of
 merging Java files by their raw text, it resolves the abstract syntax trees and
 merges based on them instead.
 
-> **Early development:** Spork is in very early development. See the [issue
-> tracker](https://github.com/kth/spork/issues) for known issues.
+## Master's thesis
+Spork was created as part of a master's thesis project. If you want to learn
+more about Spork in terms of theory and design, the thesis is freely available.
+
+* [Spork: Spork: Move-enabled structured merge for Java with GumTree and 3DM](http://urn.kb.se/resolve?urn=urn:nbn:se:kth:diva-281960)
+
+If you use Spork in for academic work, please reference the thesis.
+
+```
+@mastersthesis{larsen2020spork,
+    title={Spork : Move-enabled structured merge for Java with GumTree and 3DM},
+    url={http://urn.kb.se/resolve?urn=urn:nbn:se:kth:diva-281960},
+    author={Larsén, Simon},
+    year={2020},
+    collection={TRITA-EECS-EX},
+    series={TRITA-EECS-EX}
+}
+```
 
 ## Attribution
 Spork is built on top of a few pieces of fantastic software, most notably:
