@@ -10,7 +10,7 @@
 # Making this work for other distributions will likely require
 # some amount of work.
 
-REPLICATION_PKG_URL="https://github.com/KTH/spork/releases/v0.5.0/replication_package.tar.gz"
+REPLICATION_PKG_URL="https://github.com/KTH/spork/releases/download/v0.5.0/replication_package.tar.gz"
 REPLICATION_PKG_DIR="$PWD/replication_package"
 ENV_FILE="$REPLICATION_PKG_DIR/env.sh"
 
