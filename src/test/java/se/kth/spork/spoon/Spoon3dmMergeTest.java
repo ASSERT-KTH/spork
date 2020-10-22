@@ -50,7 +50,7 @@ class Spoon3dmMergeTest {
     }
 
     private static void runTestMerge(Util.TestSources sources) {
-        CtModule expected = Parser.parse(sources.expected);
+        CtModule expected = Parser.INSTANCE.parse(sources.expected);
         Object expectedImports = expected.getMetadata(Parser.IMPORT_STATEMENTS);
         Object expectedCuComment = expected.getMetadata(Parser.COMPILATION_UNIT_COMMENT);
         assert expectedImports != null;
