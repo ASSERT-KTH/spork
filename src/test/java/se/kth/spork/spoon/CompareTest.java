@@ -24,8 +24,8 @@ class CompareTest {
         Path left = testDir.resolve("Left.java");
         Path right = testDir.resolve("Right.java");
 
-        CtModule leftMod = Parser.parse(left);
-        CtModule rightMod = Parser.parse(right);
+        CtModule leftMod = Parser.INSTANCE.parse(left);
+        CtModule rightMod = Parser.INSTANCE.parse(right);
 
         boolean equal = Compare.compare(leftMod, rightMod);
 
@@ -44,8 +44,8 @@ class CompareTest {
         Path left = testDir.resolve("Left.java");
         Path right = testDir.resolve("Right.java");
 
-        CtModule leftMod = Parser.parse(left);
-        CtModule rightMod = Parser.parse(right);
+        CtModule leftMod = Parser.INSTANCE.parse(left);
+        CtModule rightMod = Parser.INSTANCE.parse(right);
 
         boolean equal = Compare.compare(leftMod, rightMod);
 
