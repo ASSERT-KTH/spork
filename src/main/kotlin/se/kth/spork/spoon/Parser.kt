@@ -6,8 +6,6 @@ import se.kth.spork.util.LazyLogger
 import spoon.Launcher
 import spoon.compiler.Environment
 import spoon.reflect.CtModel
-import spoon.reflect.code.CtComment
-import spoon.reflect.cu.CompilationUnit
 import spoon.reflect.declaration.*
 import spoon.support.compiler.FileSystemFile
 import spoon.support.compiler.VirtualFile
@@ -16,8 +14,6 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.util.*
 import java.util.function.Consumer
-import java.util.function.Function
-import java.util.stream.Stream
 
 /**
  * A class for dealing with parsing.
@@ -38,36 +34,24 @@ object Parser {
      * @return The root module of the Spoon tree.
      */
     fun parse(javaFile: Path): CtModule {
-        // Reading from a virtual file is a workaround to a bug in Spoon
-        // Sometimes, the class comment is dropped when reading from the file system
-        return parse(Consumer { launcher: Launcher -> launcher.addInputResource(FileSystemFile(javaFile.toFile())) })
+        return parse { launcher: Launcher -> launcher.addInputResource(FileSystemFile(javaFile.toFile())) }
     }
 
     /**
      * Parse the contents of a single Java file.
      *
      * @param javaFileContents The contents of a single Java file.
+     * @param excludeComments Whether or not to exclude comments when parsing.
      * @return The root module of the Spoon tree.
      */
-    fun parse(javaFileContents: String?): CtModule {
-        return parse(Consumer { launcher: Launcher -> launcher.addInputResource(VirtualFile(javaFileContents)) })
-    }
-
-    /**
-     * Parse a Java file to a Spoon tree. Any import statements in the file are attached to the returned module's
-     * metadata with the [Parser.IMPORT_STATEMENTS] key. The imports are sorted in ascending lexicographical
-     * order.
-     *
-     * Comments are ignored
-     *
-     * @param javaFile Path to a Java file.
-     * @return The root module of the Spoon tree.
-     */
-    fun parseWithoutComments(javaFile: Path): CtModule {
-        return parse(Consumer { launcher: Launcher ->
-            launcher.environment.setCommentEnabled(false)
-            launcher.addInputResource(FileSystemFile(javaFile.toFile()))
-        })
+    @JvmOverloads
+    fun parse(javaFileContents: String, excludeComments: Boolean = false): CtModule {
+        return parse { launcher: Launcher ->
+            if (excludeComments) {
+                launcher.environment.setCommentEnabled(false)
+            }
+            launcher.addInputResource(VirtualFile(javaFileContents))
+        }
     }
 
     fun setSporkEnvironment(env: Environment, tabulationSize: Int, useTabs: Boolean) {
@@ -77,9 +61,9 @@ object Parser {
         env.noClasspath = true
     }
 
-    private fun parse(addResource: Consumer<Launcher>): CtModule {
+    private fun parse(configureLauncher: (Launcher) -> Unit): CtModule {
         val launcher = Launcher()
-        addResource.accept(launcher)
+        configureLauncher(launcher)
         val model = launcher.buildModel()
         val indentationGuess = SourceExtractor.guessIndentation(model)
         val indentationType = if (indentationGuess.second) "tabs" else "spaces"
@@ -106,15 +90,8 @@ object Parser {
      * @param model A model.
      * @return A list of import statements.
      */
-    fun parseImportStatements(model: CtModel): Set<CtImport> {
-        val importStatements: MutableSet<CtImport> = HashSet()
-        for (type in model.allTypes) {
-            importStatements.addAll(
-                    parseImportStatements(type)
-            )
-        }
-        return importStatements
-    }
+    fun parseImportStatements(model: CtModel): Set<CtImport> =
+            model.allTypes.flatMap(Parser::parseImportStatements).toSet()
 
     /**
      * Parse import statements from the given type. Note that all types in a single file will get the same
@@ -126,10 +103,8 @@ object Parser {
      * @param type A Java type.
      * @return A list of import statements.
      */
-    fun parseImportStatements(type: CtType<*>): List<CtImport> {
-        val cu: CtCompilationUnit = type.factory.CompilationUnit().getOrCreate(type)
-        return cu.imports
-    }
+    fun parseImportStatements(type: CtType<*>): List<CtImport> =
+            type.factory.CompilationUnit().getOrCreate(type).imports
 
     /**
      * Read the contents of a file.
