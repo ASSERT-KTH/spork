@@ -24,7 +24,8 @@ class PcsBuilder extends CtScanner {
     public PcsBuilder(Revision revision) {
        super();
        this.revision = revision;
-       parentToLastSibling.put(NodeFactory.ROOT, NodeFactory.ROOT.getStartOfChildList());
+       SpoonNode root = NodeFactory.INSTANCE.getVirtualRoot();
+       parentToLastSibling.put(root, root.getStartOfChildList());
     }
 
     /**
