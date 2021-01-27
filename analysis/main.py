@@ -4,6 +4,7 @@ import scipy.stats
 import seaborn as sns
 import matplotlib.pyplot as plt
 import numpy as np
+import pingouin as pg
 
 THIS_DIR = pathlib.Path(__file__).parent
 
@@ -100,7 +101,8 @@ def histogram(spork_values, jdime_values, bins, xlabel, ylabel="Frequency"):
 
     print(spork_values.describe())
     print(jdime_values.describe())
-    print(wilcoxon(spork_data=spork_values, jdime_data=jdime_values))
+    print(pg.wilcoxon(spork_values, jdime_values, tail="two-sided"))
+
 
     plt.show()
 
@@ -171,12 +173,6 @@ def avg_chunk_size(row):
     if row.num_conflicts:
         return row.conflict_size / row.num_conflicts
     return 0
-
-
-def wilcoxon(spork_data, jdime_data) -> scipy.stats.morestats.WilcoxonResult:
-    return scipy.stats.wilcoxon(
-        spork_data, jdime_data, alternative="two-sided", zero_method="pratt"
-    )
 
 
 if __name__ == "__main__":
