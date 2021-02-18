@@ -1,35 +1,29 @@
-# Reproduction of thesis experiments
+# Reproduction of Spork experiments
 This directory contains scripts and instructions for reproducing the
-experimental evaluation of the master's thesis for which Spork was created.
-The thesis is freely available.
-
-* [Spork: Move-enabled structured merge for Java with GumTree and 3DM](http://urn.kb.se/resolve?urn=urn:nbn:se:kth:diva-281960)
+experiments conducted with Spork.
 
 ## Directory overview
 The following results files are available in this directory:
 
 * [candidate_projects.txt](candidate_projects.txt)
-    - A list of candidate projects, as described in section 6.2 of the thesis.
+    - A list of candidate projects that fit the selection criteria.
 * [buildable_candidates.txt](buildable_candidates.txt)
-    - A list of candidate projects for which the last commit was buildable at
-      the time of the thesis experiments. See section 6.2 of the thesis for details.
+    - A filtered list of the candidate projects that were also buildable on the
+      experiment system.
 * [projects.csv](projects.csv)
     - A table of projects used in the evaluation.
 * [stats_collection_file_merge_results.csv](stats_collection_file_merge_results.csv)
-    - This file contains results from individual file merges with JDime's stats
-      collection turned on. Note that JDime's stats collection results in a hit
-      to runtime performance. The reason it's turned on is that JDime does not
-      report conflicts without it.
-    - See section 6.3 in the thesis for a detailed description of the experiment.
+    - Results from individual file merges with JDime's stats collection turned
+      on. Note that JDime's stats collection results in a hit to runtime
+      performance. The reason it's turned on is that JDime does not report
+      conflicts without it.
 * [no_stats_collection_file_merge_results.csv](no_stats_collection_file_merge_results.csv)
-    - This contains data from an execution of the same experiment as the one
-      above, but with stats collection turned off in JDime. The runtimes for
-      JDime are subsequently slightly better, but the data in the `outcome`
-      column, and all columns relating to conflicts, are invalid.
+    - Results from individual file merges, but with stats collection turned off
+      in JDime. The runtimes for JDime are subsequently slightly better, but
+      the data in the `outcome` column, and all columns relating to conflicts,
+      are invalid for JDime.
 * [stats_collection_bytecode_results.csv](stats_collection_bytecode_results.csv)
     - Results from the bytecode comparison experiment.
-    - See section 6.4 in the thesis for a detailed description of this
-      experiment.
 
 For more detailed results, including the actual file merges computed by each
 tool, you must download the replication package as described below.
