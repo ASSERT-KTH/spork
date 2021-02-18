@@ -51,6 +51,6 @@ jobs:
       - name: Install
         run: .github/install.sh
       - name: Add ~/.local/bin to PATH
-        run: echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+        run: echo "$HOME/.local/bin" >> $GITHUB_PATH
       - name: Benchmark
         run: run_benchmark
