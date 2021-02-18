@@ -1,6 +1,6 @@
 #! /bin/bash
 
-cd scripts
+cd scripts || exit
 
 python3 -m benchmark.cli run-file-merge-compare -r rxjava -g reactivex --compare expected_results.csv --merge-commands spork --output results.csv
 bench_returncode=$?
