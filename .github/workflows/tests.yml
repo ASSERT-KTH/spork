@@ -53,6 +53,4 @@ jobs:
       - name: Add ~/.local/bin to PATH
         run: echo "$HOME/.local/bin" >> $GITHUB_PATH
       - name: Benchmark
-        run: |
-          echo $PATH
-          run_benchmark
+        run: run_benchmark
