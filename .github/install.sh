@@ -34,5 +34,3 @@ git config --global user.name example
 
 cd "$GITHUB_WORKSPACE"/scripts || exit
 python3 -m pip install -r requirements.txt
-
-export PATH="$HOME:$PATH"

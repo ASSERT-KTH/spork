@@ -50,5 +50,7 @@ jobs:
           python-version: 3.8
       - name: Install
         run: .github/install.sh
+      - name: Add ~/.local/bin to PATH
+        run: echo "PATH=$PATH:$HOME/.local/bin" >> "$GITHUB_ENV"
       - name: Benchmark
         run: run_benchmark
