@@ -26,6 +26,8 @@ jobs:
           java-version: 8
           java-package: jdk
           architecture: x64
+      - name: Compile
+        run: mvn test-compile
       - name: Run tests
         run: mvn test
       - name: Upload coverage report to Codecov
