@@ -19,12 +19,12 @@ echo "$JAVA_HOME/bin/java -jar $spork_jar_path --exit-on-error" '$@' >> spork
 chmod 700 spork
 
 mkdir -p ~/.local/bin
-cp "$TRAVIS_BUILD_DIR"/.travis/{pkgextractor,sootdiff,duplicate-checkcast-remover,run_benchmark.sh,run_build_benchmark.sh} spork ~/.local/bin
+cp "$GITHUB_WORKSPACE"/.github/{pkgextractor,sootdiff,duplicate-checkcast-remover,run_benchmark,run_build_benchmark} spork ~/.local/bin
 
 git checkout benchmark
 
-cp "$TRAVIS_BUILD_DIR"/merge_driver_config/gitconfig ~/.gitconfig
-cp "$TRAVIS_BUILD_DIR"/merge_driver_config/filemergelocator ~/.local/bin
+cp "$GITHUB_WORKSPACE"/merge_driver_config/gitconfig ~/.gitconfig
+cp "$GITHUB_WORKSPACE"/merge_driver_config/filemergelocator ~/.local/bin
 
 ls -l ~/.local/bin
 
@@ -32,5 +32,5 @@ ls -l ~/.local/bin
 git config --global user.email example@example.com
 git config --global user.name example
 
-cd "$TRAVIS_BUILD_DIR"/scripts || exit
+cd "$GITHUB_WORKSPACE"/scripts || exit
 python3 -m pip install -r requirements.txt
