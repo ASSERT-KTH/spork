@@ -19,7 +19,7 @@ echo "$JAVA_HOME/bin/java -jar $spork_jar_path --exit-on-error" '$@' >> spork
 chmod 700 spork
 
 mkdir -p ~/.local/bin
-cp "$GITHUB_WORKSPACE"/.travis/{pkgextractor,sootdiff,duplicate-checkcast-remover,run_benchmark.sh,run_build_benchmark.sh} spork ~/.local/bin
+cp "$GITHUB_WORKSPACE"/.github/{pkgextractor,sootdiff,duplicate-checkcast-remover,run_benchmark,run_build_benchmark} spork ~/.local/bin
 
 git checkout benchmark
 
@@ -34,3 +34,5 @@ git config --global user.name example
 
 cd "$GITHUB_WORKSPACE"/scripts || exit
 python3 -m pip install -r requirements.txt
+
+export PATH="$HOME:$PATH"
