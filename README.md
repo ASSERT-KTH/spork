@@ -10,7 +10,7 @@ merges based on them instead.
 Spork was created as part of a master's thesis project. If you want to learn
 more about Spork in terms of theory and design, the thesis is freely available.
 
-* [Spork: Spork: Move-enabled structured merge for Java with GumTree and 3DM](http://urn.kb.se/resolve?urn=urn:nbn:se:kth:diva-281960)
+* [Spork: Move-enabled structured merge for Java with GumTree and 3DM](http://urn.kb.se/resolve?urn=urn:nbn:se:kth:diva-281960)
 
 If you use Spork in for academic work, please reference the thesis.
 
