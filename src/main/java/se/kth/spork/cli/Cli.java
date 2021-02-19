@@ -207,7 +207,7 @@ public class Cli {
 
             LOGGER.info(() -> "Initiating merge");
             Pair<CtElement, Integer> merge =
-                    Spoon3dmMerge.merge(baseModule, leftModule, rightModule);
+                    Spoon3dmMerge.INSTANCE.merge(baseModule, leftModule, rightModule);
             CtModule mergeTree = (CtModule) merge.first;
             int numConflicts = merge.second;
 
