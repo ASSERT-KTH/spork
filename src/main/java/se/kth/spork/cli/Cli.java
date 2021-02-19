@@ -179,9 +179,9 @@ public class Cli {
     public static Pair<String, Integer> merge(Path base, Path left, Path right, boolean exitOnError) {
         try {
             LOGGER.info(() -> "Parsing input files");
-            CtModule baseModule = Parser.parse(base);
-            CtModule leftModule = Parser.parse(left);
-            CtModule rightModule = Parser.parse(right);
+            CtModule baseModule = Parser.INSTANCE.parse(base);
+            CtModule leftModule = Parser.INSTANCE.parse(left);
+            CtModule rightModule = Parser.INSTANCE.parse(right);
 
             LOGGER.info(() -> "Initiating merge");
             Pair<CtElement, Integer> merge = Spoon3dmMerge.merge(baseModule, leftModule, rightModule);
@@ -210,9 +210,9 @@ public class Cli {
     }
 
     private static Pair<String, Integer> lineBasedMerge(Path base, Path left, Path right) {
-        String baseStr = Parser.read(base);
-        String leftStr = Parser.read(left);
-        String rightStr = Parser.read(right);
+        String baseStr = Parser.INSTANCE.read(base);
+        String leftStr = Parser.INSTANCE.read(left);
+        String rightStr = Parser.INSTANCE.read(right);
         return LineBasedMerge.merge(baseStr, leftStr, rightStr);
     }
 

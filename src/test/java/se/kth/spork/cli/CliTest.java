@@ -57,7 +57,7 @@ class CliTest {
     @Test
     void merge_shouldMexgeCorrectlyOnMissingType_whenGlobalFallbackIsEnabled() {
         Util.TestSources sources = Util.TestSources.fromTestDirectory(Util.MISSING_TYPE_SCENARIO.toFile());
-        String expected = Parser.read(sources.expected);
+        String expected = Parser.INSTANCE.read(sources.expected);
 
         Pair<String, Integer> merge = Cli.merge(sources.base, sources.left, sources.right, /*exitOnError=*/false);
 
@@ -108,13 +108,13 @@ class CliTest {
     @ParameterizedTest
     @ArgumentsSource(Util.ConflictSourceProvider.class)
     void prettyPrint_shouldParseToExpectedTree_whenConflictHasBeenStrippedOut(Util.TestSources sources) throws IOException {
-        CtModule expected = Parser.parse(Util.keepLeftConflict(sources.expected));
+        CtModule expected = Parser.INSTANCE.parse(Util.keepLeftConflict(sources.expected));
 
         Pair<CtModule, Integer> merged = Spoon3dmMerge.merge(sources.base, sources.left, sources.right);
         CtModule mergeTree = merged.first;
 
         String prettyPrint = Cli.prettyPrint(mergeTree);
-        CtModule actual = Parser.parse(Util.keepLeftConflict(prettyPrint));
+        CtModule actual = Parser.INSTANCE.parse(Util.keepLeftConflict(prettyPrint));
 
         assertEquals(expected, actual);
     }
@@ -140,7 +140,7 @@ class CliTest {
         Path outFile = tempDir.resolve("Merge.java");
         Files.write(outFile, expectedPrettyPrint.getBytes(), StandardOpenOption.CREATE);
 
-        CtModule reParsedMerge = Parser.parse(outFile);
+        CtModule reParsedMerge = Parser.INSTANCE.parse(outFile);
         Object reParsedImports = reParsedMerge.getMetadata(Parser.IMPORT_STATEMENTS);
         Object reparsedCuComment = reParsedMerge.getMetadata(Parser.COMPILATION_UNIT_COMMENT);
 
