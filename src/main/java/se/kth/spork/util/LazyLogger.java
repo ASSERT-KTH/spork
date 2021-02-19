@@ -1,9 +1,8 @@
 package se.kth.spork.util;
 
+import java.util.function.Supplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.function.Supplier;
 
 /**
  * A wrapper around an SL4J logger that allows for lazy logging.

@@ -11,8 +11,9 @@ import spoon.reflect.meta.RoleHandler
 import spoon.reflect.meta.impl.RoleHandlerHelper
 import spoon.reflect.path.CtRole
 import spoon.reflect.reference.CtExecutableReference
-import java.lang.IllegalStateException
-import java.util.*
+import java.util.Arrays
+import java.util.Objects
+import java.util.TreeMap
 
 /**
  * Factory for wrapping a Spoon [CtElement] in a [SpoonNode].
@@ -28,25 +29,25 @@ object NodeFactory {
     // These are roles that are present in the EXPLODED_TYPES types, but are either not structural
     // or are always present as a single node (such as a method body)
     private val IGNORED_ROLES = setOf( /* START NON-STRUCTURAL ROLES */
-            CtRole.IS_IMPLICIT,
-            CtRole.IS_DEFAULT,
-            CtRole.IS_VARARGS,
-            CtRole.IS_FINAL,
-            CtRole.IS_SHADOW,
-            CtRole.IS_STATIC,
-            CtRole.DECLARING_TYPE,
-            CtRole.MODIFIER,
-            CtRole.EMODIFIER,
-            CtRole.NAME,
-            CtRole.POSITION,  /* END NON-STRUCTURAL ROLES */
-            CtRole.BODY,  // always present as a single node
-            CtRole.NESTED_TYPE,  // falls under type member
-            CtRole.FIELD,  // falls under type member
-            CtRole.METHOD // falls under type member
+        CtRole.IS_IMPLICIT,
+        CtRole.IS_DEFAULT,
+        CtRole.IS_VARARGS,
+        CtRole.IS_FINAL,
+        CtRole.IS_SHADOW,
+        CtRole.IS_STATIC,
+        CtRole.DECLARING_TYPE,
+        CtRole.MODIFIER,
+        CtRole.EMODIFIER,
+        CtRole.NAME,
+        CtRole.POSITION, /* END NON-STRUCTURAL ROLES */
+        CtRole.BODY, // always present as a single node
+        CtRole.NESTED_TYPE, // falls under type member
+        CtRole.FIELD, // falls under type member
+        CtRole.METHOD // falls under type member
     )
 
     private val EXPLODED_TYPES = Arrays.asList(
-            CtExecutableReference::class.java, CtExecutable::class.java, CtType::class.java
+        CtExecutableReference::class.java, CtExecutable::class.java, CtType::class.java
     )
     private var EXPLODED_TYPE_ROLES: Map<Class<out CtElement>, List<CtRole>> = EXPLODED_TYPES.map {
         it to getRoles(it).filter { it !in IGNORED_ROLES }
@@ -197,7 +198,7 @@ object NodeFactory {
         override val revision: Revision
             get() {
                 if (element.getMetadata(REV) == null) {
-                    return Revision.BASE;
+                    return Revision.BASE
                 }
                 return element.getMetadata(REV) as Revision
             }
@@ -269,8 +270,10 @@ object NodeFactory {
     /**
      * A special SpoonNode that marks the start or end of a child list.
      */
-    private class ListEdge internal constructor(// the parent of the child list
-            override val parent: SpoonNode, private val side: Side) : SpoonNode {
+    private class ListEdge internal constructor( // the parent of the child list
+        override val parent: SpoonNode,
+        private val side: Side
+    ) : SpoonNode {
         enum class Side {
             START, END
         }
@@ -293,7 +296,7 @@ object NodeFactory {
             if (o == null || javaClass != o.javaClass) return false
             val listEdge = o as ListEdge
             return parent == listEdge.parent &&
-                    side == listEdge.side
+                side == listEdge.side
         }
 
         override fun hashCode(): Int {
@@ -332,7 +335,7 @@ object NodeFactory {
             if (o == null || javaClass != o.javaClass) return false
             val roleNode = o as RoleNode
             return parent == roleNode.parent &&
-                    role == roleNode.role
+                role == roleNode.role
         }
 
         override fun hashCode(): Int = Objects.hash(parent, role)

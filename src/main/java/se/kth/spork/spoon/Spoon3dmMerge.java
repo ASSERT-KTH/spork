@@ -4,20 +4,23 @@ import com.github.gumtreediff.matchers.Matcher;
 import com.github.gumtreediff.matchers.Matchers;
 import com.github.gumtreediff.tree.ITree;
 import gumtree.spoon.builder.SpoonGumTreeBuilder;
+import java.nio.file.Path;
+import java.util.*;
+import java.util.function.BiFunction;
 import se.kth.spork.base3dm.*;
 import se.kth.spork.spoon.conflict.CommentContentHandler;
 import se.kth.spork.spoon.conflict.ContentConflictHandler;
 import se.kth.spork.spoon.conflict.IsImplicitHandler;
 import se.kth.spork.spoon.conflict.IsUpperHandler;
+import se.kth.spork.spoon.conflict.MethodOrderingConflictHandler;
 import se.kth.spork.spoon.conflict.ModifierHandler;
 import se.kth.spork.spoon.conflict.OptimisticInsertInsertHandler;
 import se.kth.spork.spoon.conflict.StructuralConflict;
+import se.kth.spork.spoon.conflict.StructuralConflictHandler;
 import se.kth.spork.spoon.matching.ClassRepresentativesKt;
 import se.kth.spork.spoon.matching.MappingRemover;
 import se.kth.spork.spoon.matching.SpoonMapping;
-import se.kth.spork.spoon.conflict.MethodOrderingConflictHandler;
 import se.kth.spork.spoon.pcsinterpreter.PcsInterpreter;
-import se.kth.spork.spoon.conflict.StructuralConflictHandler;
 import se.kth.spork.spoon.wrappers.NodeFactory;
 import se.kth.spork.spoon.wrappers.RoledValues;
 import se.kth.spork.spoon.wrappers.SpoonNode;
@@ -25,10 +28,6 @@ import se.kth.spork.util.LazyLogger;
 import se.kth.spork.util.LineBasedMerge;
 import se.kth.spork.util.Pair;
 import spoon.reflect.declaration.*;
-
-import java.nio.file.Path;
-import java.util.*;
-import java.util.function.BiFunction;
 
 /**
  * Spoon specialization of the 3DM merge algorithm.
@@ -45,8 +44,8 @@ public class Spoon3dmMerge {
     /**
      * Merge the left and right revisions with an AST-based merge.
      *
-     * @param base  The base revision.
-     * @param left  The left revision.
+     * @param base The base revision.
+     * @param left The left revision.
      * @param right The right revision.
      * @return A pair on the form (mergeTree, numConflicts).
      */
@@ -67,13 +66,14 @@ public class Spoon3dmMerge {
     }
 
     /**
-     * Merge the left and right revisions. The base revision is used for computing edits, and should be the best common
-     * ancestor of left and right.
+     * Merge the left and right revisions. The base revision is used for computing edits, and should
+     * be the best common ancestor of left and right.
      *
-     * @param base  The base revision.
-     * @param left  The left revision.
+     * @param base The base revision.
+     * @param left The left revision.
      * @param right The right revision.
-     * @param baseMatcher Function that returns a matcher for the base-to-left and base-to-right matchings.
+     * @param baseMatcher Function that returns a matcher for the base-to-left and base-to-right
+     *     matchings.
      * @param leftRightMatcher Function that returns a matcher for the left-to-right matching.
      * @return A pair on the form (mergeTree, numConflicts).
      */
@@ -97,14 +97,18 @@ public class Spoon3dmMerge {
         Matcher leftRightGumtreeMatch = leftRightMatcher.apply(leftGumtree, rightGumtree);
 
         LOGGER.info(() -> "Converting GumTree matches to Spoon matches");
-        SpoonMapping baseLeft = SpoonMapping.Companion.fromGumTreeMapping(baseLeftGumtreeMatch.getMappings());
-        SpoonMapping baseRight = SpoonMapping.Companion.fromGumTreeMapping(baseRightGumtreeMatch.getMappings());
-        SpoonMapping leftRight = SpoonMapping.Companion.fromGumTreeMapping(leftRightGumtreeMatch.getMappings());
+        SpoonMapping baseLeft =
+                SpoonMapping.Companion.fromGumTreeMapping(baseLeftGumtreeMatch.getMappings());
+        SpoonMapping baseRight =
+                SpoonMapping.Companion.fromGumTreeMapping(baseRightGumtreeMatch.getMappings());
+        SpoonMapping leftRight =
+                SpoonMapping.Companion.fromGumTreeMapping(leftRightGumtreeMatch.getMappings());
 
         // 3DM PHASE
         LOGGER.info(() -> "Mapping nodes to class representatives");
-        Map<SpoonNode, SpoonNode> classRepMap = ClassRepresentativesKt.createClassRepresentativesMapping(
-                base, left, right, baseLeft, baseRight, leftRight);
+        Map<SpoonNode, SpoonNode> classRepMap =
+                ClassRepresentativesKt.createClassRepresentativesMapping(
+                        base, left, right, baseLeft, baseRight, leftRight);
 
         LOGGER.info(() -> "Converting Spoon trees to PCS triples");
         Set<Pcs<SpoonNode>> t0 = PcsBuilder.fromSpoon(base, Revision.BASE);
@@ -112,21 +116,26 @@ public class Spoon3dmMerge {
         Set<Pcs<SpoonNode>> t2 = PcsBuilder.fromSpoon(right, Revision.RIGHT);
 
         LOGGER.info(() -> "Computing raw PCS merge");
-        ChangeSet<SpoonNode, RoledValues> delta = new ChangeSet<>(classRepMap, new ContentResolver(), t0, t1, t2);
-        ChangeSet<SpoonNode, RoledValues> t0Star = new ChangeSet<>(classRepMap, new ContentResolver(), t0);
+        ChangeSet<SpoonNode, RoledValues> delta =
+                new ChangeSet<>(classRepMap, new ContentResolver(), t0, t1, t2);
+        ChangeSet<SpoonNode, RoledValues> t0Star =
+                new ChangeSet<>(classRepMap, new ContentResolver(), t0);
 
         LOGGER.info(() -> "Resolving final PCS merge");
         TdmMergeKt.resolveRawMerge(t0Star, delta);
 
-        Set<SpoonNode> rootConflictingNodes = StructuralConflict.extractRootConflictingNodes(delta.getStructuralConflicts());
+        Set<SpoonNode> rootConflictingNodes =
+                StructuralConflict.extractRootConflictingNodes(delta.getStructuralConflicts());
         if (!rootConflictingNodes.isEmpty()) {
             LOGGER.info(() -> "Root conflicts detected, restarting merge");
             LOGGER.info(() -> "Removing root conflicting nodes from tree matchings");
-            MappingRemover.Companion.removeFromMappings(rootConflictingNodes, baseLeft, baseRight, leftRight);
+            MappingRemover.Companion.removeFromMappings(
+                    rootConflictingNodes, baseLeft, baseRight, leftRight);
 
             LOGGER.info(() -> "Mapping nodes to class representatives");
-            classRepMap = ClassRepresentativesKt.createClassRepresentativesMapping(
-                    base, left, right, baseLeft, baseRight, leftRight);
+            classRepMap =
+                    ClassRepresentativesKt.createClassRepresentativesMapping(
+                            base, left, right, baseLeft, baseRight, leftRight);
 
             LOGGER.info(() -> "Computing raw PCS merge");
             delta = new ChangeSet<>(classRepMap, new ContentResolver(), t0, t1, t2);
@@ -137,13 +146,24 @@ public class Spoon3dmMerge {
 
         // INTERPRETER PHASE
         LOGGER.info(() -> "Interpreting resolved PCS merge");
-        List<StructuralConflictHandler> structuralConflictHandlers = Arrays.asList(
-                new MethodOrderingConflictHandler(), new OptimisticInsertInsertHandler());
-        List<ContentConflictHandler> contentConflictHandlers = Arrays.asList(
-                new IsImplicitHandler(), new ModifierHandler(), new IsUpperHandler(), new CommentContentHandler());
-        Pair<CtElement, Integer> merge = PcsInterpreter.fromMergedPcs(
-                delta, baseLeft, baseRight, structuralConflictHandlers, contentConflictHandlers);
-        // we can be certain that the merge tree has the same root type as the three constituents, so this cast is safe
+        List<StructuralConflictHandler> structuralConflictHandlers =
+                Arrays.asList(
+                        new MethodOrderingConflictHandler(), new OptimisticInsertInsertHandler());
+        List<ContentConflictHandler> contentConflictHandlers =
+                Arrays.asList(
+                        new IsImplicitHandler(),
+                        new ModifierHandler(),
+                        new IsUpperHandler(),
+                        new CommentContentHandler());
+        Pair<CtElement, Integer> merge =
+                PcsInterpreter.fromMergedPcs(
+                        delta,
+                        baseLeft,
+                        baseRight,
+                        structuralConflictHandlers,
+                        contentConflictHandlers);
+        // we can be certain that the merge tree has the same root type as the three constituents,
+        // so this cast is safe
         @SuppressWarnings("unchecked")
         T mergeTree = (T) merge.first;
         int numConflicts = merge.second;
@@ -155,17 +175,19 @@ public class Spoon3dmMerge {
 
         LOGGER.info(() -> "Merged in " + (double) (System.nanoTime() - start) / 1e9 + " seconds");
 
-        return Pair.of(mergeTree, numConflicts + metadataElementConflicts + duplicateMemberConflicts);
+        return Pair.of(
+                mergeTree, numConflicts + metadataElementConflicts + duplicateMemberConflicts);
     }
 
     /**
-     * Merge the left and right revisions. The base revision is used for computing edits, and should be the best common
-     * ancestor of left and right.
+     * Merge the left and right revisions. The base revision is used for computing edits, and should
+     * be the best common ancestor of left and right.
      *
-     * Uses the full GumTree matcher for base-to-left and base-to-right, and the XY matcher for left-to-right matchings.
+     * <p>Uses the full GumTree matcher for base-to-left and base-to-right, and the XY matcher for
+     * left-to-right matchings.
      *
-     * @param base  The base revision.
-     * @param left  The left revision.
+     * @param base The base revision.
+     * @param left The left revision.
      * @param right The right revision.
      * @return A pair on the form (mergeTree, numConflicts).
      */
@@ -173,7 +195,8 @@ public class Spoon3dmMerge {
         return merge(base, left, right, Spoon3dmMerge::matchTrees, Spoon3dmMerge::matchTreesXY);
     }
 
-    private static int mergeMetadataElements(CtElement mergeTree, CtElement base, CtElement left, CtElement right) {
+    private static int mergeMetadataElements(
+            CtElement mergeTree, CtElement base, CtElement left, CtElement right) {
         int numConflicts = 0;
 
         if (base.getMetadata(Parser.IMPORT_STATEMENTS) != null) {
@@ -191,7 +214,6 @@ public class Spoon3dmMerge {
 
         return numConflicts;
     }
-
 
     private static int eliminateDuplicateMembers(CtElement merge) {
         List<CtType<?>> types = merge.getElements(e -> true);
@@ -227,12 +249,15 @@ public class Spoon3dmMerge {
 
                 // need to clear the metadata from these members to be able to re-run the merge
                 member.descendantIterator().forEachRemaining(NodeFactory::clearNonRevisionMetadata);
-                duplicate.descendantIterator().forEachRemaining(NodeFactory::clearNonRevisionMetadata);
+                duplicate
+                        .descendantIterator()
+                        .forEachRemaining(NodeFactory::clearNonRevisionMetadata);
                 CtTypeMember dummyBase = (CtTypeMember) member.clone();
                 dummyBase.setParent(type);
                 dummyBase.getDirectChildren().forEach(CtElement::delete);
 
-                // we forcibly set the virtual root as parent, as the real parent of these members is outside of the current scope
+                // we forcibly set the virtual root as parent, as the real parent of these members
+                // is outside of the current scope
                 NodeFactory.clearNonRevisionMetadata(member);
                 NodeFactory.clearNonRevisionMetadata(duplicate);
                 NodeFactory.clearNonRevisionMetadata(dummyBase);
@@ -241,7 +266,13 @@ public class Spoon3dmMerge {
                 NodeFactory.forceWrap(dummyBase, NodeFactory.INSTANCE.getVirtualRoot());
 
                 // use the full gumtree matcher as both base matcher and left-to-right matcher
-                Pair<CtTypeMember, Integer> mergePair = merge(dummyBase, member, duplicate, Spoon3dmMerge::matchTrees, Spoon3dmMerge::matchTrees);
+                Pair<CtTypeMember, Integer> mergePair =
+                        merge(
+                                dummyBase,
+                                member,
+                                duplicate,
+                                Spoon3dmMerge::matchTrees,
+                                Spoon3dmMerge::matchTrees);
                 numConflicts += mergePair.second;
                 CtTypeMember mergedMember = mergePair.first;
 
@@ -260,7 +291,8 @@ public class Spoon3dmMerge {
      *
      * @return A pair with the merge and the amount of conflicts.
      */
-    private static Pair<String, Integer> mergeCuComments(CtElement base, CtElement left, CtElement right) {
+    private static Pair<String, Integer> mergeCuComments(
+            CtElement base, CtElement left, CtElement right) {
         String baseComment = getCuComment(base);
         String leftComment = getCuComment(left);
         String rightComment = getCuComment(right);
@@ -273,21 +305,26 @@ public class Spoon3dmMerge {
     }
 
     /**
-     * Merge import statements from base, left and right. Import statements are expected to be attached
-     * to each tree's root node metadata with the {@link Parser#IMPORT_STATEMENTS} key.
-     * <p>
-     * This method naively merges import statements by respecting additions and deletions from both revisions.
+     * Merge import statements from base, left and right. Import statements are expected to be
+     * attached to each tree's root node metadata with the {@link Parser#IMPORT_STATEMENTS} key.
      *
-     * @param base  The base revision.
-     * @param left  The left revision.
+     * <p>This method naively merges import statements by respecting additions and deletions from
+     * both revisions.
+     *
+     * @param base The base revision.
+     * @param left The left revision.
      * @param right The right revision.
      * @return A merged import list, sorted in lexicographical order.
      */
     @SuppressWarnings("unchecked")
-    private static List<CtImport> mergeImportStatements(CtElement base, CtElement left, CtElement right) {
-        Set<CtImport> baseImports = new HashSet<>((Collection<CtImport>) base.getMetadata(Parser.IMPORT_STATEMENTS));
-        Set<CtImport> leftImports = new HashSet<>((Collection<CtImport>) left.getMetadata(Parser.IMPORT_STATEMENTS));
-        Set<CtImport> rightImports = new HashSet<>((Collection<CtImport>) right.getMetadata(Parser.IMPORT_STATEMENTS));
+    private static List<CtImport> mergeImportStatements(
+            CtElement base, CtElement left, CtElement right) {
+        Set<CtImport> baseImports =
+                new HashSet<>((Collection<CtImport>) base.getMetadata(Parser.IMPORT_STATEMENTS));
+        Set<CtImport> leftImports =
+                new HashSet<>((Collection<CtImport>) left.getMetadata(Parser.IMPORT_STATEMENTS));
+        Set<CtImport> rightImports =
+                new HashSet<>((Collection<CtImport>) right.getMetadata(Parser.IMPORT_STATEMENTS));
         Set<CtImport> merge = new HashSet<>();
 
         // first create union, this respects all additions

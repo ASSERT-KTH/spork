@@ -6,14 +6,15 @@ import se.kth.spork.util.LazyLogger
 import spoon.Launcher
 import spoon.compiler.Environment
 import spoon.reflect.CtModel
-import spoon.reflect.declaration.*
+import spoon.reflect.declaration.CtElement
+import spoon.reflect.declaration.CtImport
+import spoon.reflect.declaration.CtModule
+import spoon.reflect.declaration.CtType
 import spoon.support.compiler.FileSystemFile
 import spoon.support.compiler.VirtualFile
 import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.Path
-import java.util.*
-import java.util.function.Consumer
 
 /**
  * A class for dealing with parsing.
@@ -73,14 +74,14 @@ object Parser {
         module.putMetadata<CtElement>(COMPILATION_UNIT_COMMENT, getCuComment(module))
 
         // TODO preserve order of import statements
-        val imports = parseImportStatements(model).toList().sortedBy(CtImport::prettyprint);
+        val imports = parseImportStatements(model).toList().sortedBy(CtImport::prettyprint)
         module.putMetadata<CtElement>(IMPORT_STATEMENTS, imports)
         return module
     }
 
     // FIXME This is an ugly workaround for merging compliation unit comments
     private fun getCuComment(module: CtModule) =
-            module.factory.CompilationUnit().map.values.firstOrNull()?.comments?.firstOrNull()?.rawContent ?: ""
+        module.factory.CompilationUnit().map.values.firstOrNull()?.comments?.firstOrNull()?.rawContent ?: ""
 
     /**
      * Parse unique import statements from all types of the given model.
@@ -91,7 +92,7 @@ object Parser {
      * @return A list of import statements.
      */
     fun parseImportStatements(model: CtModel): Set<CtImport> =
-            model.allTypes.flatMap(Parser::parseImportStatements).toSet()
+        model.allTypes.flatMap(Parser::parseImportStatements).toSet()
 
     /**
      * Parse import statements from the given type. Note that all types in a single file will get the same
@@ -104,7 +105,7 @@ object Parser {
      * @return A list of import statements.
      */
     fun parseImportStatements(type: CtType<*>): List<CtImport> =
-            type.factory.CompilationUnit().getOrCreate(type).imports
+        type.factory.CompilationUnit().getOrCreate(type).imports
 
     /**
      * Read the contents of a file.

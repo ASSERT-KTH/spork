@@ -1,5 +1,6 @@
 package se.kth.spork.spoon.conflict;
 
+import java.util.*;
 import se.kth.spork.base3dm.Content;
 import se.kth.spork.spoon.wrappers.RoledValue;
 import se.kth.spork.spoon.wrappers.RoledValues;
@@ -7,8 +8,6 @@ import se.kth.spork.spoon.wrappers.SpoonNode;
 import se.kth.spork.util.Pair;
 import se.kth.spork.util.Triple;
 import spoon.reflect.path.CtRole;
-
-import java.util.*;
 
 /**
  * A class for dealing with merging of content.
@@ -25,7 +24,8 @@ public class ContentMerger {
         this.conflictHandlers = new HashMap<>();
         for (ContentConflictHandler handler : conflictHandlers) {
             if (this.conflictHandlers.containsKey(handler.getRole())) {
-                throw new IllegalArgumentException("duplicate handler for role " + handler.getRole());
+                throw new IllegalArgumentException(
+                        "duplicate handler for role " + handler.getRole());
             }
             this.conflictHandlers.put(handler.getRole(), handler);
         }
@@ -36,8 +36,8 @@ public class ContentMerger {
      * @return A pair of merged contents and a potentially empty collection of unresolved conflicts.
      */
     @SuppressWarnings("unchecked")
-    public Pair<RoledValues, List<ContentConflict>>
-    mergedContent(Set<Content<SpoonNode, RoledValues>> nodeContents) {
+    public Pair<RoledValues, List<ContentConflict>> mergedContent(
+            Set<Content<SpoonNode, RoledValues>> nodeContents) {
         if (nodeContents.size() == 1) {
             return Pair.of(nodeContents.iterator().next().getValue(), Collections.emptyList());
         }
@@ -48,7 +48,8 @@ public class ContentMerger {
         RoledValues rightRoledValues = revisions.third.getValue();
 
         // NOTE: It is important that the left values are copied,
-        // by convention the LEFT values should be put into the tree whenever a conflict cannot be resolved
+        // by convention the LEFT values should be put into the tree whenever a conflict cannot be
+        // resolved
         RoledValues mergedRoledValues = new RoledValues(leftRoledValues);
 
         assert leftRoledValues.size() == rightRoledValues.size();
@@ -75,12 +76,12 @@ public class ContentMerger {
 
             // left and right pairs differ and are so conflicting
             // we add them as a conflict, but will later remove it if the conflict can be resolved
-            unresolvedConflicts.push(new ContentConflict(
-                    role,
-                    baseOpt.map(Content::getValue).map(rv -> rv.get(finalI)),
-                    leftRv,
-                    rightRv));
-
+            unresolvedConflicts.push(
+                    new ContentConflict(
+                            role,
+                            baseOpt.map(Content::getValue).map(rv -> rv.get(finalI)),
+                            leftRv,
+                            rightRv));
 
             Optional<?> merged = Optional.empty();
 
@@ -97,31 +98,31 @@ public class ContentMerger {
                 // non-trivial conflict, check if there is a conflict handler for this role
                 ContentConflictHandler handler = conflictHandlers.get(role);
                 if (handler != null) {
-                    Pair<Optional<Object>, Boolean> result = handler.handleConflict(
-                            baseValOpt,
-                            leftVal,
-                            rightVal,
-                            baseOpt.map(c -> c.getValue().getElement()),
-                            leftRoledValues.getElement(),
-                            rightRoledValues.getElement());
+                    Pair<Optional<Object>, Boolean> result =
+                            handler.handleConflict(
+                                    baseValOpt,
+                                    leftVal,
+                                    rightVal,
+                                    baseOpt.map(c -> c.getValue().getElement()),
+                                    leftRoledValues.getElement(),
+                                    rightRoledValues.getElement());
                     merged = result.first;
                     conflictPresent = result.second;
                 }
             }
 
-
             if (merged.isPresent()) {
                 mergedRoledValues.set(i, role, merged.get());
 
-                if (!conflictPresent)
-                    unresolvedConflicts.pop();
+                if (!conflictPresent) unresolvedConflicts.pop();
             }
         }
 
         return Pair.of(mergedRoledValues, new ArrayList<>(unresolvedConflicts));
     }
 
-    private static _ContentTriple getContentRevisions(Set<Content<SpoonNode, RoledValues>> contents) {
+    private static _ContentTriple getContentRevisions(
+            Set<Content<SpoonNode, RoledValues>> contents) {
         Content<SpoonNode, RoledValues> base = null;
         Content<SpoonNode, RoledValues> left = null;
         Content<SpoonNode, RoledValues> right = null;
@@ -141,16 +142,18 @@ public class ContentMerger {
         }
 
         if (left == null || right == null)
-            throw new IllegalArgumentException("Expected at least left and right revisions, got: " + contents);
+            throw new IllegalArgumentException(
+                    "Expected at least left and right revisions, got: " + contents);
 
         return new _ContentTriple(Optional.ofNullable(base), left, right);
     }
 
     // this is just a type alias to declutter the getContentRevisions method header
-    private static class _ContentTriple extends Triple<
-            Optional<Content<SpoonNode, RoledValues>>,
-            Content<SpoonNode, RoledValues>,
-            Content<SpoonNode, RoledValues>> {
+    private static class _ContentTriple
+            extends Triple<
+                    Optional<Content<SpoonNode, RoledValues>>,
+                    Content<SpoonNode, RoledValues>,
+                    Content<SpoonNode, RoledValues>> {
         public _ContentTriple(
                 Optional<Content<SpoonNode, RoledValues>> first,
                 Content<SpoonNode, RoledValues> second,
