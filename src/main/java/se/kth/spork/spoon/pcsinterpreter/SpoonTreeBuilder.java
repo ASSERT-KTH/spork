@@ -67,7 +67,7 @@ public class SpoonTreeBuilder {
         // create a new factory
         Launcher launcher = new Launcher();
         factory = launcher.createFactory();
-        Parser.setSporkEnvironment(factory.getEnvironment(), oldEnv.getTabulationSize(), oldEnv.isUsingTabulations());
+        Parser.INSTANCE.setSporkEnvironment(factory.getEnvironment(), oldEnv.getTabulationSize(), oldEnv.isUsingTabulations());
     }
 
     /**

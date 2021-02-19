@@ -55,9 +55,9 @@ public class Spoon3dmMerge {
 
         // PARSING PHASE
         LOGGER.info(() -> "Parsing files to Spoon trees");
-        CtModule baseTree = Parser.parse(base);
-        CtModule leftTree = Parser.parse(left);
-        CtModule rightTree = Parser.parse(right);
+        CtModule baseTree = Parser.INSTANCE.parse(base);
+        CtModule leftTree = Parser.INSTANCE.parse(left);
+        CtModule rightTree = Parser.INSTANCE.parse(right);
 
         long end = System.nanoTime();
         double timeDelta = (double) (end - start) / 1e9;
