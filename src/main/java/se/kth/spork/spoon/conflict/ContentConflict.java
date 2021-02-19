@@ -1,9 +1,8 @@
 package se.kth.spork.spoon.conflict;
 
+import java.util.Optional;
 import se.kth.spork.spoon.wrappers.RoledValue;
 import spoon.reflect.path.CtRole;
-
-import java.util.Optional;
 
 public class ContentConflict {
     public static final String METADATA_KEY = "SPORK_CONTENT_CONFLICT";
@@ -13,7 +12,8 @@ public class ContentConflict {
     private final RoledValue left;
     private final RoledValue right;
 
-    public ContentConflict(CtRole role, Optional<RoledValue> base, RoledValue left, RoledValue right) {
+    public ContentConflict(
+            CtRole role, Optional<RoledValue> base, RoledValue left, RoledValue right) {
         this.role = role;
         this.base = base;
         this.left = left;

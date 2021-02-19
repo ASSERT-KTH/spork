@@ -3,6 +3,15 @@ package se.kth.spork.cli;
 import ch.qos.logback.classic.LoggerContext;
 import ch.qos.logback.classic.joran.JoranConfigurator;
 import ch.qos.logback.core.joran.spi.JoranException;
+import java.io.File;
+import java.io.IOException;
+import java.nio.charset.Charset;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
+import java.util.*;
+import java.util.concurrent.Callable;
+import java.util.stream.Collectors;
 import org.slf4j.LoggerFactory;
 import picocli.CommandLine;
 import se.kth.spork.exception.MergeException;
@@ -13,16 +22,6 @@ import se.kth.spork.util.LazyLogger;
 import se.kth.spork.util.LineBasedMerge;
 import se.kth.spork.util.Pair;
 import spoon.reflect.declaration.*;
-
-import java.io.File;
-import java.io.IOException;
-import java.nio.charset.Charset;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
-import java.util.*;
-import java.util.concurrent.Callable;
-import java.util.stream.Collectors;
 
 /**
  * Command line interface for Spork.
@@ -38,7 +37,8 @@ public class Cli {
     }
 
     /**
-     * Compose the output, assuming that spoonRoot is the merge of two files (i.e. the output is a _single_ file).
+     * Compose the output, assuming that spoonRoot is the merge of two files (i.e. the output is a
+     * _single_ file).
      *
      * @param spoonRoot Root of a merged Spoon tree.
      * @return A pretty-printed string representing the merged output.
@@ -46,15 +46,15 @@ public class Cli {
     public static String prettyPrint(CtModule spoonRoot) {
         LOGGER.info(() -> "Pre-processing tree for pretty-printing");
         Optional<CtPackage> pkgOpt = findActivePackage(spoonRoot.getRootPackage());
-        if (!pkgOpt.isPresent())
-            throw new RuntimeException("could not find the active package");
+        if (!pkgOpt.isPresent()) throw new RuntimeException("could not find the active package");
 
         CtPackage activePackage = pkgOpt.get();
         Collection<?> imports = (Collection<?>) spoonRoot.getMetadata(Parser.IMPORT_STATEMENTS);
-        List<String> importNames = imports.stream()
-                .map(Object::toString)
-                .map(impStmt -> impStmt.substring("import ".length(), impStmt.length() - 1))
-                .collect(Collectors.toList());
+        List<String> importNames =
+                imports.stream()
+                        .map(Object::toString)
+                        .map(impStmt -> impStmt.substring("import ".length(), impStmt.length() - 1))
+                        .collect(Collectors.toList());
         new PrinterPreprocessor(importNames, activePackage.getQualifiedName()).scan(spoonRoot);
 
         StringBuilder sb = new StringBuilder();
@@ -65,7 +65,10 @@ public class Cli {
         }
 
         if (!activePackage.isUnnamedPackage()) {
-            sb.append("package ").append(activePackage.getQualifiedName()).append(";").append("\n\n");
+            sb.append("package ")
+                    .append(activePackage.getQualifiedName())
+                    .append(";")
+                    .append("\n\n");
         }
 
         for (Object imp : imports) {
@@ -84,24 +87,35 @@ public class Cli {
             return Optional.of(pkg);
         }
 
-        return pkg.getPackages().stream().map(Cli::findActivePackage)
-                .filter(Optional::isPresent).map(Optional::get).findFirst();
+        return pkg.getPackages().stream()
+                .map(Cli::findActivePackage)
+                .filter(Optional::isPresent)
+                .map(Optional::get)
+                .findFirst();
     }
 
     @CommandLine.Command(
             name = "spork",
             mixinStandardHelpOptions = true,
             description = "The Spork command line app.",
-            versionProvider = SporkVersionProvider.class
-    )
+            versionProvider = SporkVersionProvider.class)
     static class Merge implements Callable<Integer> {
-        @CommandLine.Parameters(index = "0", paramLabel = "LEFT", description = "Path to the left revision")
+        @CommandLine.Parameters(
+                index = "0",
+                paramLabel = "LEFT",
+                description = "Path to the left revision")
         File left;
 
-        @CommandLine.Parameters(index = "1", paramLabel = "BASE", description = "Path to the base revision")
+        @CommandLine.Parameters(
+                index = "1",
+                paramLabel = "BASE",
+                description = "Path to the base revision")
         File base;
 
-        @CommandLine.Parameters(index = "2", paramLabel = "RIGHT", description = "Path to the right revision")
+        @CommandLine.Parameters(
+                index = "2",
+                paramLabel = "RIGHT",
+                description = "Path to the right revision")
         File right;
 
         @CommandLine.Option(
@@ -111,20 +125,19 @@ public class Cli {
 
         @CommandLine.Option(
                 names = {"-e", "--exit-on-error"},
-                description = "Disable line-based fallback if the structured merge encounters an error."
-        )
+                description =
+                        "Disable line-based fallback if the structured merge encounters an error.")
         boolean exitOnError;
 
         @CommandLine.Option(
                 names = {"-g", "--git-mode"},
-                description = "Enable Git compatibility mode. Required to use Spork as a Git merge driver."
-        )
+                description =
+                        "Enable Git compatibility mode. Required to use Spork as a Git merge driver.")
         boolean gitMode;
 
         @CommandLine.Option(
                 names = {"-l", "--logging"},
-                description = "Enable logging output"
-        )
+                description = "Enable logging output")
         boolean logging;
 
         @Override
@@ -155,16 +168,23 @@ public class Cli {
 
             if (out != null) {
                 LOGGER.info(() -> "Writing merge to " + out);
-                Files.write(out.toPath(), pretty.getBytes(Charset.defaultCharset()),
-                        StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING);
+                Files.write(
+                        out.toPath(),
+                        pretty.getBytes(Charset.defaultCharset()),
+                        StandardOpenOption.CREATE,
+                        StandardOpenOption.WRITE,
+                        StandardOpenOption.TRUNCATE_EXISTING);
             } else {
                 System.out.println(pretty);
             }
 
-            LOGGER.info(() -> "Total time elapsed: " + (double) (System.nanoTime() - start) / 1e9 + " seconds");
+            LOGGER.info(
+                    () ->
+                            "Total time elapsed: "
+                                    + (double) (System.nanoTime() - start) / 1e9
+                                    + " seconds");
             return numConflicts % 127;
         }
-
     }
 
     /**
@@ -173,10 +193,12 @@ public class Cli {
      * @param base Path to base revision.
      * @param left Path to left revision.
      * @param right Path to right revision.
-     * @param exitOnError Disallow the use of line-based fallback if the structured merge encounters an error.
+     * @param exitOnError Disallow the use of line-based fallback if the structured merge encounters
+     *     an error.
      * @return A pair on the form (prettyPrint, numConflicts)
      */
-    public static Pair<String, Integer> merge(Path base, Path left, Path right, boolean exitOnError) {
+    public static Pair<String, Integer> merge(
+            Path base, Path left, Path right, boolean exitOnError) {
         try {
             LOGGER.info(() -> "Parsing input files");
             CtModule baseModule = Parser.parse(base);
@@ -184,7 +206,8 @@ public class Cli {
             CtModule rightModule = Parser.parse(right);
 
             LOGGER.info(() -> "Initiating merge");
-            Pair<CtElement, Integer> merge = Spoon3dmMerge.merge(baseModule, leftModule, rightModule);
+            Pair<CtElement, Integer> merge =
+                    Spoon3dmMerge.merge(baseModule, leftModule, rightModule);
             CtModule mergeTree = (CtModule) merge.first;
             int numConflicts = merge.second;
 
@@ -192,18 +215,25 @@ public class Cli {
             if (containsTypes(mergeTree)) {
                 return Pair.of(prettyPrint(mergeTree), numConflicts);
             } else if (exitOnError) {
-                throw new MergeException("Merge contained no types and global line-based fallback is disabled");
+                throw new MergeException(
+                        "Merge contained no types and global line-based fallback is disabled");
             } else {
-                LOGGER.warn(() -> "Merge contains no types (i.e. classes, interfaces, etc), reverting to line-based merge");
+                LOGGER.warn(
+                        () ->
+                                "Merge contains no types (i.e. classes, interfaces, etc), reverting to line-based merge");
                 return lineBasedMerge(base, left, right);
             }
         } catch (Exception e) {
             if (exitOnError) {
-                LOGGER.error(() -> "Spork encountered a fatal error and global line-based merge is disabled");
+                LOGGER.error(
+                        () ->
+                                "Spork encountered a fatal error and global line-based merge is disabled");
                 throw e;
             } else {
                 LOGGER.debug(e::getMessage);
-                LOGGER.info(() -> "Spork encountered an error in structured merge. Falling back to line-based merge");
+                LOGGER.info(
+                        () ->
+                                "Spork encountered an error in structured merge. Falling back to line-based merge");
                 return lineBasedMerge(base, left, right);
             }
         }
@@ -217,9 +247,9 @@ public class Cli {
     }
 
     /**
-     * Create a hard link from a temporary git .merge_xxx file, with the name .merge_xxx.java. This is necessary for
-     * Spork to be compatible with Git, as Spoon will only parse Java files if they actually have the .java file
-     * extension.
+     * Create a hard link from a temporary git .merge_xxx file, with the name .merge_xxx.java. This
+     * is necessary for Spork to be compatible with Git, as Spoon will only parse Java files if they
+     * actually have the .java file extension.
      *
      * @param path Path to the temporary merge file.
      * @return A path to a new hard link to the file, but with a .java file extension.
@@ -233,7 +263,8 @@ public class Cli {
         try {
             Files.createLink(compatLink, path);
         } catch (UnsupportedOperationException x) {
-            throw new IllegalStateException("Creating Git compatibility hard link not supported by file system");
+            throw new IllegalStateException(
+                    "Creating Git compatibility hard link not supported by file system");
         }
 
         return compatLink;
@@ -251,10 +282,10 @@ public class Cli {
         context.reset();
         context.putProperty("root-level", "level");
         try {
-            jc.doConfigure(Objects.requireNonNull(Cli.class.getClassLoader().getResource("logback.xml")));
+            jc.doConfigure(
+                    Objects.requireNonNull(Cli.class.getClassLoader().getResource("logback.xml")));
         } catch (JoranException e) {
             LOGGER.error(() -> "Failed to set log level");
         }
     }
 }
-

@@ -1,5 +1,11 @@
 package se.kth.spork.spoon;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.*;
+import java.util.function.Consumer;
+import java.util.stream.Stream;
 import se.kth.spork.spoon.printer.SourceExtractor;
 import se.kth.spork.spoon.printer.SporkPrettyPrinter;
 import se.kth.spork.util.LazyLogger;
@@ -8,17 +14,9 @@ import spoon.Launcher;
 import spoon.compiler.Environment;
 import spoon.reflect.CtModel;
 import spoon.reflect.code.CtComment;
-import spoon.reflect.cu.CompilationUnit;
 import spoon.reflect.declaration.*;
 import spoon.support.compiler.FileSystemFile;
 import spoon.support.compiler.VirtualFile;
-
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.*;
-import java.util.function.Consumer;
-import java.util.stream.Stream;
 
 /**
  * A class for dealing with parsing.
@@ -32,9 +30,9 @@ public class Parser {
     private static final LazyLogger LOGGER = new LazyLogger(Parser.class);
 
     /**
-     * Parse a Java file to a Spoon tree. Any import statements in the file are attached to the returned module's
-     * metadata with the {@link Parser#IMPORT_STATEMENTS} key. The imports are sorted in ascending lexicographical
-     * order.
+     * Parse a Java file to a Spoon tree. Any import statements in the file are attached to the
+     * returned module's metadata with the {@link Parser#IMPORT_STATEMENTS} key. The imports are
+     * sorted in ascending lexicographical order.
      *
      * @param javaFile Path to a Java file.
      * @return The root module of the Spoon tree.
@@ -56,20 +54,21 @@ public class Parser {
     }
 
     /**
-     * Parse a Java file to a Spoon tree. Any import statements in the file are attached to the returned module's
-     * metadata with the {@link Parser#IMPORT_STATEMENTS} key. The imports are sorted in ascending lexicographical
-     * order.
+     * Parse a Java file to a Spoon tree. Any import statements in the file are attached to the
+     * returned module's metadata with the {@link Parser#IMPORT_STATEMENTS} key. The imports are
+     * sorted in ascending lexicographical order.
      *
-     * Comments are ignored
+     * <p>Comments are ignored
      *
      * @param javaFile Path to a Java file.
      * @return The root module of the Spoon tree.
      */
     public static CtModule parseWithoutComments(Path javaFile) {
-        return parse(launcher -> {
-            launcher.getEnvironment().setCommentEnabled(false);
-            launcher.addInputResource(new FileSystemFile(javaFile.toFile()));
-        });
+        return parse(
+                launcher -> {
+                    launcher.getEnvironment().setCommentEnabled(false);
+                    launcher.addInputResource(new FileSystemFile(javaFile.toFile()));
+                });
     }
 
     public static void setSporkEnvironment(Environment env, int tabulationSize, boolean useTabs) {
@@ -87,7 +86,8 @@ public class Parser {
         Pair<Integer, Boolean> indentationGuess = SourceExtractor.guessIndentation(model);
         String indentationType = indentationGuess.second ? "tabs" : "spaces";
         LOGGER.info(() -> "Using indentation: " + indentationGuess.first + " " + indentationType);
-        setSporkEnvironment(launcher.getEnvironment(), indentationGuess.first, indentationGuess.second);
+        setSporkEnvironment(
+                launcher.getEnvironment(), indentationGuess.first, indentationGuess.second);
 
         CtModule module = model.getUnnamedModule();
 
@@ -104,14 +104,17 @@ public class Parser {
     private static String getCuComment(CtModule module) {
         // FIXME This is an ugly workaround for merging compliation unit comments
         return module.getFactory().CompilationUnit().getMap().values().stream()
-                .findFirst().map(cu -> cu.getComments().stream()
-        ).flatMap(Stream::findFirst).map(CtComment::getRawContent).orElse("");
+                .findFirst()
+                .map(cu -> cu.getComments().stream())
+                .flatMap(Stream::findFirst)
+                .map(CtComment::getRawContent)
+                .orElse("");
     }
 
     /**
      * Parse unique import statements from all types of the given model.
      *
-     * Obviously, as a set is returned, the order of the statements is not preserved.
+     * <p>Obviously, as a set is returned, the order of the statements is not preserved.
      *
      * @param model A model.
      * @return A list of import statements.
@@ -120,20 +123,18 @@ public class Parser {
         Set<CtImport> importStatements = new HashSet<>();
 
         for (CtType<?> type : model.getAllTypes()) {
-            importStatements.addAll(
-                    parseImportStatements(type)
-            );
+            importStatements.addAll(parseImportStatements(type));
         }
 
         return importStatements;
     }
 
     /**
-     * Parse import statements from the given type. Note that all types in a single file will get the same
-     * import statements attached to them, so there is no need to parse imports from multiple types in a single
-     * file.
+     * Parse import statements from the given type. Note that all types in a single file will get
+     * the same import statements attached to them, so there is no need to parse imports from
+     * multiple types in a single file.
      *
-     * The order of the import statements is preserved.
+     * <p>The order of the import statements is preserved.
      *
      * @param type A Java type.
      * @return A list of import statements.
