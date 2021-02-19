@@ -1,8 +1,5 @@
 package se.kth.spork.spoon;
 
-import static org.junit.jupiter.api.Assertions.*;
-
-import java.io.IOException;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ArgumentsSource;
@@ -11,6 +8,10 @@ import se.kth.spork.cli.Cli;
 import se.kth.spork.exception.ConflictException;
 import se.kth.spork.util.Pair;
 import spoon.reflect.declaration.*;
+
+import java.io.IOException;
+
+import static org.junit.jupiter.api.Assertions.*;
 
 class Spoon3dmMergeTest {
 
@@ -28,15 +29,13 @@ class Spoon3dmMergeTest {
 
     @ParameterizedTest
     @ArgumentsSource(Util.BothModifiedSourceProvider.class)
-    void mergeToTree_shouldReturnExpectedTree_whenBothVersionsAreModified(Util.TestSources sources)
-            throws IOException {
+    void mergeToTree_shouldReturnExpectedTree_whenBothVersionsAreModified(Util.TestSources sources) throws IOException {
         runTestMerge(sources);
     }
 
     @ParameterizedTest
     @ArgumentsSource(Util.CleanLineBasedFallbackProvider.class)
-    void merge_shouldBeClean_withGranularLineBasedFallback(Util.TestSources sources)
-            throws IOException {
+    void merge_shouldBeClean_withGranularLineBasedFallback(Util.TestSources sources) throws IOException {
         assertEquals(0, Spoon3dmMerge.merge(sources.base, sources.left, sources.right).second);
     }
 
@@ -46,7 +45,8 @@ class Spoon3dmMergeTest {
     void merge_shouldThrow_onUnhandledInconsistencies(Util.TestSources sources) {
         assertThrows(
                 ConflictException.class,
-                () -> Spoon3dmMerge.merge(sources.base, sources.left, sources.right));
+                () -> Spoon3dmMerge.merge(sources.base, sources.left, sources.right)
+        );
     }
 
     private static void runTestMerge(Util.TestSources sources) {
@@ -56,14 +56,12 @@ class Spoon3dmMergeTest {
         assert expectedImports != null;
         assert expectedCuComment != null;
 
-        Pair<CtModule, Integer> merged =
-                Spoon3dmMerge.merge(sources.base, sources.left, sources.right);
+        Pair<CtModule, Integer> merged = Spoon3dmMerge.merge(sources.base, sources.left, sources.right);
         CtModule mergeTree = merged.first;
         Object mergedImports = mergeTree.getMetadata(Parser.IMPORT_STATEMENTS);
         Object mergedCuComment = mergeTree.getMetadata(Parser.COMPILATION_UNIT_COMMENT);
 
-        // this assert is just to give a better overview of obvious errors, but it relies on the
-        // pretty printer's
+        // this assert is just to give a better overview of obvious errors, but it relies on the pretty printer's
         // correctness
         // assertEquals(Cli.prettyPrint(expected), Cli.prettyPrint(mergeTree));
         System.out.println(Cli.prettyPrint(mergeTree));
@@ -74,3 +72,4 @@ class Spoon3dmMergeTest {
         assertEquals(expectedCuComment, mergedCuComment);
     }
 }
+

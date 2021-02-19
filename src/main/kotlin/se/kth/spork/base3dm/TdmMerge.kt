@@ -39,8 +39,8 @@ fun <T : ListNode, V> resolveRawMerge(base: ChangeSet<T, V>, delta: ChangeSet<T,
         mergeContent(pcs.successor, base, delta)
 
         val others: List<Pcs<T>> = delta.getOtherRoots(pcs) +
-            delta.getOtherPredecessors(pcs) +
-            delta.getOtherSuccessors(pcs)
+                delta.getOtherPredecessors(pcs) +
+                delta.getOtherSuccessors(pcs);
         others.forEach {
             when {
                 base.contains(it) -> delta.remove(it)

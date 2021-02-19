@@ -1,9 +1,5 @@
 package se.kth.spork.spoon.printer;
 
-import java.io.IOException;
-import java.util.Comparator;
-import java.util.List;
-import java.util.stream.Collectors;
 import se.kth.spork.spoon.pcsinterpreter.SpoonTreeBuilder;
 import se.kth.spork.util.Pair;
 import spoon.reflect.CtModel;
@@ -11,6 +7,11 @@ import spoon.reflect.cu.CompilationUnit;
 import spoon.reflect.cu.SourcePosition;
 import spoon.reflect.declaration.CtElement;
 import spoon.reflect.declaration.CtTypeMember;
+
+import java.io.IOException;
+import java.util.Comparator;
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * A class for extracting source code and related information from Spoon nodes.
@@ -22,33 +23,28 @@ public class SourceExtractor {
     public static final boolean DEFAULT_IS_TABS = false;
 
     /**
-     * Get the original source fragment corresponding to the nodes provided, or an empty string if
-     * the list is empty. The input elements must not be in order, their source positions are used
-     * to find the first and last elements.
+     * Get the original source fragment corresponding to the nodes provided, or an empty string if the list is
+     * empty. The input elements must not be in order, their source positions are used to find the first and last
+     * elements.
      *
      * @param nodes A possibly empty list of adjacent nodes.
-     * @return The original source code fragment, including any leading indentation on the first
-     *     line.
+     * @return The original source code fragment, including any leading indentation on the first line.
      */
     public static String getOriginalSource(List<CtElement> nodes) {
-        if (nodes.isEmpty()) return "";
+        if (nodes.isEmpty())
+            return "";
 
-        Comparator<CtElement> comp =
-                Comparator.comparingInt(
-                        e -> {
-                            SourcePosition pos = getSourcePos(e);
-                            return pos.isValidPosition()
-                                    ? pos.getSourceStart() + pos.getSourceEnd()
-                                    : -1;
-                        });
+        Comparator<CtElement> comp = Comparator.comparingInt(e -> {
+            SourcePosition pos = getSourcePos(e);
+            return pos.isValidPosition() ? pos.getSourceStart() + pos.getSourceEnd() : -1;
+        });
         SourcePosition firstElemPos = getSourcePos(nodes.stream().min(comp).get());
         SourcePosition lastElemPos = getSourcePos(nodes.stream().max(comp).get());
         return getOriginalSource(firstElemPos, lastElemPos);
     }
 
     /**
-     * Get the original source code fragment associated with this element, including any leading
-     * indentation.
+     * Get the original source code fragment associated with this element, including any leading indentation.
      *
      * @param elem A Spoon element.
      * @return The original source code associated with the elemen.
@@ -59,34 +55,31 @@ public class SourceExtractor {
     }
 
     /**
-     * Get the original source code fragment starting at start and ending at end, including
-     * indentation if start is the first element on its source code line.
+     * Get the original source code fragment starting at start and ending at end, including indentation if start is
+     * the first element on its source code line.
      *
      * @param start The source position of the first element.
-     * @param end The source position of the last element.
-     * @return The source code fragment starting at start and ending at end, including leading
-     *     indentation.
+     * @param end   The source position of the last element.
+     * @return The source code fragment starting at start and ending at end, including leading indentation.
      * @throws IOException
      */
     private static String getOriginalSource(SourcePosition start, SourcePosition end) {
         CompilationUnit cu = start.getCompilationUnit();
         String source = cu.getOriginalSourceCode();
-        int startChar =
-                precededByIndentation(source, start)
-                        ? getLineStartIdx(start)
-                        : start.getSourceStart();
+        int startChar = precededByIndentation(source, start) ?
+                getLineStartIdx(start) : start.getSourceStart();
         int endChar = end.getSourceEnd();
         return source.substring(startChar, endChar + 1);
     }
 
     /**
-     * Return the indentation count for this element. This is a bit hit-and-miss, but it usually
-     * works. It finds the line that the element starts on, and counts the amount of indentation
-     * characters until the first character on the line.
+     * Return the indentation count for this element. This is a bit hit-and-miss, but it usually works. It finds
+     * the line that the element starts on, and counts the amount of indentation characters until the first character
+     * on the line.
      *
      * @param elem A Spoon element.
-     * @return The amount of indentation characters preceding the first non-indentation character on
-     *     the line this element is defined on.
+     * @return The amount of indentation characters preceding the first non-indentation character on the line this
+     *      element is defined on.
      */
     public static int getIndentation(CtElement elem) {
         SourcePosition pos = getSourcePos(elem);
@@ -95,8 +88,8 @@ public class SourceExtractor {
     }
 
     /**
-     * Internal method for getting the indentation of a source position, assuming that lineStartIdx
-     * is a correct index for the line the element starts on..
+     * Internal method for getting the indentation of a source position, assuming that lineStartIdx is a correct index
+     * for the line the element starts on..
      */
     private static int getIndentation(SourcePosition pos, int lineStartIdx) {
         String source = pos.getCompilationUnit().getOriginalSourceCode();
@@ -112,8 +105,7 @@ public class SourceExtractor {
     }
 
     /**
-     * Get the indentation size, and the type of the indentation (tabs or spaces), for the provided
-     * element.
+     * Get the indentation size, and the type of the indentation (tabs or spaces), for the provided element.
      *
      * @param elem An element.
      * @return A pair on the form (indentationSize, isTabs).
@@ -122,45 +114,39 @@ public class SourceExtractor {
         SourcePosition pos = elem.getPosition();
         int lineStartIdx = getLineStartIdx(pos);
         int indentationSize = getIndentation(pos, lineStartIdx);
-        boolean isTabs =
-                pos.getCompilationUnit().getOriginalSourceCode().charAt(lineStartIdx) == '\t';
+        boolean isTabs = pos.getCompilationUnit().getOriginalSourceCode().charAt(lineStartIdx) == '\t';
         return Pair.of(indentationSize, isTabs);
     }
 
     /**
-     * Guess the indentation size and if indentation is using tabs or spaces in the provided module.
-     * If no educated guess can be made, falls back on the defaults of {@link
-     * SourceExtractor#DEFAULT_INDENTATION_SIZE} and {@link SourceExtractor#DEFAULT_IS_TABS}.
+     * Guess the indentation size and if indentation is using tabs or spaces in the provided module. If no educated
+     * guess can be made, falls back on the defaults of {@link SourceExtractor#DEFAULT_INDENTATION_SIZE} and
+     * {@link SourceExtractor#DEFAULT_IS_TABS}.
      *
-     * <p>The indentation size will only ever be guessed as 1, 2 or 4.
+     * The indentation size will only ever be guessed as 1, 2 or 4.
      *
      * @param model A Spoon model.
      * @return A pair (indentationSize, isTabs).
      */
     public static Pair<Integer, Boolean> guessIndentation(CtModel model) {
-        List<CtTypeMember> topLevelMembers =
-                model.getAllTypes().stream()
-                        .filter(e -> e.getPosition().getFile() != null)
-                        .filter(e -> getIndentation(e) == 0)
-                        .flatMap(e -> e.getTypeMembers().stream())
-                        .filter(member -> !member.isImplicit())
-                        .limit(20)
-                        .collect(Collectors.toList());
+        List<CtTypeMember> topLevelMembers = model.getAllTypes().stream()
+                .filter(e -> e.getPosition().getFile() != null)
+                .filter(e -> getIndentation(e) == 0)
+                .flatMap(e -> e.getTypeMembers().stream())
+                .filter(member -> !member.isImplicit())
+                .limit(20)
+                .collect(Collectors.toList());
         if (topLevelMembers.isEmpty()) {
             return Pair.of(DEFAULT_INDENTATION_SIZE, DEFAULT_IS_TABS);
         }
 
-        List<Pair<Integer, Boolean>> memberIndentations =
-                topLevelMembers.stream()
-                        .map(SourceExtractor::getIndentationInfo)
-                        .collect(Collectors.toList());
+        List<Pair<Integer, Boolean>> memberIndentations = topLevelMembers.stream()
+                .map(SourceExtractor::getIndentationInfo).collect(Collectors.toList());
         long numStartsWithTab = memberIndentations.stream().filter(Pair::getSecond).count();
-        // guestimate if tabs are used as indentations if more than half of the members are tab
-        // indented
+        // guestimate if tabs are used as indentations if more than half of the members are tab indented
         boolean isTabs = numStartsWithTab > (double) memberIndentations.size() / 2;
-        double indentationMean =
-                memberIndentations.stream().mapToDouble(Pair::getFirst).sum()
-                        / memberIndentations.size();
+        double indentationMean = memberIndentations.stream()
+                .mapToDouble(Pair::getFirst).sum() / memberIndentations.size();
 
         double diff1 = Math.abs(1 - indentationMean);
         double diff2 = Math.abs(2 - indentationMean);
@@ -185,9 +171,8 @@ public class SourceExtractor {
     }
 
     /**
-     * Get the source file position from a CtElement, taking care that Spork sometimes stores
-     * position information as metadata to circumvent the pretty-printers reliance on positional
-     * information (e.g. when printing comments).
+     * Get the source file position from a CtElement, taking care that Spork sometimes stores position information as
+     * metadata to circumvent the pretty-printers reliance on positional information (e.g. when printing comments).
      */
     private static SourcePosition getSourcePos(CtElement elem) {
         SourcePosition pos = (SourcePosition) elem.getMetadata(SpoonTreeBuilder.POSITION_KEY);
@@ -209,11 +194,13 @@ public class SourceExtractor {
     }
 
     private static int getLineStartIdx(SourcePosition pos) {
-        if (pos.getLine() == 1) return 0;
+        if (pos.getLine() == 1)
+            return 0;
 
         int cur = pos.getSourceStart();
         String source = pos.getCompilationUnit().getOriginalSourceCode();
-        while (source.charAt(cur) != '\n') cur--;
+        while (source.charAt(cur) != '\n')
+            cur--;
 
         return cur + 1;
     }

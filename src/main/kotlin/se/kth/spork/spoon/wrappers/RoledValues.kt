@@ -2,7 +2,7 @@ package se.kth.spork.spoon.wrappers
 
 import spoon.reflect.declaration.CtElement
 import spoon.reflect.path.CtRole
-import java.util.ArrayList
+import java.util.*
 
 /**
  * Class representing some form of value in a Spoon node, along with the role the value has. This is for
@@ -28,4 +28,5 @@ class RoledValues : ArrayList<RoledValue?> {
     operator fun set(i: Int, role: CtRole?, value: Any): RoledValue? {
         return set(i, RoledValue(role!!, value))
     }
+
 }

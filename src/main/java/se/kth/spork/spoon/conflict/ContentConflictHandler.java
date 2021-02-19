@@ -1,9 +1,10 @@
 package se.kth.spork.spoon.conflict;
 
-import java.util.Optional;
 import se.kth.spork.util.Pair;
 import spoon.reflect.declaration.CtElement;
 import spoon.reflect.path.CtRole;
+
+import java.util.Optional;
 
 /**
  * Interface that defines a content conflict handler.
@@ -15,14 +16,12 @@ public interface ContentConflictHandler {
     /**
      * Handle a content conflict.
      *
-     * <p>The boolean in the return value should be true if the content was partially merged, and
-     * the optional value must then be non-empty.
+     * The boolean in the return value should be true if the content was partially merged, and the optional value
+     * must then be non-empty.
      *
-     * <p>If the content was not merged at all, then the boolean should be false, and the value
-     * should be an empty optional.
+     * If the content was not merged at all, then the boolean should be false, and the value should be an empty optional.
      *
-     * <p>If the content was fully merged, then the boolean should be false and the value should be
-     * a non-empty optional.
+     * If the content was fully merged, then the boolean should be false and the value should be a non-empty optional.
      *
      * @param baseVal The value from the base revision. Not always present.
      * @param leftVal The value from the left revision.
@@ -32,7 +31,8 @@ public interface ContentConflictHandler {
      * @param rightElem The right element, from which the right value was taken.
      * @return A pair (mergedContent, isPartiallyMerged).
      */
-    Pair<Optional<Object>, Boolean> handleConflict(
+    Pair<Optional<Object>, Boolean>
+    handleConflict(
             Optional<Object> baseVal,
             Object leftVal,
             Object rightVal,
@@ -40,6 +40,9 @@ public interface ContentConflictHandler {
             CtElement leftElem,
             CtElement rightElem);
 
-    /** @return The role that this conflict handler deals with. */
+    /**
+     * @return The role that this conflict handler deals with.
+     */
     CtRole getRole();
+
 }

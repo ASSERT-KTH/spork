@@ -5,7 +5,7 @@ import se.kth.spork.spoon.wrappers.NodeFactory
 import se.kth.spork.spoon.wrappers.SpoonNode
 import spoon.reflect.declaration.CtElement
 import spoon.reflect.visitor.CtScanner
-import java.util.HashMap
+import java.util.*
 
 /**
  * Create the class representatives mapping. The class representatives for the different revisions are defined as:
@@ -31,13 +31,12 @@ import java.util.HashMap
  * @return The class representatives map.
  */
 fun createClassRepresentativesMapping(
-    base: CtElement,
-    left: CtElement,
-    right: CtElement,
-    baseLeft: SpoonMapping,
-    baseRight: SpoonMapping,
-    leftRight: SpoonMapping
-): Map<SpoonNode, SpoonNode> {
+        base: CtElement,
+        left: CtElement,
+        right: CtElement,
+        baseLeft: SpoonMapping,
+        baseRight: SpoonMapping,
+        leftRight: SpoonMapping): Map<SpoonNode, SpoonNode> {
     val classRepMap = initializeClassRepresentatives(base)
     mapToClassRepresentatives(left, baseLeft, classRepMap, Revision.LEFT)
     mapToClassRepresentatives(right, baseRight, classRepMap, Revision.RIGHT)
@@ -173,4 +172,5 @@ private class ClassRepresentativeAugmenter
         }
         super.scan(element)
     }
+
 }

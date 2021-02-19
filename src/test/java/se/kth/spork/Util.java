@@ -2,6 +2,13 @@ package se.kth.spork;
 
 import com.github.gumtreediff.tree.ITree;
 import gumtree.spoon.builder.SpoonGumTreeBuilder;
+import org.junit.jupiter.api.extension.ExtensionContext;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.ArgumentsProvider;
+import se.kth.spork.spoon.printer.SporkPrettyPrinter;
+import spoon.Launcher;
+import spoon.reflect.declaration.CtClass;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -12,12 +19,6 @@ import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
-import org.junit.jupiter.api.extension.ExtensionContext;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.ArgumentsProvider;
-import se.kth.spork.spoon.printer.SporkPrettyPrinter;
-import spoon.Launcher;
-import spoon.reflect.declaration.CtClass;
 
 /**
  * Utility methods for the test suite.
@@ -30,18 +31,16 @@ public class Util {
     public static final Path BOTH_MODIFIED_DIRPATH = CLEAN_MERGE_DIRPATH.resolve("both_modified");
     public static final Path LEFT_MODIFIED_DIRPATH = CLEAN_MERGE_DIRPATH.resolve("left_modified");
     public static final Path CONFLICT_DIRPATH = RESOURCES_BASE_DIR.resolve("conflict");
-    public static final Path UNHANDLED_INCONSISTENCY_PATH =
-            RESOURCES_BASE_DIR.resolve("unhandled_inconsistency");
-    public static final Path CLEAN_LINEBASED_FALLBACK =
-            RESOURCES_BASE_DIR.resolve("clean_linebased_fallback");
+    public static final Path UNHANDLED_INCONSISTENCY_PATH = RESOURCES_BASE_DIR.resolve("unhandled_inconsistency");
+    public static final Path CLEAN_LINEBASED_FALLBACK = RESOURCES_BASE_DIR.resolve("clean_linebased_fallback");
     public static final Path MISSING_TYPE_SCENARIO = RESOURCES_BASE_DIR.resolve("missing_type");
+
 
     private static Stream<? extends Arguments> getArgumentSourcesStream(File testDir) {
         return getArgumentSourcesStream(testDir, TestSources::fromTestDirectory);
     }
 
-    private static Stream<? extends Arguments> getArgumentSourcesStream(
-            File testDir, Function<File, TestSources> sourceGetter) {
+    private static Stream<? extends Arguments> getArgumentSourcesStream(File testDir, Function<File, TestSources> sourceGetter) {
         return Arrays.stream(testDir.listFiles())
                 .filter(File::isDirectory)
                 .filter(f -> !f.getName().startsWith("IGNORE"))
@@ -64,8 +63,8 @@ public class Util {
     }
 
     public static List<Conflict> parseConflicts(String string) {
-        Pattern conflictPattern =
-                Pattern.compile("(<<<<<<< LEFT.*?=======.*?>>>>>>> RIGHT)", Pattern.DOTALL);
+        Pattern conflictPattern = Pattern.compile(
+                "(<<<<<<< LEFT.*?=======.*?>>>>>>> RIGHT)", Pattern.DOTALL);
         Matcher matcher = conflictPattern.matcher(string);
 
         List<Conflict> matches = new ArrayList<>();
@@ -90,11 +89,12 @@ public class Util {
     }
 
     /**
-     * Take a string with conflicts and strip the conflict markers and the right revision, keep the
-     * left revision.
+     * Take a string with conflicts and strip the conflict markers and the right revision,
+     * keep the left revision.
      */
     public static String keepLeftConflict(String string) {
-        Pattern rightConflictPattern = Pattern.compile("=======.*?>>>>>>> RIGHT", Pattern.DOTALL);
+        Pattern rightConflictPattern = Pattern.compile(
+                "=======.*?>>>>>>> RIGHT", Pattern.DOTALL);
         Matcher rightConflictMatcher = rightConflictPattern.matcher(string);
         String rightRevStrippend = rightConflictMatcher.replaceAll("");
 
@@ -103,7 +103,9 @@ public class Util {
         return leftMarkerMatcher.replaceAll("");
     }
 
-    /** Provides test sources for scenarios where both left and right revisions are modified. */
+    /**
+     * Provides test sources for scenarios where both left and right revisions are modified.
+     */
     public static class BothModifiedSourceProvider implements ArgumentsProvider {
         @Override
         public Stream<? extends Arguments> provideArguments(ExtensionContext extensionContext) {
@@ -111,7 +113,9 @@ public class Util {
         }
     }
 
-    /** Provides test sources for scenarios where left is modified. */
+    /**
+     * Provides test sources for scenarios where left is modified.
+     */
     public static class LeftModifiedSourceProvider implements ArgumentsProvider {
         @Override
         public Stream<? extends Arguments> provideArguments(ExtensionContext extensionContext) {
@@ -119,43 +123,42 @@ public class Util {
         }
     }
 
-    /** Provides test sources for scenarios where right is modified. */
+    /**
+     * Provides test sources for scenarios where right is modified.
+     */
     public static class RightModifiedSourceProvider implements ArgumentsProvider {
         @Override
         public Stream<? extends Arguments> provideArguments(ExtensionContext extensionContext) {
-            return getArgumentSourcesStream(LEFT_MODIFIED_DIRPATH.toFile())
-                    .map(
-                            arg -> {
-                                TestSources sources = (TestSources) arg.get()[0];
-                                // swap left and right around to make this a "right modified" test
-                                // case
-                                Path left = sources.left;
-                                sources.left = sources.right;
-                                sources.right = left;
-                                return Arguments.of(sources);
-                            });
+            return getArgumentSourcesStream(LEFT_MODIFIED_DIRPATH.toFile()).map(
+                    arg -> {
+                        TestSources sources = (TestSources) arg.get()[0];
+                        // swap left and right around to make this a "right modified" test case
+                        Path left = sources.left;
+                        sources.left = sources.right;
+                        sources.right = left;
+                        return Arguments.of(sources);
+                    }
+            );
         }
     }
 
     public static class UnhandledInconsistencyProvider implements ArgumentsProvider {
         @Override
         public Stream<? extends Arguments> provideArguments(ExtensionContext extensionContext) {
-            return getArgumentSourcesStream(
-                    UNHANDLED_INCONSISTENCY_PATH.toFile(),
-                    TestSources::fromTestDirectoryWithoutExpected);
+            return getArgumentSourcesStream(UNHANDLED_INCONSISTENCY_PATH.toFile(), TestSources::fromTestDirectoryWithoutExpected);
         }
     }
 
     public static class CleanLineBasedFallbackProvider implements ArgumentsProvider {
         @Override
         public Stream<? extends Arguments> provideArguments(ExtensionContext extensionContext) {
-            return getArgumentSourcesStream(
-                    CLEAN_LINEBASED_FALLBACK.toFile(),
-                    TestSources::fromTestDirectoryWithoutExpected);
+            return getArgumentSourcesStream(CLEAN_LINEBASED_FALLBACK.toFile(), TestSources::fromTestDirectoryWithoutExpected);
         }
     }
 
-    /** Provides test sources for scenarios where there are conflicts. */
+    /**
+     * Provides test sources for scenarios where there are conflicts.
+     */
     public static class ConflictSourceProvider implements ArgumentsProvider {
         @Override
         public Stream<? extends Arguments> provideArguments(ExtensionContext extensionContext) {
@@ -169,7 +172,10 @@ public class Util {
 
         @Override
         public String toString() {
-            return "Conflict{" + "left='" + left + '\'' + ", right='" + right + '\'' + '}';
+            return "Conflict{" +
+                    "left='" + left + '\'' +
+                    ", right='" + right + '\'' +
+                    '}';
         }
 
         @Override
@@ -177,7 +183,8 @@ public class Util {
             if (this == o) return true;
             if (o == null || getClass() != o.getClass()) return false;
             Conflict conflict = (Conflict) o;
-            return Objects.equals(left, conflict.left) && Objects.equals(right, conflict.right);
+            return Objects.equals(left, conflict.left) &&
+                    Objects.equals(right, conflict.right);
         }
 
         @Override
@@ -199,13 +206,15 @@ public class Util {
             this.expected = expected;
         }
 
+
         public static TestSources fromTestDirectory(File testDir) {
             Path path = testDir.toPath();
             return new TestSources(
                     path.resolve("Base.java"),
                     path.resolve("Left.java"),
                     path.resolve("Right.java"),
-                    path.resolve("Expected.java"));
+                    path.resolve("Expected.java")
+            );
         }
 
         public static TestSources fromTestDirectoryWithoutExpected(File testDir) {
@@ -214,7 +223,8 @@ public class Util {
                     path.resolve("Base.java"),
                     path.resolve("Left.java"),
                     path.resolve("Right.java"),
-                    null);
+                    null
+            );
         }
 
         @Override
@@ -222,4 +232,5 @@ public class Util {
             return base.getParent().getFileName().toString();
         }
     }
+
 }

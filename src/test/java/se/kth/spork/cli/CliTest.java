@@ -1,12 +1,5 @@
 package se.kth.spork.cli;
 
-import static org.junit.jupiter.api.Assertions.*;
-
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
-import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -14,19 +7,26 @@ import org.junit.jupiter.params.provider.ArgumentsSource;
 import picocli.CommandLine;
 import se.kth.spork.Util;
 import se.kth.spork.exception.MergeException;
+import se.kth.spork.spoon.Compare;
 import se.kth.spork.spoon.Parser;
 import se.kth.spork.spoon.Spoon3dmMerge;
 import se.kth.spork.util.Pair;
 import spoon.reflect.declaration.CtModule;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.*;
 
 class CliTest {
 
     @ParameterizedTest
     @ArgumentsSource(Util.ConflictSourceProvider.class)
     void merge_shouldExitNonZero_onConflict(Util.TestSources sources) {
-        String[] args = {
-            sources.left.toString(), sources.base.toString(), sources.right.toString()
-        };
+        String[] args = {sources.left.toString(), sources.base.toString(), sources.right.toString()};
 
         int exitCode = new CommandLine(new Cli.Merge()).execute(args);
 
@@ -36,9 +36,7 @@ class CliTest {
     @ParameterizedTest
     @ArgumentsSource(Util.BothModifiedSourceProvider.class)
     void merge_shouldExitZero_onCleanMerge(Util.TestSources sources) {
-        String[] args = {
-            sources.left.toString(), sources.base.toString(), sources.right.toString()
-        };
+        String[] args = {sources.left.toString(), sources.base.toString(), sources.right.toString()};
 
         int exitCode = new CommandLine(new Cli.Merge()).execute(args);
 
@@ -47,24 +45,21 @@ class CliTest {
 
     @Test
     void merge_shouldThrowOnMissingType_whenGlobalFallbackIsDisabled() {
-        Util.TestSources sources =
-                Util.TestSources.fromTestDirectoryWithoutExpected(
-                        Util.MISSING_TYPE_SCENARIO.toFile());
+        Util.TestSources sources = Util.TestSources.fromTestDirectoryWithoutExpected(Util.MISSING_TYPE_SCENARIO.toFile());
 
         assertThrows(
                 MergeException.class,
-                () -> Cli.merge(sources.base, sources.left, sources.right, /*exitOnError=*/ true),
-                "Merge contained no types and global line-based fallback is disabled");
+                () -> Cli.merge(sources.base, sources.left, sources.right, /*exitOnError=*/true),
+                "Merge contained no types and global line-based fallback is disabled"
+        );
     }
 
     @Test
     void merge_shouldMexgeCorrectlyOnMissingType_whenGlobalFallbackIsEnabled() {
-        Util.TestSources sources =
-                Util.TestSources.fromTestDirectory(Util.MISSING_TYPE_SCENARIO.toFile());
+        Util.TestSources sources = Util.TestSources.fromTestDirectory(Util.MISSING_TYPE_SCENARIO.toFile());
         String expected = Parser.read(sources.expected);
 
-        Pair<String, Integer> merge =
-                Cli.merge(sources.base, sources.left, sources.right, /*exitOnError=*/ false);
+        Pair<String, Integer> merge = Cli.merge(sources.base, sources.left, sources.right, /*exitOnError=*/false);
 
         assertEquals(0, merge.second);
         assertEquals(expected, merge.first);
@@ -84,10 +79,10 @@ class CliTest {
         runTestMerge(sources, tempDir);
     }
 
+
     @ParameterizedTest
     @ArgumentsSource(Util.BothModifiedSourceProvider.class)
-    void mergeTreeShouldEqualReParsedPrettyPrent_whenBothRevisionsAreModified(
-            Util.TestSources sources, @TempDir Path tempDir) throws IOException {
+    void mergeTreeShouldEqualReParsedPrettyPrent_whenBothRevisionsAreModified(Util.TestSources sources, @TempDir Path tempDir) throws IOException {
         runTestMerge(sources, tempDir);
     }
 
@@ -96,8 +91,7 @@ class CliTest {
     void prettyPrint_shouldContainConflict(Util.TestSources sources) throws IOException {
         List<Util.Conflict> expectedConflicts = Util.parseConflicts(sources.expected);
 
-        Pair<CtModule, Integer> merged =
-                Spoon3dmMerge.merge(sources.base, sources.left, sources.right);
+        Pair<CtModule, Integer> merged = Spoon3dmMerge.merge(sources.base, sources.left, sources.right);
         CtModule mergeTree = merged.first;
         Integer numConflicts = merged.second;
 
@@ -113,12 +107,10 @@ class CliTest {
 
     @ParameterizedTest
     @ArgumentsSource(Util.ConflictSourceProvider.class)
-    void prettyPrint_shouldParseToExpectedTree_whenConflictHasBeenStrippedOut(
-            Util.TestSources sources) throws IOException {
+    void prettyPrint_shouldParseToExpectedTree_whenConflictHasBeenStrippedOut(Util.TestSources sources) throws IOException {
         CtModule expected = Parser.parse(Util.keepLeftConflict(sources.expected));
 
-        Pair<CtModule, Integer> merged =
-                Spoon3dmMerge.merge(sources.base, sources.left, sources.right);
+        Pair<CtModule, Integer> merged = Spoon3dmMerge.merge(sources.base, sources.left, sources.right);
         CtModule mergeTree = merged.first;
 
         String prettyPrint = Cli.prettyPrint(mergeTree);
@@ -129,14 +121,13 @@ class CliTest {
 
     /**
      * Test the CLI by running merging the sources to a merge AST A, pretty printing A to a file and
-     * parsing that file into a control tree B. If A and B are equal, no information has been lost
-     * in the pretty print as far as Spoon knows (apart from import statements).
+     * parsing that file into a control tree B. If A and B are equal, no information has been lost in
+     * the pretty print as far as Spoon knows (apart from import statements).
      *
      * @param sources
      */
     private static void runTestMerge(Util.TestSources sources, Path tempDir) throws IOException {
-        Pair<CtModule, Integer> merged =
-                Spoon3dmMerge.merge(sources.base, sources.left, sources.right);
+        Pair<CtModule, Integer> merged = Spoon3dmMerge.merge(sources.base, sources.left, sources.right);
         CtModule mergeTree = merged.first;
 
         Object expectedImports = mergeTree.getMetadata(Parser.IMPORT_STATEMENTS);

@@ -1,16 +1,18 @@
 package se.kth.spork.util;
 
+import se.kth.spork.spoon.printer.SourceExtractor;
+import se.kth.spork.spoon.printer.SporkPrettyPrinter;
+
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
+
 import org.eclipse.jgit.diff.RawText;
 import org.eclipse.jgit.diff.SequenceComparator;
 import org.eclipse.jgit.merge.MergeAlgorithm;
 import org.eclipse.jgit.merge.MergeChunk;
 import org.eclipse.jgit.merge.MergeResult;
-import se.kth.spork.spoon.printer.SourceExtractor;
-import se.kth.spork.spoon.printer.SporkPrettyPrinter;
 import spoon.reflect.declaration.CtElement;
 
 /**
@@ -40,22 +42,17 @@ public class LineBasedMerge {
         RawText rightRaw = new RawText(right.getBytes());
 
         MergeAlgorithm merge = new MergeAlgorithm();
-        MergeResult<RawText> res =
-                merge.merge(
-                        new SequenceComparator<RawText>() {
-                            @Override
-                            public boolean equals(RawText s, int i, RawText s1, int i1) {
-                                return s.getString(i).equals(s1.getString(i1));
-                            }
+        MergeResult<RawText> res = merge.merge(new SequenceComparator<RawText>() {
+            @Override
+            public boolean equals(RawText s, int i, RawText s1, int i1) {
+                return s.getString(i).equals(s1.getString(i1));
+            }
 
-                            @Override
-                            public int hash(RawText s, int i) {
-                                return Objects.hash(s.getString(i));
-                            }
-                        },
-                        baseRaw,
-                        leftRaw,
-                        rightRaw);
+            @Override
+            public int hash(RawText s, int i) {
+                return Objects.hash(s.getString(i));
+            }
+        }, baseRaw, leftRaw, rightRaw);
 
         Iterator<MergeChunk> it = res.iterator();
         List<RawText> seqs = res.getSequences();
@@ -71,8 +68,7 @@ public class LineBasedMerge {
                 numConflicts++;
                 inConflict = true;
                 lines.add(SporkPrettyPrinter.START_CONFLICT);
-            } else if (chunk.getConflictState()
-                    == MergeChunk.ConflictState.NEXT_CONFLICTING_RANGE) {
+            } else if (chunk.getConflictState() == MergeChunk.ConflictState.NEXT_CONFLICTING_RANGE) {
                 if (!inConflict) {
                     lines.add(SporkPrettyPrinter.START_CONFLICT);
                     inConflict = true;
@@ -80,6 +76,7 @@ public class LineBasedMerge {
 
                 lines.add(SporkPrettyPrinter.MID_CONFLICT);
             }
+
 
             for (int i = chunk.getBegin(); i < chunk.getEnd(); i++) {
                 lines.add(seq.getString(i));
@@ -89,6 +86,7 @@ public class LineBasedMerge {
                 lines.add(SporkPrettyPrinter.END_CONFLICT);
                 inConflict = false;
             }
+
         }
 
         if (inConflict) {

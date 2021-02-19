@@ -1,20 +1,22 @@
 package se.kth.spork.spoon.pcsinterpreter;
 
-import java.util.*;
 import se.kth.spork.base3dm.Content;
 import se.kth.spork.base3dm.Revision;
-import se.kth.spork.spoon.conflict.StructuralConflict;
 import se.kth.spork.spoon.wrappers.NodeFactory;
 import se.kth.spork.spoon.wrappers.RoledValues;
 import se.kth.spork.spoon.wrappers.SpoonNode;
+import se.kth.spork.spoon.conflict.StructuralConflict;
 import spoon.reflect.CtModelImpl;
 import spoon.reflect.declaration.CtElement;
 import spoon.reflect.factory.ModuleFactory;
 
+import java.util.*;
+
+
 /**
  * A Spork tree is an intermediate representation used to bridge conversion from PCS to Spoon. It is
- * essentially a greatly simplified AST that also offers some support for representing structural
- * conflicts as well as keeping track of which revisions it consists of.
+ * essentially a greatly simplified AST that also offers some support for representing structural conflicts as well
+ * as keeping track of which revisions it consists of.
  *
  * @author Simon Larsén
  */
@@ -77,13 +79,12 @@ public class SporkTree {
 
     /**
      * @return True if the subtree consists of only a single revision, AND the subtree is not rooted
-     *     in the unnamed module or the root package. These should never be considered single
-     *     revision as they must be replaced with new elements.
+     * in the unnamed module or the root package. These should never be considered single revision
+     * as they must be replaced with new elements.
      */
     public boolean isSingleRevisionSubtree() {
         CtElement element = node.getElement();
-        return !(element instanceof ModuleFactory.CtUnnamedModule
-                        || element instanceof CtModelImpl.CtRootPackage)
+        return !(element instanceof ModuleFactory.CtUnnamedModule || element instanceof CtModelImpl.CtRootPackage)
                 && revisions.size() == 1;
     }
 

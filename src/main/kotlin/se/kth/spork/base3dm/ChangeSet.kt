@@ -2,6 +2,8 @@ package se.kth.spork.base3dm
 
 import java.util.Collections
 import java.util.function.Function
+import kotlin.collections.HashMap
+import kotlin.collections.HashSet
 
 /**
  * Represents a change set in 3DM merge. While a change set in pure 3DM merge is just all content tuples and PCS
@@ -17,6 +19,7 @@ class ChangeSet<T : ListNode, V>(private val classRepMap: Map<T, T>, getContent:
     private val _structuralConflicts: MutableMap<Pcs<T>, MutableSet<Pcs<T>>>
     val structuralConflicts: Map<Pcs<T>, Set<Pcs<T>>>
         get() = _structuralConflicts.toMap()
+
 
     private val _pcsSet: MutableSet<Pcs<T>>
     val pcsSet: Set<Pcs<T>>

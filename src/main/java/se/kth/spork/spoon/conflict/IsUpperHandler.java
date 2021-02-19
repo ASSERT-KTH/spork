@@ -1,15 +1,16 @@
 package se.kth.spork.spoon.conflict;
 
-import java.util.Optional;
 import se.kth.spork.util.Pair;
 import spoon.reflect.declaration.CtElement;
 import spoon.reflect.path.CtRole;
 import spoon.reflect.reference.CtWildcardReference;
 
+import java.util.Optional;
+
 /**
- * A conflict handler for the IS_UPPER attribute. This appears on wildcards to specify if a type
- * bound is an upper or a lower type bound. For example <code><? extends String></code> means that
- * IS_UPPER is true, and <code><? super String></code> means that IS_UPPER is false.
+ * A conflict handler for the IS_UPPER attribute. This appears on wildcards to specify if a type bound is an upper
+ * or a lower type bound. For example <code><? extends String></code> means that IS_UPPER is true,
+ * and <code><? super String></code> means that IS_UPPER is false.
  *
  * @author Simon Larsén
  */
@@ -31,8 +32,7 @@ public class IsUpperHandler implements ContentConflictHandler {
         return Pair.of(mergeIsUpper(baseElem, leftElem, rightElem), false);
     }
 
-    private static Optional<Object> mergeIsUpper(
-            Optional<CtElement> baseElem, CtElement leftElem, CtElement rightElem) {
+    private static Optional<Object> mergeIsUpper(Optional<CtElement> baseElem, CtElement leftElem, CtElement rightElem) {
         CtWildcardReference left = (CtWildcardReference) leftElem;
         CtWildcardReference right = (CtWildcardReference) rightElem;
 
@@ -44,12 +44,8 @@ public class IsUpperHandler implements ContentConflictHandler {
             boolean baseBoundIsImplicit = base.getBoundingType().isImplicit();
 
             if (leftBoundIsImplicit != rightBoundIsImplicit) {
-                // one bound was removed, so we go with whatever is on the bound that is not equal
-                // to base
-                return Optional.of(
-                        baseBoundIsImplicit == leftBoundIsImplicit
-                                ? left.isUpper()
-                                : right.isUpper());
+                // one bound was removed, so we go with whatever is on the bound that is not equal to base
+                return Optional.of(baseBoundIsImplicit == leftBoundIsImplicit ? left.isUpper() : right.isUpper());
             }
         } else {
             if (leftBoundIsImplicit != rightBoundIsImplicit) {
@@ -60,4 +56,5 @@ public class IsUpperHandler implements ContentConflictHandler {
 
         return Optional.empty();
     }
+
 }

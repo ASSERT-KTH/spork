@@ -25,7 +25,8 @@ public class Pair<T, E> {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         Pair<?, ?> pair = (Pair<?, ?>) o;
-        return Objects.equals(first, pair.first) && Objects.equals(second, pair.second);
+        return Objects.equals(first, pair.first) &&
+                Objects.equals(second, pair.second);
     }
 
     @Override
@@ -35,7 +36,10 @@ public class Pair<T, E> {
 
     @Override
     public String toString() {
-        return "Pair{" + "first=" + first + ", second=" + second + '}';
+        return "Pair{" +
+                "first=" + first +
+                ", second=" + second +
+                '}';
     }
 
     public T getFirst() {

@@ -1,6 +1,5 @@
 package se.kth.spork.spoon.pcsinterpreter;
 
-import java.util.*;
 import se.kth.spork.base3dm.Revision;
 import se.kth.spork.base3dm.TdmMergeKt;
 import se.kth.spork.spoon.*;
@@ -27,6 +26,8 @@ import spoon.reflect.reference.CtParameterReference;
 import spoon.reflect.reference.CtTypeReference;
 import spoon.reflect.visitor.printer.CommentOffset;
 
+import java.util.*;
+
 /**
  * Class for building a Spoon tree (i.e. a CtElement) from a {@link SporkTree}.
  *
@@ -36,8 +37,7 @@ public class SpoonTreeBuilder {
     public static final String ORIGINAL_NODE_KEY = "spork_original_node";
     public static final String SINGLE_REVISION_KEY = "spork_single_revision";
     // the position key is used to put the original source position of an element as metadata
-    // this is necessary e.g. for comments as their original source position may cause them not to
-    // be printed
+    // this is necessary e.g. for comments as their original source position may cause them not to be printed
     // in a merged tree
     public static final String POSITION_KEY = "spork_position";
 
@@ -53,16 +53,12 @@ public class SpoonTreeBuilder {
     private final ContentMerger contentMerger;
 
     /**
-     * @param baseLeft The base-to-left tree matching.
+     * @param baseLeft  The base-to-left tree matching.
      * @param baseRight The base-to-right tree matching.
-     * @param oldEnv Any environment used in the merge. It's needed to copy some values.
+     * @param oldEnv    Any environment used in the merge. It's needed to copy some values.
      * @param contentConflictHandlers A list of conflict handlers.
      */
-    SpoonTreeBuilder(
-            SpoonMapping baseLeft,
-            SpoonMapping baseRight,
-            Environment oldEnv,
-            List<ContentConflictHandler> contentConflictHandlers) {
+    SpoonTreeBuilder(SpoonMapping baseLeft, SpoonMapping baseRight, Environment oldEnv, List<ContentConflictHandler> contentConflictHandlers) {
         nodes = new HashMap<>();
         this.baseLeft = baseLeft;
         this.baseRight = baseRight;
@@ -71,28 +67,26 @@ public class SpoonTreeBuilder {
         // create a new factory
         Launcher launcher = new Launcher();
         factory = launcher.createFactory();
-        Parser.setSporkEnvironment(
-                factory.getEnvironment(), oldEnv.getTabulationSize(), oldEnv.isUsingTabulations());
+        Parser.setSporkEnvironment(factory.getEnvironment(), oldEnv.getTabulationSize(), oldEnv.isUsingTabulations());
     }
 
     /**
-     * Some elements are inserted into the Spoon tree based on their position. This applies for
-     * example to type members, as Spoon will try to find the appropriate position for them based on
-     * position.
+     * Some elements are inserted into the Spoon tree based on their position. This applies for example to type members,
+     * as Spoon will try to find the appropriate position for them based on position.
      *
-     * <p>Comments that come from a different source file than the node they are attached to are
-     * also unlikely to actually get printed, as the position relative to the associated node is
-     * taken into account by the pretty-printer. Setting the position to {@link
-     * SourcePosition#NOPOSITION} causes all comments to be printed before the associated node, but
-     * at least they get printed!
-     *
-     * <p>The reason for this can be found in {@link
-     * spoon.reflect.visitor.ElementPrinterHelper#getComments(CtElement, CommentOffset)}.
-     *
-     * <p>If the position is all ready {@link SourcePosition#NOPOSITION}, then do nothing.
+     * Comments that come from a different source file than the node they are attached to are also unlikely to actually
+     * get printed, as the position relative to the associated node is taken into account by the pretty-printer.
+     * Setting the position to {@link SourcePosition#NOPOSITION} causes all comments to be printed before the
+     * associated node, but at least they get printed!
+     * <p>
+     * The reason for this can be found in
+     * {@link spoon.reflect.visitor.ElementPrinterHelper#getComments(CtElement, CommentOffset)}.
+     * <p>
+     * If the position is all ready {@link SourcePosition#NOPOSITION}, then do nothing.
      */
     private static void unsetSourcePosition(CtElement element) {
-        if (!element.getPosition().isValidPosition()) return;
+        if (!element.getPosition().isValidPosition())
+            return;
 
         element.putMetadata(POSITION_KEY, element.getPosition());
         element.setPosition(SourcePosition.NOPOSITION);
@@ -131,40 +125,37 @@ public class SpoonTreeBuilder {
 
         for (SporkTree child : root.getChildren()) {
             Optional<StructuralConflict> conflict = child.getStructuralConflict();
-            lastChild =
-                    conflict.map(
-                                    structuralConflict ->
-                                            visitConflicting(root.getNode(), structuralConflict))
-                            .orElseGet(() -> visit(root, child));
+            lastChild = conflict
+                    .map(structuralConflict -> visitConflicting(root.getNode(), structuralConflict))
+                    .orElseGet(() -> visit(root, child));
 
-            if (root.getNode() == NodeFactory.INSTANCE.getVirtualRoot()
-                    || !child.isSingleRevisionSubtree()) build(child);
+            if (root.getNode() == NodeFactory.INSTANCE.getVirtualRoot() || !child.isSingleRevisionSubtree())
+                build(child);
         }
 
         return lastChild;
     }
 
-    /** @return The amount of conflicts. */
+    /**
+     * @return The amount of conflicts.
+     */
     public int numContentConflicts() {
         return numContentConflicts;
     }
 
     /**
-     * Visit a node an merge it. Note that both the node being visited, and its parent, are the
-     * original nodes from the input trees.
+     * Visit a node an merge it. Note that both the node being visited, and its parent, are the original nodes from
+     * the input trees.
      *
      * @param sporkParent A wrapper around the current node's parent.
-     * @param sporkChild A wrapper around the current node being visited.
+     * @param sporkChild  A wrapper around the current node being visited.
      */
     private CtElement visit(SporkTree sporkParent, SporkTree sporkChild) {
         SpoonNode origRootNode = sporkParent.getNode();
         SpoonNode origTreeNode = sporkChild.getNode();
         CtElement originalTree = origTreeNode.getElement();
-        Optional<CtElement> mergeParentOpt =
-                Optional.ofNullable(
-                        origRootNode == NodeFactory.INSTANCE.getVirtualRoot()
-                                ? null
-                                : nodes.get(origRootNode).getElement());
+        Optional<CtElement> mergeParentOpt = Optional.ofNullable(
+                origRootNode == NodeFactory.INSTANCE.getVirtualRoot() ? null : nodes.get(origRootNode).getElement());
         CtElement mergeTree;
 
         if (sporkChild.isSingleRevisionSubtree()) {
@@ -175,8 +166,7 @@ public class SpoonTreeBuilder {
                     contentMerger.mergedContent(sporkChild.getContent());
 
             mergeTree = shallowCopyTree(originalTree, factory);
-            mergedContent.first.forEach(
-                    rv -> mergeTree.setValueByRole(rv.getRole(), rv.getValue()));
+            mergedContent.first.forEach(rv -> mergeTree.setValueByRole(rv.getRole(), rv.getValue()));
             if (!mergedContent.second.isEmpty()) {
                 // at least one conflict was not resolved
                 mergeTree.putMetadata(ContentConflict.METADATA_KEY, mergedContent.second);
@@ -199,11 +189,8 @@ public class SpoonTreeBuilder {
                 unsetSourcePosition(mergeTree);
             }
 
-            if (isVarKeyword(mergeTree)
-                    && mergeParent instanceof CtParameterReference
-                    && mergeTreeRole == CtRole.TYPE) {
-                // we skip this case, because  for some reason, when it comes to parameter
-                // references, Spoon sets
+            if (isVarKeyword(mergeTree) && mergeParent instanceof CtParameterReference && mergeTreeRole == CtRole.TYPE) {
+                // we skip this case, because  for some reason, when it comes to parameter references, Spoon sets
                 // the type to null if it's actually "var"
             } else {
                 mergeParent.setValueByRole(mergeTreeRole, inserted);
@@ -212,8 +199,7 @@ public class SpoonTreeBuilder {
 
         SpoonNode mergeNode;
         if (mergeParentOpt.isPresent()) {
-            // NOTE: Super important that the parent of the merge tree is set no matter what, as
-            // wrapping a spoon CtElement
+            // NOTE: Super important that the parent of the merge tree is set no matter what, as wrapping a spoon CtElement
             // in a SpoonNode requires access to its parent.
             mergeTree.setParent(mergeParentOpt.get());
             mergeNode = NodeFactory.wrap(mergeTree);
@@ -227,15 +213,14 @@ public class SpoonTreeBuilder {
     }
 
     /**
-     * Visit the root nodes of a conflict. Note that the children of these nodes are not visited by
-     * this method.
+     * Visit the root nodes of a conflict. Note that the children of these nodes are not visited
+     * by this method.
      *
-     * @param parent The parent node of the conflict.
+     * @param parent   The parent node of the conflict.
      * @param conflict The current structural conflict.
      */
     private CtElement visitConflicting(SpoonNode parent, StructuralConflict conflict) {
-        final CtElement dummy =
-                conflict.left.size() > 0 ? conflict.left.get(0) : conflict.right.get(0);
+        final CtElement dummy = conflict.left.size() > 0 ? conflict.left.get(0) : conflict.right.get(0);
 
         CtElement mergeParent = nodes.get(parent).getElement();
 
@@ -285,23 +270,21 @@ public class SpoonTreeBuilder {
     }
 
     /**
-     * Resolving the role of a node in the merged tree is tricky, but with a few assumptions it can
-     * be done quickly.
-     *
-     * <p>First of all, it is fairly safe to assume that the node can have at most two roles. Assume
-     * for a second that a node could have three roles. This means that the node has been modified
-     * inconsistently in the left and right revisions, and by the definition of 3DM merge there will
-     * have been a structural conflict already.
-     *
-     * <p>Second, it is also safe to assume that if the role differs between base and either left or
-     * right, the role in base should be discarded. This is safe to assume as all edits of left and
-     * right will appear in the merged tree.
-     *
-     * <p>Thus, given that the base revision's role is resolved, it will always be possible to
-     * resolve the unique role that should be applied next. This also means that a problem occurs
-     * when a left-to-right mapping is used, as there may then be nodes that only match between left
-     * and right, and no clear way of determining which of the two roles should be used, if they
-     * differ. I have yet to figure out how to resolve that.
+     * Resolving the role of a node in the merged tree is tricky, but with a few assumptions it can be done
+     * quickly.
+     * <p>
+     * First of all, it is fairly safe to assume that the node can have at most two roles. Assume for a second
+     * that a node could have three roles. This means that the node has been modified inconsistently in the left
+     * and right revisions, and by the definition of 3DM merge there will have been a structural conflict already.
+     * <p>
+     * Second, it is also safe to assume that if the role differs between base and either left or right, the role
+     * in base should be discarded. This is safe to assume as all edits of left and right will appear in the
+     * merged tree.
+     * <p>
+     * Thus, given that the base revision's role is resolved, it will always be possible to resolve the unique
+     * role that should be applied next. This also means that a problem occurs when a left-to-right mapping is
+     * used, as there may then be nodes that only match between left and right, and no clear way of determining
+     * which of the two roles should be used, if they differ. I have yet to figure out how to resolve that.
      *
      * @param wrapper A wrapped Spoon node.
      * @return The resolved role of this node in the merged tree.
@@ -314,33 +297,32 @@ public class SpoonTreeBuilder {
         Optional<SpoonNode> base = Optional.empty();
 
         switch ((Revision) tree.getMetadata(TdmMergeKt.REV)) {
-            case BASE:
-                {
-                    base = Optional.of(wrapper);
-                    SpoonNode left = baseLeft.getDst(wrapper);
-                    SpoonNode right = baseRight.getDst(wrapper);
-                    if (left != null) matches.add(left.getElement().getRoleInParent());
-                    if (right != null) matches.add(right.getElement().getRoleInParent());
+            case BASE: {
+                base = Optional.of(wrapper);
+                SpoonNode left = baseLeft.getDst(wrapper);
+                SpoonNode right = baseRight.getDst(wrapper);
+                if (left != null)
+                    matches.add(left.getElement().getRoleInParent());
+                if (right != null)
+                    matches.add(right.getElement().getRoleInParent());
+            }
+            break;
+            case RIGHT: {
+                SpoonNode match = baseRight.getSrc(wrapper);
+                if (match != null) {
+                    matches.add(match.getElement().getRoleInParent());
+                    base = Optional.of(match);
                 }
-                break;
-            case RIGHT:
-                {
-                    SpoonNode match = baseRight.getSrc(wrapper);
-                    if (match != null) {
-                        matches.add(match.getElement().getRoleInParent());
-                        base = Optional.of(match);
-                    }
+            }
+            break;
+            case LEFT: {
+                SpoonNode match = baseLeft.getSrc(wrapper);
+                if (match != null) {
+                    matches.add(match.getElement().getRoleInParent());
+                    base = Optional.of(match);
                 }
-                break;
-            case LEFT:
-                {
-                    SpoonNode match = baseLeft.getSrc(wrapper);
-                    if (match != null) {
-                        matches.add(match.getElement().getRoleInParent());
-                        base = Optional.of(match);
-                    }
-                }
-                break;
+            }
+            break;
             default:
                 throw new IllegalStateException("unmatched revision");
         }
@@ -359,23 +341,20 @@ public class SpoonTreeBuilder {
     }
 
     /**
-     * Resolve they key/value mapping that forms the "body" of an annotation, assuming that
-     * mergeTree is a new value to be inserted (i.e. mergeTree's parent is an annotation).
+     * Resolve they key/value mapping that forms the "body" of an annotation, assuming that mergeTree is a new value
+     * to be inserted (i.e. mergeTree's parent is an annotation).
+     * <p>
+     * This is a bit fiddly, as there are many ways in which the key/value map can be expressed in source code.
+     * See <a href="https://docs.oracle.com/javase/tutorial/java/annotations/basics.html">the Oracle docs</a> for
+     * more info on annotations.
+     * <p>
+     * Note: This method mutates none of the input.
      *
-     * <p>This is a bit fiddly, as there are many ways in which the key/value map can be expressed
-     * in source code. See <a
-     * href="https://docs.oracle.com/javase/tutorial/java/annotations/basics.html">the Oracle
-     * docs</a> for more info on annotations.
-     *
-     * <p>Note: This method mutates none of the input.
-     *
-     * @param mergeTree The tree node currently being merged, to be inserted as a value among
-     *     siblings.
-     * @param siblings A potentially empty map of annotation keys->values currently in the merge
-     *     tree's parent's children, i.e. the siblings of the current mergeTree.
+     * @param mergeTree    The tree node currently being merged, to be inserted as a value among siblings.
+     * @param siblings     A potentially empty map of annotation keys->values currently in the merge tree's parent's
+     *                     children, i.e. the siblings of the current mergeTree.
      * @param originalTree The tree from which mergeTree was copied.
-     * @return A map representing the key/value pairs of an annotation, wich mergeTree inserted
-     *     among its siblings.
+     * @return A map representing the key/value pairs of an annotation, wich mergeTree inserted among its siblings.
      */
     private Map<?, ?> resolveAnnotationMap(
             CtElement mergeTree, Map<?, ?> siblings, CtElement originalTree) {
@@ -383,10 +362,9 @@ public class SpoonTreeBuilder {
         Map<Object, Object> mutableCurrent = new TreeMap<>(siblings);
 
         CtAnnotation<?> annotation = (CtAnnotation<?>) originalTree.getParent();
-        Optional<Map.Entry<String, CtExpression>> originalEntry =
-                annotation.getValues().entrySet().stream()
-                        .filter(entry -> entry.getValue() == originalTree)
-                        .findFirst();
+        Optional<Map.Entry<String, CtExpression>> originalEntry = annotation
+                .getValues().entrySet().stream().filter(
+                        entry -> entry.getValue() == originalTree).findFirst();
 
         if (!originalEntry.isPresent()) {
             throw new IllegalStateException(

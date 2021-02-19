@@ -1,6 +1,6 @@
 package se.kth.spork.base3dm
 
-import java.util.Objects
+import java.util.*
 
 /**
  * Representation of a Parent/Child/Successor triple for 3DM merge. Note that only root, predecessor and successor
@@ -21,10 +21,8 @@ data class Pcs<T : ListNode?>(val root: T, val predecessor: T, val successor: T,
         if (this === other) return true
         if (other == null || javaClass != other.javaClass) return false
         val pcs = other as Pcs<*>
-        return (
-            root == pcs.root &&
-                predecessor == pcs.predecessor &&
-                successor == pcs.successor
-            )
+        return (root == pcs.root
+                && predecessor == pcs.predecessor
+                && successor == pcs.successor)
     }
 }
