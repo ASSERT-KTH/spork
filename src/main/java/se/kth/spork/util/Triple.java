@@ -5,7 +5,7 @@ package se.kth.spork.util;
  *
  * @author Simon Larsén
  */
-public class Triple<T,K,V> {
+public class Triple<T, K, V> {
     public final T first;
     public final K second;
     public final V third;
@@ -16,7 +16,7 @@ public class Triple<T,K,V> {
         this.third = third;
     }
 
-    public static <T,K,V> Triple<T,K,V> of(T first, K second, V third) {
+    public static <T, K, V> Triple<T, K, V> of(T first, K second, V third) {
         return new Triple<>(first, second, third);
     }
 }

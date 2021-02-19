@@ -69,5 +69,4 @@ class MappingRemover(private val mapping: SpoonMapping) : CtScanner() {
             }
         }
     }
-
 }

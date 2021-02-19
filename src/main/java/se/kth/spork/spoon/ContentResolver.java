@@ -1,5 +1,6 @@
 package se.kth.spork.spoon;
 
+import java.util.function.Function;
 import se.kth.spork.spoon.wrappers.RoledValue;
 import se.kth.spork.spoon.wrappers.RoledValues;
 import se.kth.spork.spoon.wrappers.SpoonNode;
@@ -9,8 +10,6 @@ import spoon.reflect.path.CtRole;
 import spoon.reflect.reference.CtReference;
 import spoon.reflect.reference.CtWildcardReference;
 
-import java.util.function.Function;
-
 /**
  * This class determines what the content of any given type of node is.
  *
@@ -19,8 +18,8 @@ import java.util.function.Function;
 class ContentResolver implements Function<SpoonNode, RoledValues> {
 
     /**
-     * Return the content of the supplied node. For example, the content of a CtLiteral is its value, and the
-     * content of a CtNamedElement is its simple name.
+     * Return the content of the supplied node. For example, the content of a CtLiteral is its
+     * value, and the content of a CtNamedElement is its simple name.
      *
      * @param node A node to resolve the content for.
      * @return The content of the node.
@@ -31,8 +30,8 @@ class ContentResolver implements Function<SpoonNode, RoledValues> {
     }
 
     /**
-     * Return the content of the supplied Spoon element. For example, the content of a CtLiteral is its value, and the
-     * content of a CtNamedElement is its simple name.
+     * Return the content of the supplied Spoon element. For example, the content of a CtLiteral is
+     * its value, and the content of a CtNamedElement is its simple name.
      *
      * @param elem A node to resolve the content for.
      * @return The content of the node.
@@ -50,17 +49,23 @@ class ContentResolver implements Function<SpoonNode, RoledValues> {
         } else if (elem instanceof CtReference || elem instanceof CtNamedElement) {
             String name = elem.getValueByRole(CtRole.NAME);
             if (name.matches("\\d+")) {
-                // If the name is a digit, it's an anonymous class. We resolve that to the 0 to prevent
-                // content mismatching on the names of anonymous functions, which don't matter as far as merging goes.
-                // This might cause other issues, though, but it's the best idea I've got at this time.
+                // If the name is a digit, it's an anonymous class. We resolve that to the 0 to
+                // prevent
+                // content mismatching on the names of anonymous functions, which don't matter as
+                // far as merging goes.
+                // This might cause other issues, though, but it's the best idea I've got at this
+                // time.
                 //
-                // It's important that an anonymous class' name is a number as this identifies them as anonymous,
+                // It's important that an anonymous class' name is a number as this identifies them
+                // as anonymous,
                 // see https://github.com/kth/spork/issues/93
                 rvs.add(CtRole.NAME, "0");
             } else {
                 rvs.add(CtRole.NAME, elem.getValueByRole(CtRole.NAME));
             }
-        } else if (elem instanceof CtBinaryOperator || elem instanceof CtUnaryOperator || elem instanceof CtOperatorAssignment) {
+        } else if (elem instanceof CtBinaryOperator
+                || elem instanceof CtUnaryOperator
+                || elem instanceof CtOperatorAssignment) {
             rvs.add(CtRole.OPERATOR_KIND, elem.getValueByRole(CtRole.OPERATOR_KIND));
         }
 
@@ -79,7 +84,9 @@ class ContentResolver implements Function<SpoonNode, RoledValues> {
         }
         if (elem instanceof CtComment) {
             String rawContent = ((CtComment) elem).getRawContent();
-            RoledValue content = new RoledValue(CtRole.COMMENT_CONTENT, elem.getValueByRole(CtRole.COMMENT_CONTENT));
+            RoledValue content =
+                    new RoledValue(
+                            CtRole.COMMENT_CONTENT, elem.getValueByRole(CtRole.COMMENT_CONTENT));
             content.putMetadata(RoledValue.Key.RAW_CONTENT, rawContent);
 
             rvs.add(content);

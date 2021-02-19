@@ -6,5 +6,9 @@ package se.kth.spork.spoon.conflict;
  * @author Simon Larsén
  */
 public enum ConflictType {
-    INSERT_INSERT, INSERT_DELETE, DELETE_DELETE, DELETE_EDIT, MOVE;
+    INSERT_INSERT,
+    INSERT_DELETE,
+    DELETE_DELETE,
+    DELETE_EDIT,
+    MOVE;
 }

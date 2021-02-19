@@ -1,5 +1,6 @@
 package se.kth.spork.spoon.printer;
 
+import java.util.*;
 import se.kth.spork.exception.ConflictException;
 import se.kth.spork.spoon.conflict.ContentConflict;
 import se.kth.spork.spoon.conflict.ModifierHandler;
@@ -14,11 +15,10 @@ import spoon.reflect.reference.CtPackageReference;
 import spoon.reflect.reference.CtTypeReference;
 import spoon.reflect.visitor.CtScanner;
 
-import java.util.*;
-
 /**
- * A pre-processor that must run before pretty-printing a merged tree. It does things like embedding conflict values
- * into literals and unsetting the source position of comments (so they get printed).
+ * A pre-processor that must run before pretty-printing a merged tree. It does things like embedding
+ * conflict values into literals and unsetting the source position of comments (so they get
+ * printed).
  *
  * @author Simon Larsén
  */
@@ -50,16 +50,17 @@ public class PrinterPreprocessor extends CtScanner {
 
     @Override
     public void scan(CtElement element) {
-        if (element == null)
-            return;
+        if (element == null) return;
 
-        element.putMetadata(GLOBAL_CONFLICT_MAP_KEY, Collections.unmodifiableMap(globalContentConflicts));
+        element.putMetadata(
+                GLOBAL_CONFLICT_MAP_KEY, Collections.unmodifiableMap(globalContentConflicts));
 
         // FIXME Temporary fix for bug in Spoon. See method javadoc. Remove once fixed in Spoon.
         handleIncorrectExplicitPackages(element);
 
         @SuppressWarnings("unchecked")
-        List<ContentConflict> conflicts = (List<ContentConflict>) element.getMetadata(ContentConflict.METADATA_KEY);
+        List<ContentConflict> conflicts =
+                (List<ContentConflict>) element.getMetadata(ContentConflict.METADATA_KEY);
 
         if (conflicts != null) {
             conflicts.forEach(conf -> processConflict(conf, element));
@@ -69,24 +70,23 @@ public class PrinterPreprocessor extends CtScanner {
     }
 
     /**
-     * There's a bug in Spoon that causes packages that should be implicit to be explicit. There's another bug
-     * that sometimes attaches the wrong package to references that don't have an explicit package in the source
-     * code. This method attempts to mark all such occasions of packages implicit, so they are not reflected in the
-     * final output.
+     * There's a bug in Spoon that causes packages that should be implicit to be explicit. There's
+     * another bug that sometimes attaches the wrong package to references that don't have an
+     * explicit package in the source code. This method attempts to mark all such occasions of
+     * packages implicit, so they are not reflected in the final output.
      *
-     * See https://github.com/kth/spork/issues/94
+     * <p>See https://github.com/kth/spork/issues/94
      *
-     * For each package reference attached to a type reference, mark as implicit if:
+     * <p>For each package reference attached to a type reference, mark as implicit if:
      *
-     * 1. The package reference refers to the package of the current compilation unit.
-     * 2. The type has been explicitly imported.
-     * 3. All types in the package have been imported with a *
+     * <p>1. The package reference refers to the package of the current compilation unit. 2. The
+     * type has been explicitly imported. 3. All types in the package have been imported with a *
      *
      * @param element An element.
      */
     private void handleIncorrectExplicitPackages(CtElement element) {
         if (element instanceof CtPackageReference) {
-            CtPackageReference pkgRef = (CtPackageReference)  element;
+            CtPackageReference pkgRef = (CtPackageReference) element;
             String pkgName = pkgRef.getQualifiedName();
             CtElement parent = element.getParent();
             if (pkgName.equals(activePackage) || pkgRef.getSimpleName().isEmpty()) {
@@ -95,8 +95,9 @@ public class PrinterPreprocessor extends CtScanner {
                 String parentQualName = ((CtTypeReference<?>) parent).getQualifiedName();
 
                 for (String imp : importStatements) {
-                    if (imp.equals(parentQualName) || imp.endsWith("*")
-                            && pkgName.equals(imp.substring(0, imp.length() - 2))) {
+                    if (imp.equals(parentQualName)
+                            || imp.endsWith("*")
+                                    && pkgName.equals(imp.substring(0, imp.length() - 2))) {
                         element.setImplicit(true);
                         break;
                     }
@@ -106,11 +107,11 @@ public class PrinterPreprocessor extends CtScanner {
     }
 
     /**
-     * Process a conflict, and potentially mutate the element with the conflict. For example, values represented
-     * as strings may have the conflict embedded directly into the literal.
+     * Process a conflict, and potentially mutate the element with the conflict. For example, values
+     * represented as strings may have the conflict embedded directly into the literal.
      *
      * @param conflict A content conflict.
-     * @param element  The element associated with the conflict.
+     * @param element The element associated with the conflict.
      */
     @SuppressWarnings("unchecked")
     private void processConflict(ContentConflict conflict, CtElement element) {
@@ -118,7 +119,8 @@ public class PrinterPreprocessor extends CtScanner {
         Object rightVal = conflict.getRight().getValue();
 
         // The local printer map, unlike the global printer map, is only valid in the scope of the
-        // current CtElement. It contains conflicts for anything that can't be replaced with a conflict id,
+        // current CtElement. It contains conflicts for anything that can't be replaced with a
+        // conflict id,
         // such as operators and modifiers (as these are represented by enums)
         // TODO improve the pretty-printer such that this hack is redundant
         Map<String, Pair<String, String>> localPrinterMap = new HashMap<>();
@@ -129,17 +131,27 @@ public class PrinterPreprocessor extends CtScanner {
                 // these need to go into the global conflicts map, as the nodes in question aren't
                 // always scanned separately by the printer (often it just calls `getSimpleName`)
                 String conflictKey = CONTENT_CONFLICT_PREFIX + currentConflictId++;
-                globalContentConflicts.put(conflictKey, Pair.of(leftVal.toString(), rightVal.toString()));
+                globalContentConflicts.put(
+                        conflictKey, Pair.of(leftVal.toString(), rightVal.toString()));
                 element.setValueByRole(conflict.getRole(), conflictKey);
                 break;
             case COMMENT_CONTENT:
-                String rawLeft = (String) conflict.getLeft().getMetadata(RoledValue.Key.RAW_CONTENT);
-                String rawRight = (String) conflict.getRight().getMetadata(RoledValue.Key.RAW_CONTENT);
-                String rawBase = conflict.getBase().isPresent() ?
-                        (String) conflict.getBase().get().getMetadata(RoledValue.Key.RAW_CONTENT) : "";
+                String rawLeft =
+                        (String) conflict.getLeft().getMetadata(RoledValue.Key.RAW_CONTENT);
+                String rawRight =
+                        (String) conflict.getRight().getMetadata(RoledValue.Key.RAW_CONTENT);
+                String rawBase =
+                        conflict.getBase().isPresent()
+                                ? (String)
+                                        conflict.getBase()
+                                                .get()
+                                                .getMetadata(RoledValue.Key.RAW_CONTENT)
+                                : "";
 
-                Pair<String, Integer> rawConflict = LineBasedMerge.merge(rawBase, rawLeft, rawRight);
-                assert rawConflict.second > 0 : "Comments without conflict should already have been merged";
+                Pair<String, Integer> rawConflict =
+                        LineBasedMerge.merge(rawBase, rawLeft, rawRight);
+                assert rawConflict.second > 0
+                        : "Comments without conflict should already have been merged";
 
                 element.putMetadata(RAW_COMMENT_CONFLICT_KEY, rawConflict.first);
                 break;
@@ -153,8 +165,10 @@ public class PrinterPreprocessor extends CtScanner {
             case MODIFIER:
                 Collection<ModifierKind> leftMods = (Collection<ModifierKind>) leftVal;
                 Collection<ModifierKind> rightMods = (Collection<ModifierKind>) rightVal;
-                Set<ModifierKind> leftVisibilities = ModifierHandler.categorizeModifiers(leftMods).first;
-                Set<ModifierKind> rightVisibilities = ModifierHandler.categorizeModifiers(rightMods).first;
+                Set<ModifierKind> leftVisibilities =
+                        ModifierHandler.categorizeModifiers(leftMods).first;
+                Set<ModifierKind> rightVisibilities =
+                        ModifierHandler.categorizeModifiers(rightMods).first;
 
                 if (leftVisibilities.isEmpty()) {
                     // use the right-hand visibility in actual tree to force something to be printed
@@ -165,8 +179,10 @@ public class PrinterPreprocessor extends CtScanner {
                     localPrinterMap.put(rightVis.toString(), Pair.of("", rightVis.toString()));
                 } else {
                     String leftVisStr = leftVisibilities.iterator().next().toString();
-                    String rightVisStr = rightVisibilities.isEmpty()
-                            ? "" : rightVisibilities.iterator().next().toString();
+                    String rightVisStr =
+                            rightVisibilities.isEmpty()
+                                    ? ""
+                                    : rightVisibilities.iterator().next().toString();
                     localPrinterMap.put(leftVisStr, Pair.of(leftVisStr, rightVisStr));
                 }
                 break;

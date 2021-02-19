@@ -12,7 +12,8 @@ import spoon.reflect.declaration.CtAnnotation
 import spoon.reflect.declaration.CtElement
 import spoon.reflect.declaration.CtTypeInformation
 import spoon.reflect.path.CtRole
-import java.util.*
+import java.util.ArrayList
+import java.util.HashMap
 import java.util.stream.Collectors
 
 /**
@@ -138,9 +139,9 @@ class SpoonMapping private constructor() {
 
     override fun toString(): String {
         return "SpoonMappingStore{" +
-                "srcs=" + srcs.entries.stream().map { entry: Map.Entry<SpoonNode, SpoonNode?> -> formatEntry(entry) }.collect(Collectors.toList()) +
-                ", dsts=" + dsts.entries.stream().map { entry: Map.Entry<SpoonNode, SpoonNode?> -> formatEntry(entry) }.collect(Collectors.toList()) +
-                '}'
+            "srcs=" + srcs.entries.stream().map { entry: Map.Entry<SpoonNode, SpoonNode?> -> formatEntry(entry) }.collect(Collectors.toList()) +
+            ", dsts=" + dsts.entries.stream().map { entry: Map.Entry<SpoonNode, SpoonNode?> -> formatEntry(entry) }.collect(Collectors.toList()) +
+            '}'
     }
 
     companion object {
@@ -164,8 +165,10 @@ class SpoonMapping private constructor() {
                     // at least one was non-null
                     check(!(spoonSrc !== spoonDst))
                     check(m.first.type == -1) { // -1 is the type given to root node in SpoonGumTreeBuilder
-                        ("non-root node " + m.first.toShortString()
-                                + " had no mapped Spoon object")
+                        (
+                            "non-root node " + m.first.toShortString() +
+                                " had no mapped Spoon object"
+                            )
                     }
                 } else if (!ignoreMapping(spoonSrc, spoonDst)) {
                     mapping.put(spoonSrc, spoonDst)
