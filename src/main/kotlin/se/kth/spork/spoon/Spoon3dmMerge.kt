@@ -34,6 +34,8 @@ import spoon.reflect.declaration.CtMethod
 import spoon.reflect.declaration.CtField
 import se.kth.spork.util.LineBasedMerge
 import se.kth.spork.util.Pair
+import spoon.reflect.declaration.CtExecutable
+import java.lang.IllegalStateException
 import java.nio.file.Path
 import java.util.ArrayList
 import java.util.Arrays
@@ -218,57 +220,59 @@ object Spoon3dmMerge {
 
     private fun eliminateDuplicateMembers(type: CtType<*>): Int {
         val members: List<CtTypeMember> = ArrayList(type.typeMembers)
-        val memberMap: MutableMap<String, CtTypeMember> = HashMap()
         var numConflicts = 0
-        for (member in members) {
-            var key: String
-            key = if (member is CtMethod<*>) {
-                member.signature
-            } else if (member is CtField<*>) {
-                member.getSimpleName()
-            } else if (member is CtType<*>) {
-                member.qualifiedName
-            } else {
-                continue
+
+        val getMemberName = { member: CtTypeMember -> when (member) {
+            is CtExecutable<*> -> member.signature
+            is CtField<*> -> member.simpleName
+            is CtType<*> -> member.qualifiedName
+            else -> throw IllegalStateException("unknown member type ${member.javaClass}")
+        }}
+
+        val duplicates: List<kotlin.Pair<CtTypeMember, CtTypeMember>> =
+            members.groupBy(getMemberName).filterValues { it.size == 2 }.values.map {
+                kotlin.Pair(it[0], it[1])
             }
-            val duplicate = memberMap[key]
-            if (duplicate == null) {
-                memberMap[key] = member
-            } else {
-                LOGGER.info { "Merging duplicated member $key" }
 
-                // need to clear the metadata from these members to be able to re-run the merge
-                member.descendantIterator().forEachRemaining(NodeFactory::clearNonRevisionMetadata)
-                duplicate
-                    .descendantIterator()
-                    .forEachRemaining(NodeFactory::clearNonRevisionMetadata)
-                val dummyBase = member.clone() as CtTypeMember
-                dummyBase.setParent(type)
-                dummyBase.directChildren.forEach(CtElement::delete)
+        for ((left, right) in duplicates) {
+            LOGGER.info { "Merging duplicated member ${getMemberName(left)}" }
+            left.descendantIterator().forEachRemaining(NodeFactory::clearNonRevisionMetadata)
 
-                // we forcibly set the virtual root as parent, as the real parent of these members
-                // is outside of the current scope
-                clearNonRevisionMetadata(member)
-                clearNonRevisionMetadata(duplicate)
-                clearNonRevisionMetadata(dummyBase)
-                forceWrap(member, virtualRoot)
-                forceWrap(duplicate, virtualRoot)
-                forceWrap(dummyBase, virtualRoot)
+            left.descendantIterator().forEachRemaining(NodeFactory::clearNonRevisionMetadata)
+            right
+                .descendantIterator()
+                .forEachRemaining(NodeFactory::clearNonRevisionMetadata)
+            val dummyBase = left.clone() as CtTypeMember
+            dummyBase.setParent(type)
+            dummyBase.directChildren.forEach(CtElement::delete)
 
-                // use the full gumtree matcher as both base matcher and left-to-right matcher
-                val mergePair = merge(
-                    dummyBase,
-                    member,
-                    duplicate,
-                    ::matchTrees,
-                    ::matchTrees)
-                numConflicts += mergePair.second
-                val mergedMember = mergePair.first
-                member.delete()
-                duplicate.delete()
-                type.addTypeMember(mergedMember)
-            }
+            // we forcibly set the virtual root as parent, as the real parent of these members
+            // is outside of the current scope
+            clearNonRevisionMetadata(left)
+            clearNonRevisionMetadata(right)
+            clearNonRevisionMetadata(dummyBase)
+            forceWrap(left, virtualRoot)
+            forceWrap(right, virtualRoot)
+            forceWrap(dummyBase, virtualRoot)
+
+            // use the full gumtree matcher as both base matcher and left-to-right matcher
+            val mergePair = merge(
+                dummyBase,
+                left,
+                right,
+                ::matchTrees,
+                ::matchTrees)
+            numConflicts += mergePair.second
+            val mergedMember = mergePair.first
+            left.delete()
+            right.delete()
+
+            // badness in the Spoon API: addTypeMember returns a generic type that depends only on the
+            // static type of the returned expression. So we must store the returned expression and declare
+            // the type, or Kotlin gets grumpy.
+            val dontcare: CtType<*> = type.addTypeMember(mergedMember)
         }
+
         return numConflicts
     }
 
