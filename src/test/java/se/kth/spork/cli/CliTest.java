@@ -97,7 +97,7 @@ class CliTest {
         List<Util.Conflict> expectedConflicts = Util.parseConflicts(sources.expected);
 
         Pair<CtModule, Integer> merged =
-                Spoon3dmMerge.merge(sources.base, sources.left, sources.right);
+                Spoon3dmMerge.INSTANCE.merge(sources.base, sources.left, sources.right);
         CtModule mergeTree = merged.first;
         Integer numConflicts = merged.second;
 
@@ -118,7 +118,7 @@ class CliTest {
         CtModule expected = Parser.INSTANCE.parse(Util.keepLeftConflict(sources.expected));
 
         Pair<CtModule, Integer> merged =
-                Spoon3dmMerge.merge(sources.base, sources.left, sources.right);
+                Spoon3dmMerge.INSTANCE.merge(sources.base, sources.left, sources.right);
         CtModule mergeTree = merged.first;
 
         String prettyPrint = Cli.prettyPrint(mergeTree);
@@ -136,7 +136,7 @@ class CliTest {
      */
     private static void runTestMerge(Util.TestSources sources, Path tempDir) throws IOException {
         Pair<CtModule, Integer> merged =
-                Spoon3dmMerge.merge(sources.base, sources.left, sources.right);
+                Spoon3dmMerge.INSTANCE.merge(sources.base, sources.left, sources.right);
         CtModule mergeTree = merged.first;
 
         Object expectedImports = mergeTree.getMetadata(Parser.IMPORT_STATEMENTS);

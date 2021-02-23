@@ -37,7 +37,8 @@ class Spoon3dmMergeTest {
     @ArgumentsSource(Util.CleanLineBasedFallbackProvider.class)
     void merge_shouldBeClean_withGranularLineBasedFallback(Util.TestSources sources)
             throws IOException {
-        assertEquals(0, Spoon3dmMerge.merge(sources.base, sources.left, sources.right).second);
+        assertEquals(
+                0, Spoon3dmMerge.INSTANCE.merge(sources.base, sources.left, sources.right).second);
     }
 
     @Disabled
@@ -46,7 +47,7 @@ class Spoon3dmMergeTest {
     void merge_shouldThrow_onUnhandledInconsistencies(Util.TestSources sources) {
         assertThrows(
                 ConflictException.class,
-                () -> Spoon3dmMerge.merge(sources.base, sources.left, sources.right));
+                () -> Spoon3dmMerge.INSTANCE.merge(sources.base, sources.left, sources.right));
     }
 
     private static void runTestMerge(Util.TestSources sources) {
@@ -57,7 +58,7 @@ class Spoon3dmMergeTest {
         assert expectedCuComment != null;
 
         Pair<CtModule, Integer> merged =
-                Spoon3dmMerge.merge(sources.base, sources.left, sources.right);
+                Spoon3dmMerge.INSTANCE.merge(sources.base, sources.left, sources.right);
         CtModule mergeTree = merged.first;
         Object mergedImports = mergeTree.getMetadata(Parser.IMPORT_STATEMENTS);
         Object mergedCuComment = mergeTree.getMetadata(Parser.COMPILATION_UNIT_COMMENT);
