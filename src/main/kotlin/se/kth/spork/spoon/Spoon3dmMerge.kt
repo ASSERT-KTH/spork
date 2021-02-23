@@ -2,46 +2,42 @@ package se.kth.spork.spoon
 
 import com.github.gumtreediff.matchers.Matcher
 import com.github.gumtreediff.matchers.Matchers
-import se.kth.spork.spoon.Parser.parse
-import se.kth.spork.spoon.matching.SpoonMapping.Companion.fromGumTreeMapping
-import se.kth.spork.spoon.matching.createClassRepresentativesMapping
-import se.kth.spork.base3dm.resolveRawMerge
-import se.kth.spork.spoon.matching.MappingRemover.Companion.removeFromMappings
-import se.kth.spork.spoon.wrappers.NodeFactory.clearNonRevisionMetadata
-import se.kth.spork.spoon.wrappers.NodeFactory.forceWrap
-import se.kth.spork.spoon.wrappers.NodeFactory.virtualRoot
-import se.kth.spork.util.LazyLogger
-import spoon.reflect.declaration.CtModule
-import spoon.reflect.declaration.CtElement
 import com.github.gumtreediff.tree.ITree
 import gumtree.spoon.builder.SpoonGumTreeBuilder
 import se.kth.spork.base3dm.ChangeSet
 import se.kth.spork.base3dm.Revision
-import se.kth.spork.spoon.conflict.StructuralConflict
-import se.kth.spork.spoon.conflict.MethodOrderingConflictHandler
-import se.kth.spork.spoon.conflict.OptimisticInsertInsertHandler
-import se.kth.spork.spoon.conflict.IsImplicitHandler
-import se.kth.spork.spoon.conflict.ModifierHandler
-import se.kth.spork.spoon.conflict.IsUpperHandler
+import se.kth.spork.base3dm.resolveRawMerge
+import se.kth.spork.spoon.Parser.parse
 import se.kth.spork.spoon.conflict.CommentContentHandler
+import se.kth.spork.spoon.conflict.IsImplicitHandler
+import se.kth.spork.spoon.conflict.IsUpperHandler
+import se.kth.spork.spoon.conflict.MethodOrderingConflictHandler
+import se.kth.spork.spoon.conflict.ModifierHandler
+import se.kth.spork.spoon.conflict.OptimisticInsertInsertHandler
+import se.kth.spork.spoon.conflict.StructuralConflict
+import se.kth.spork.spoon.matching.MappingRemover.Companion.removeFromMappings
+import se.kth.spork.spoon.matching.SpoonMapping.Companion.fromGumTreeMapping
+import se.kth.spork.spoon.matching.createClassRepresentativesMapping
 import se.kth.spork.spoon.pcsinterpreter.PcsInterpreter
 import se.kth.spork.spoon.wrappers.NodeFactory
-import spoon.reflect.declaration.CtImport
-import spoon.reflect.declaration.CtType
-import spoon.reflect.declaration.CtTypeMember
-import java.util.HashMap
-import spoon.reflect.declaration.CtMethod
-import spoon.reflect.declaration.CtField
+import se.kth.spork.spoon.wrappers.NodeFactory.clearNonRevisionMetadata
+import se.kth.spork.spoon.wrappers.NodeFactory.forceWrap
+import se.kth.spork.spoon.wrappers.NodeFactory.virtualRoot
+import se.kth.spork.util.LazyLogger
 import se.kth.spork.util.LineBasedMerge
 import se.kth.spork.util.Pair
+import spoon.reflect.declaration.CtElement
 import spoon.reflect.declaration.CtExecutable
+import spoon.reflect.declaration.CtField
+import spoon.reflect.declaration.CtImport
+import spoon.reflect.declaration.CtModule
+import spoon.reflect.declaration.CtType
+import spoon.reflect.declaration.CtTypeMember
 import java.lang.IllegalStateException
 import java.nio.file.Path
 import java.util.ArrayList
 import java.util.Arrays
-import java.util.Comparator
 import java.util.HashSet
-import java.util.function.Consumer
 
 /**
  * Spoon specialization of the 3DM merge algorithm.
@@ -192,7 +188,10 @@ object Spoon3dmMerge {
     }
 
     private fun mergeMetadataElements(
-        mergeTree: CtElement, base: CtElement, left: CtElement, right: CtElement
+        mergeTree: CtElement,
+        base: CtElement,
+        left: CtElement,
+        right: CtElement
     ): Int {
         var numConflicts = 0
         if (base.getMetadata(Parser.IMPORT_STATEMENTS) != null) {
@@ -222,12 +221,14 @@ object Spoon3dmMerge {
         val members: List<CtTypeMember> = ArrayList(type.typeMembers)
         var numConflicts = 0
 
-        val getMemberName = { member: CtTypeMember -> when (member) {
-            is CtExecutable<*> -> member.signature
-            is CtField<*> -> member.simpleName
-            is CtType<*> -> member.qualifiedName
-            else -> throw IllegalStateException("unknown member type ${member.javaClass}")
-        }}
+        val getMemberName = { member: CtTypeMember ->
+            when (member) {
+                is CtExecutable<*> -> member.signature
+                is CtField<*> -> member.simpleName
+                is CtType<*> -> member.qualifiedName
+                else -> throw IllegalStateException("unknown member type ${member.javaClass}")
+            }
+        }
 
         val duplicates: List<kotlin.Pair<CtTypeMember, CtTypeMember>> =
             members.groupBy(getMemberName).filterValues { it.size == 2 }.values.map {
@@ -261,7 +262,8 @@ object Spoon3dmMerge {
                 left,
                 right,
                 ::matchTrees,
-                ::matchTrees)
+                ::matchTrees
+            )
             numConflicts += mergePair.second
             val mergedMember = mergePair.first
             left.delete()
@@ -282,7 +284,9 @@ object Spoon3dmMerge {
      * @return A pair with the merge and the amount of conflicts.
      */
     private fun mergeCuComments(
-        base: CtElement, left: CtElement, right: CtElement
+        base: CtElement,
+        left: CtElement,
+        right: CtElement
     ): Pair<String, Int> {
         val baseComment = getCuComment(base)
         val leftComment = getCuComment(left)
@@ -309,7 +313,9 @@ object Spoon3dmMerge {
      * @return A merged import list, sorted in lexicographical order.
      */
     private fun mergeImportStatements(
-        base: CtElement, left: CtElement, right: CtElement
+        base: CtElement,
+        left: CtElement,
+        right: CtElement
     ): List<CtImport> {
         val baseImports = HashSet(base.getMetadata(Parser.IMPORT_STATEMENTS) as Collection<CtImport>)
         val leftImports = HashSet(left.getMetadata(Parser.IMPORT_STATEMENTS) as Collection<CtImport>)
