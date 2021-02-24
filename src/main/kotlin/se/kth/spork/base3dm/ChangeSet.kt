@@ -10,7 +10,7 @@ import java.util.function.Function
  *
  * @author Simon Larsén
  */
-class ChangeSet<T : ListNode, V>(private val classRepMap: Map<T, T>, getContent: Function<T, V>, vararg trees: Set<Pcs<T>>) {
+class ChangeSet<T : ListNode, V>(private val classRepMap: Map<T, T>, getContent: (T) -> V, vararg trees: Set<Pcs<T>>) {
     private val successors: MutableMap<T, MutableSet<Pcs<T>>>
     private val predecessors: MutableMap<T, MutableSet<Pcs<T>>>
 
@@ -133,7 +133,7 @@ class ChangeSet<T : ListNode, V>(private val classRepMap: Map<T, T>, getContent:
      * @param tree A PCS tree structure.
      * @param getContent A function that returns the content of a T node.
      */
-    private fun add(tree: Set<Pcs<T>>, getContent: Function<T, V>) {
+    private fun add(tree: Set<Pcs<T>>, getContent: (T) -> V) {
         for (pcs in tree) {
             val classRepPcs = addToStar(pcs)
             val pred = pcs.predecessor
@@ -142,7 +142,7 @@ class ChangeSet<T : ListNode, V>(private val classRepMap: Map<T, T>, getContent:
             addToLookupTable(classRepPred, classRepPcs, predecessors)
             addToLookupTable(classRepSucc, classRepPcs, successors)
             if (!pred.isVirtual) {
-                val c = Content(pcs, getContent.apply(pred), pred.revision)
+                val c = Content(pcs, getContent(pred), pred.revision)
                 addToLookupTable(classRepPred, c, _content)
             }
         }
