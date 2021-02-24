@@ -1,22 +1,22 @@
 package se.kth.spork.spoon
 
-import se.kth.spork.spoon.wrappers.RoledValues
-import spoon.reflect.declaration.CtElement
-import spoon.reflect.path.CtRole
-import spoon.reflect.code.CtLiteral
-import spoon.reflect.reference.CtReference
-import spoon.reflect.declaration.CtNamedElement
-import spoon.reflect.code.CtBinaryOperator
-import spoon.reflect.code.CtUnaryOperator
-import spoon.reflect.code.CtOperatorAssignment
-import spoon.reflect.declaration.CtParameter
-import spoon.reflect.code.CtLocalVariable
-import spoon.reflect.declaration.CtModifiable
-import spoon.reflect.reference.CtWildcardReference
-import spoon.reflect.code.CtComment
 import se.kth.spork.spoon.wrappers.RoledValue
+import se.kth.spork.spoon.wrappers.RoledValues
 import se.kth.spork.spoon.wrappers.SpoonNode
+import spoon.reflect.code.CtBinaryOperator
+import spoon.reflect.code.CtComment
+import spoon.reflect.code.CtLiteral
+import spoon.reflect.code.CtLocalVariable
+import spoon.reflect.code.CtOperatorAssignment
+import spoon.reflect.code.CtUnaryOperator
+import spoon.reflect.declaration.CtElement
 import spoon.reflect.declaration.CtMethod
+import spoon.reflect.declaration.CtModifiable
+import spoon.reflect.declaration.CtNamedElement
+import spoon.reflect.declaration.CtParameter
+import spoon.reflect.path.CtRole
+import spoon.reflect.reference.CtReference
+import spoon.reflect.reference.CtWildcardReference
 
 /**
  * @param node A [SpoonNode]
@@ -52,9 +52,9 @@ private fun getContent(elem: CtElement): RoledValues {
         } else {
             rvs.add(CtRole.NAME, elem.getValueByRole<Any>(CtRole.NAME))
         }
-    } else if (elem is CtBinaryOperator<*>
-        || elem is CtUnaryOperator<*>
-        || elem is CtOperatorAssignment<*, *>
+    } else if (elem is CtBinaryOperator<*> ||
+        elem is CtUnaryOperator<*> ||
+        elem is CtOperatorAssignment<*, *>
     ) {
         rvs.add(CtRole.OPERATOR_KIND, elem.getValueByRole<Any>(CtRole.OPERATOR_KIND))
     }

@@ -1,7 +1,6 @@
 package se.kth.spork.base3dm
 
 import java.util.Collections
-import java.util.function.Function
 
 /**
  * Represents a change set in 3DM merge. While a change set in pure 3DM merge is just all content tuples and PCS
