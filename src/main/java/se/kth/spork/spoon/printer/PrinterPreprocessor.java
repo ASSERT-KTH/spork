@@ -140,9 +140,10 @@ public class PrinterPreprocessor extends CtScanner {
                         (String) conflict.getLeft().getMetadata(RoledValue.Key.RAW_CONTENT);
                 String rawRight =
                         (String) conflict.getRight().getMetadata(RoledValue.Key.RAW_CONTENT);
-                String rawBase = conflict.getBase() == null
-                                ? (String) conflict.getBase()
-                                                .getMetadata(RoledValue.Key.RAW_CONTENT)
+                String rawBase =
+                        conflict.getBase() == null
+                                ? (String)
+                                        conflict.getBase().getMetadata(RoledValue.Key.RAW_CONTENT)
                                 : "";
 
                 Pair<String, Integer> rawConflict =

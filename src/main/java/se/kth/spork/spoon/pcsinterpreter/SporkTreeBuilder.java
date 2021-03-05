@@ -188,7 +188,10 @@ class SporkTreeBuilder {
         return conflicts == null
                 ? Optional.empty()
                 : conflicts.stream()
-                        .filter(confPcs -> StructuralConflict.Companion.isSuccessorConflict(pcs, confPcs))
+                        .filter(
+                                confPcs ->
+                                        StructuralConflict.Companion.isSuccessorConflict(
+                                                pcs, confPcs))
                         .findFirst();
     }
 
