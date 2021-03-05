@@ -112,12 +112,13 @@ class ModifierHandler : ContentConflictHandler {
 
             // present in both left and right == ALL GOOD
             val isInLeftAndRight = { m: ModifierKind -> m in left && m in right }
-            // respect deletions, if an element is present in only one of left and right, and is present in base, then it has been deleted
-            val isDeleted = {m: ModifierKind -> m in base && (m in left) xor (m in right)}
+            // respect deletions, if an element is present in only one of left and right,
+            // and is present in base, then it has been deleted
+            val isDeleted = {m: ModifierKind -> m in base && ((m in left) xor (m in right))}
 
             val mods = (visibility + keywords + other).filter {
-                mod -> isInLeftAndRight(mod) && !isDeleted(mod)
-            }
+                mod -> isInLeftAndRight(mod) || !isDeleted(mod)
+            }.toSet()
             return Pair.of(mods, conflict)
         }
     }
