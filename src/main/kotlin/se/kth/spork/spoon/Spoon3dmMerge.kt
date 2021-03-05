@@ -115,10 +115,10 @@ object Spoon3dmMerge {
         val t2 = PcsBuilder.fromSpoon(right, Revision.RIGHT)
         LOGGER.info { "Computing raw PCS merge" }
         var delta = ChangeSet(
-            classRepMap, ContentResolver(), t0, t1, t2
+            classRepMap, ::getContent, t0, t1, t2
         )
         val t0Star = ChangeSet(
-            classRepMap, ContentResolver(), t0
+            classRepMap, ::getContent, t0
         )
         LOGGER.info { "Resolving final PCS merge" }
         resolveRawMerge(t0Star, delta)
@@ -134,7 +134,7 @@ object Spoon3dmMerge {
                 base, left, right, baseLeft, baseRight, leftRight
             )
             LOGGER.info { "Computing raw PCS merge" }
-            delta = ChangeSet(classRepMap, ContentResolver(), t0, t1, t2)
+            delta = ChangeSet(classRepMap, ::getContent, t0, t1, t2)
             LOGGER.info { "Resolving final PCS merge" }
             resolveRawMerge(t0Star, delta)
         }
@@ -294,10 +294,7 @@ object Spoon3dmMerge {
         return LineBasedMerge.merge(baseComment, leftComment, rightComment)
     }
 
-    private fun getCuComment(mod: CtElement): String {
-        val comment = mod.getMetadata(Parser.COMPILATION_UNIT_COMMENT) as String
-        return comment ?: ""
-    }
+    private fun getCuComment(mod: CtElement): String = mod.getMetadata(Parser.COMPILATION_UNIT_COMMENT) as String
 
     /**
      * Merge import statements from base, left and right. Import statements are expected to be
