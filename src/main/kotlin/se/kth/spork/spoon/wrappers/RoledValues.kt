@@ -21,7 +21,7 @@ class RoledValues : ArrayList<RoledValue> {
         element = other.element.clone()
     }
 
-    fun add(role: CtRole, value: Any) {
+    fun add(role: CtRole, value: Any?) {
         add(RoledValue(role, value))
     }
 
