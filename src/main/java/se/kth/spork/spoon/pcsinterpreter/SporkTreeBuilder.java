@@ -92,8 +92,7 @@ class SporkTreeBuilder {
                         handler ->
                                 handler.tryResolveConflict(
                                         unmodifiableLeft, unmodifiableRight, conflictType))
-                .filter(Optional::isPresent)
-                .map(Optional::get)
+                .filter(Objects::nonNull)
                 .findFirst();
     }
 
@@ -189,7 +188,7 @@ class SporkTreeBuilder {
         return conflicts == null
                 ? Optional.empty()
                 : conflicts.stream()
-                        .filter(confPcs -> StructuralConflict.isSuccessorConflict(pcs, confPcs))
+                        .filter(confPcs -> StructuralConflict.Companion.isSuccessorConflict(pcs, confPcs))
                         .findFirst();
     }
 
@@ -301,7 +300,7 @@ class SporkTreeBuilder {
                         conflicts.stream()
                                 .filter(
                                         confPcs ->
-                                                StructuralConflict.isPredecessorConflict(
+                                                StructuralConflict.Companion.isPredecessorConflict(
                                                         finalPcs, confPcs))
                                 .findFirst();
 

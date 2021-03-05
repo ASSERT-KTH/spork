@@ -163,8 +163,8 @@ public final class SporkPrettyPrinter extends DefaultJavaPrettyPrinter {
 
     private void handleStructuralConflict(
             CtElement element, StructuralConflict structuralConflict) {
-        if (structuralConflict.lineBasedMerge.isPresent()) {
-            String merge = structuralConflict.lineBasedMerge.get();
+        String merge = structuralConflict.getLineBasedMerge();
+        if (merge != null) {
             int indentation = SourceExtractor.getIndentation(element);
             printerHelper.writeRawSourceCode(merge, indentation);
         } else {
@@ -174,8 +174,8 @@ public final class SporkPrettyPrinter extends DefaultJavaPrettyPrinter {
 
     /** Write both pats of a structural conflict. */
     private void writeStructuralConflict(StructuralConflict structuralConflict) {
-        String leftSource = SourceExtractor.getOriginalSource(structuralConflict.left);
-        String rightSource = SourceExtractor.getOriginalSource(structuralConflict.right);
+        String leftSource = SourceExtractor.getOriginalSource(structuralConflict.getLeft());
+        String rightSource = SourceExtractor.getOriginalSource(structuralConflict.getRight());
         printerHelper.writeConflict(leftSource, rightSource);
     }
 
