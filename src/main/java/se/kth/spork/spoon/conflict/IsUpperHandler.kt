@@ -4,7 +4,6 @@ import spoon.reflect.path.CtRole
 import spoon.reflect.declaration.CtElement
 import spoon.reflect.reference.CtWildcardReference
 import se.kth.spork.util.Pair
-import java.util.Optional
 
 /**
  * A conflict handler for the IS_UPPER attribute. This appears on wildcards to specify if a type
@@ -31,7 +30,7 @@ class IsUpperHandler : ContentConflictHandler {
     companion object {
         private fun mergeIsUpper(
             baseElem: CtElement?, leftElem: CtElement, rightElem: CtElement
-        ): Optional<Any> {
+        ): Any? {
             val left = leftElem as CtWildcardReference
             val right = rightElem as CtWildcardReference
             val leftBoundIsImplicit = left.boundingType.isImplicit
@@ -42,17 +41,13 @@ class IsUpperHandler : ContentConflictHandler {
                 if (leftBoundIsImplicit != rightBoundIsImplicit) {
                     // one bound was removed, so we go with whatever is on the bound that is not equal
                     // to base
-                    return Optional.of(
-                        if (baseBoundIsImplicit == leftBoundIsImplicit) left.isUpper else right.isUpper
-                    )
+                    return if (baseBoundIsImplicit == leftBoundIsImplicit) left.isUpper else right.isUpper
                 }
-            } else {
-                if (leftBoundIsImplicit != rightBoundIsImplicit) {
-                    // only one bound implicit, pick isUpper of the explicit one
-                    return Optional.of(if (leftBoundIsImplicit) left.isUpper else right.isUpper)
-                }
+            } else if (leftBoundIsImplicit != rightBoundIsImplicit) {
+                // only one bound implicit, pick isUpper of the explicit one
+                return if (leftBoundIsImplicit) left.isUpper else right.isUpper
             }
-            return Optional.empty()
+            return null
         }
     }
 }
