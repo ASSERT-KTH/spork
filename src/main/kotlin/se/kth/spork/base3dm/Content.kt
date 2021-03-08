@@ -8,7 +8,7 @@ import java.util.Objects
  * @param context The context of this content. The value is associated with the predecessor of the context.
  * @param value The value of the this content.
  */
-data class Content<T : ListNode?, V>(val context: Pcs<T>, val value: V, val revision: Revision) {
+data class Content<T : ListNode, V>(val context: Pcs<T>, val value: V, val revision: Revision) {
     override fun equals(o: Any?): Boolean {
         if (this === o) return true
         if (o == null || javaClass != o.javaClass) return false

@@ -10,7 +10,7 @@ import java.util.ArrayList
  *
  * @author Simon Larsén
  */
-class RoledValues : ArrayList<RoledValue?> {
+class RoledValues : ArrayList<RoledValue> {
     val element: CtElement
 
     constructor(element: CtElement) : super() {
@@ -21,11 +21,11 @@ class RoledValues : ArrayList<RoledValue?> {
         element = other.element.clone()
     }
 
-    fun add(role: CtRole?, value: Any?) {
-        add(RoledValue(role!!, value))
+    fun add(role: CtRole, value: Any?) {
+        add(RoledValue(role, value))
     }
 
-    operator fun set(i: Int, role: CtRole?, value: Any): RoledValue? {
-        return set(i, RoledValue(role!!, value))
+    operator fun set(i: Int, role: CtRole, value: Any): RoledValue {
+        return set(i, RoledValue(role, value))
     }
 }

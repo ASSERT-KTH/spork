@@ -1,8 +1,6 @@
-package se.kth.spork.spoon.conflict;
+package se.kth.spork.spoon.conflict
 
-import java.util.List;
-import java.util.Optional;
-import se.kth.spork.spoon.wrappers.SpoonNode;
+import se.kth.spork.spoon.wrappers.SpoonNode
 
 /**
  * A an interface for structural conflict handlers that can automatically resolve a particular type
@@ -10,7 +8,7 @@ import se.kth.spork.spoon.wrappers.SpoonNode;
  *
  * @author Simon Larsén
  */
-public interface StructuralConflictHandler {
+interface StructuralConflictHandler {
     /**
      * Attempt to resolve a structural conflict. If the conflict is resolved, a non-empty optional
      * is returned with the nodes in the order that theys should appear. The list in the optional
@@ -19,8 +17,11 @@ public interface StructuralConflictHandler {
      * @param leftNodes Nodes from the left side of the conflict.
      * @param rightNodes Nodes from the right side of the conflict.
      * @return An optional list of nodes, where a present value indicates that the conflict was
-     *     successfully resolved.
+     * successfully resolved.
      */
-    Optional<List<SpoonNode>> tryResolveConflict(
-            List<SpoonNode> leftNodes, List<SpoonNode> rightNodes, ConflictType type);
+    fun tryResolveConflict(
+        leftNodes: List<SpoonNode>,
+        rightNodes: List<SpoonNode>,
+        type: ConflictType
+    ): List<SpoonNode>?
 }

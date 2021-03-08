@@ -141,11 +141,9 @@ public class PrinterPreprocessor extends CtScanner {
                 String rawRight =
                         (String) conflict.getRight().getMetadata(RoledValue.Key.RAW_CONTENT);
                 String rawBase =
-                        conflict.getBase().isPresent()
+                        conflict.getBase() == null
                                 ? (String)
-                                        conflict.getBase()
-                                                .get()
-                                                .getMetadata(RoledValue.Key.RAW_CONTENT)
+                                        conflict.getBase().getMetadata(RoledValue.Key.RAW_CONTENT)
                                 : "";
 
                 Pair<String, Integer> rawConflict =
@@ -166,9 +164,9 @@ public class PrinterPreprocessor extends CtScanner {
                 Collection<ModifierKind> leftMods = (Collection<ModifierKind>) leftVal;
                 Collection<ModifierKind> rightMods = (Collection<ModifierKind>) rightVal;
                 Set<ModifierKind> leftVisibilities =
-                        ModifierHandler.categorizeModifiers(leftMods).first;
+                        ModifierHandler.Companion.categorizeModifiers(leftMods).first;
                 Set<ModifierKind> rightVisibilities =
-                        ModifierHandler.categorizeModifiers(rightMods).first;
+                        ModifierHandler.Companion.categorizeModifiers(rightMods).first;
 
                 if (leftVisibilities.isEmpty()) {
                     // use the right-hand visibility in actual tree to force something to be printed
