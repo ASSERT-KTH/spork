@@ -11,7 +11,6 @@ import se.kth.spork.util.Pair
 import se.kth.spork.util.Triple
 import java.util.ArrayDeque
 import java.util.ArrayList
-import java.util.Optional
 
 /**
  * A class for dealing with merging of content.

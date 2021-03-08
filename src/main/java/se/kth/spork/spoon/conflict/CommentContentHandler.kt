@@ -4,7 +4,6 @@ import spoon.reflect.path.CtRole
 import spoon.reflect.declaration.CtElement
 import se.kth.spork.util.LineBasedMerge
 import se.kth.spork.util.Pair
-import java.util.Optional
 
 /**
  * A conflict handler for comment contents.

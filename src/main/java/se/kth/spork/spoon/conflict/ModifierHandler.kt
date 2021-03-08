@@ -4,12 +4,8 @@ import spoon.reflect.path.CtRole
 import spoon.reflect.declaration.CtElement
 import spoon.reflect.declaration.ModifierKind
 import java.util.HashSet
-import java.util.stream.Collectors
 import se.kth.spork.util.Pair
 import se.kth.spork.util.Triple
-import java.util.Optional
-import java.util.function.Function
-import java.util.function.Predicate
 import java.util.stream.Stream
 
 /**

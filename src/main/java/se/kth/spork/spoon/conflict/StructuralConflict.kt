@@ -4,7 +4,6 @@ import se.kth.spork.spoon.wrappers.SpoonNode
 import spoon.reflect.declaration.CtElement
 import java.util.HashSet
 import se.kth.spork.base3dm.Pcs
-import java.util.Optional
 
 /**
  * A simple class that provides some information on a structural conflict. Meant to be put as
