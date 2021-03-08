@@ -26,12 +26,9 @@ class CommentContentHandler : ContentConflictHandler {
         return Pair.of(mergeComments(baseVal ?: "", leftVal, rightVal), false)
     }
 
-    companion object {
-        private fun mergeComments(base: Any, left: Any?, right: Any?): Optional<Any> {
-            val merge = LineBasedMerge.merge(base.toString(), left.toString(), right.toString())
-            return if (merge.second > 0) {
-                Optional.empty()
-            } else Optional.of(merge.first)
-        }
+    private fun mergeComments(base: Any, left: Any, right: Any): Any? {
+        val merge = LineBasedMerge.merge(base.toString(), left.toString(), right.toString())
+        return if (merge.second > 0) null
+        else merge.first
     }
 }
