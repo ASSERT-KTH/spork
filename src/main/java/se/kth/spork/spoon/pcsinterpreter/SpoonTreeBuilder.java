@@ -235,7 +235,9 @@ public class SpoonTreeBuilder {
      */
     private CtElement visitConflicting(SpoonNode parent, StructuralConflict conflict) {
         final CtElement dummy =
-                conflict.left.size() > 0 ? conflict.left.get(0) : conflict.right.get(0);
+                conflict.getLeft().size() > 0
+                        ? conflict.getLeft().get(0)
+                        : conflict.getRight().get(0);
 
         CtElement mergeParent = nodes.get(parent).getElement();
 
