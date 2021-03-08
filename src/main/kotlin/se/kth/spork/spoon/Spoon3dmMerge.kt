@@ -24,8 +24,8 @@ import se.kth.spork.spoon.wrappers.NodeFactory.clearNonRevisionMetadata
 import se.kth.spork.spoon.wrappers.NodeFactory.forceWrap
 import se.kth.spork.spoon.wrappers.NodeFactory.virtualRoot
 import se.kth.spork.util.LazyLogger
-import se.kth.spork.util.LineBasedMerge
 import se.kth.spork.util.Pair
+import se.kth.spork.util.lineBasedMerge
 import spoon.reflect.declaration.CtElement
 import spoon.reflect.declaration.CtExecutable
 import spoon.reflect.declaration.CtField
@@ -291,7 +291,7 @@ object Spoon3dmMerge {
         val baseComment = getCuComment(base)
         val leftComment = getCuComment(left)
         val rightComment = getCuComment(right)
-        return LineBasedMerge.merge(baseComment, leftComment, rightComment)
+        return lineBasedMerge(baseComment, leftComment, rightComment)
     }
 
     private fun getCuComment(mod: CtElement): String = mod.getMetadata(Parser.COMPILATION_UNIT_COMMENT) as String

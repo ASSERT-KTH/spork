@@ -19,7 +19,7 @@ import se.kth.spork.spoon.Parser;
 import se.kth.spork.spoon.Spoon3dmMerge;
 import se.kth.spork.spoon.printer.PrinterPreprocessor;
 import se.kth.spork.util.LazyLogger;
-import se.kth.spork.util.LineBasedMerge;
+import se.kth.spork.util.LineBasedMergeKt;
 import se.kth.spork.util.Pair;
 import spoon.reflect.declaration.*;
 
@@ -243,7 +243,7 @@ public class Cli {
         String baseStr = Parser.INSTANCE.read(base);
         String leftStr = Parser.INSTANCE.read(left);
         String rightStr = Parser.INSTANCE.read(right);
-        return LineBasedMerge.merge(baseStr, leftStr, rightStr);
+        return LineBasedMergeKt.lineBasedMerge(baseStr, leftStr, rightStr);
     }
 
     /**

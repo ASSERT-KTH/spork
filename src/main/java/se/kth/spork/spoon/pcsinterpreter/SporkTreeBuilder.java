@@ -12,7 +12,7 @@ import se.kth.spork.spoon.wrappers.NodeFactory;
 import se.kth.spork.spoon.wrappers.RoledValues;
 import se.kth.spork.spoon.wrappers.SpoonNode;
 import se.kth.spork.util.LazyLogger;
-import se.kth.spork.util.LineBasedMerge;
+import se.kth.spork.util.LineBasedMergeKt;
 import se.kth.spork.util.Pair;
 
 /**
@@ -227,7 +227,7 @@ class SporkTreeBuilder {
         }
 
         Pair<String, Integer> rawMerge =
-                LineBasedMerge.merge(base.getElement(), left.getElement(), right.getElement());
+                LineBasedMergeKt.lineBasedMerge(base.getElement(), left.getElement(), right.getElement());
         numStructuralConflicts += rawMerge.second;
         return new StructuralConflict(
                 base.getElement(), left.getElement(), right.getElement(), rawMerge.first);
