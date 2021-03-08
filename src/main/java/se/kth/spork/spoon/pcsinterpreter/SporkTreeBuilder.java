@@ -229,7 +229,8 @@ class SporkTreeBuilder {
         }
 
         Pair<String, Integer> rawMerge =
-                LineBasedMergeKt.lineBasedMerge(base.getElement(), left.getElement(), right.getElement());
+                LineBasedMergeKt.lineBasedMerge(
+                        base.getElement(), left.getElement(), right.getElement());
         numStructuralConflicts += rawMerge.second;
         return new StructuralConflict(
                 base.getElement(), left.getElement(), right.getElement(), rawMerge.first);

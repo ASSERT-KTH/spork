@@ -1,13 +1,13 @@
 package se.kth.spork.util
 
 import org.eclipse.jgit.diff.RawText
-import org.eclipse.jgit.merge.MergeAlgorithm
 import org.eclipse.jgit.diff.SequenceComparator
+import org.eclipse.jgit.merge.MergeAlgorithm
 import org.eclipse.jgit.merge.MergeChunk
 import org.eclipse.jgit.merge.MergeResult
+import se.kth.spork.spoon.printer.SourceExtractor
 import se.kth.spork.spoon.printer.SporkPrettyPrinter
 import spoon.reflect.declaration.CtElement
-import se.kth.spork.spoon.printer.SourceExtractor
 import java.util.ArrayList
 import java.util.Objects
 
