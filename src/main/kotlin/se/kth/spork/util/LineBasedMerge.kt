@@ -4,6 +4,7 @@ import org.eclipse.jgit.diff.RawText
 import org.eclipse.jgit.merge.MergeAlgorithm
 import org.eclipse.jgit.diff.SequenceComparator
 import org.eclipse.jgit.merge.MergeChunk
+import org.eclipse.jgit.merge.MergeResult
 import se.kth.spork.spoon.printer.SporkPrettyPrinter
 import spoon.reflect.declaration.CtElement
 import se.kth.spork.spoon.printer.SourceExtractor
@@ -24,32 +25,32 @@ fun lineBasedMerge(base: String, left: String, right: String): Pair<String, Int>
         // This is an easy fix for that. See #144 for details.
         return Pair.of(if (left.isEmpty()) right else left, 0)
     }
+
     val baseRaw = RawText(base.toByteArray())
     val leftRaw = RawText(left.toByteArray())
     val rightRaw = RawText(right.toByteArray())
-    val merge = MergeAlgorithm()
-    val res = merge.merge(
-        object : SequenceComparator<RawText>() {
-            override fun equals(s: RawText, i: Int, s1: RawText, i1: Int): Boolean {
-                return s.getString(i) == s1.getString(i1)
-            }
 
-            override fun hash(s: RawText, i: Int): Int {
-                return Objects.hash(s.getString(i))
-            }
+    val merge = MergeAlgorithm()
+    val res: MergeResult<RawText> = merge.merge(
+        object : SequenceComparator<RawText>() {
+            override fun equals(lhs: RawText, lhsIdx: Int, rhs: RawText, rhsIdx: Int) =
+                lhs.getString(lhsIdx) == rhs.getString(rhsIdx)
+
+            override fun hash(s: RawText, i: Int) = Objects.hash(s.getString(i))
         },
         baseRaw,
         leftRaw,
         rightRaw
     )
+
     val it: Iterator<MergeChunk> = res.iterator()
-    val seqs = res.sequences
     val lines: MutableList<String> = ArrayList()
     var inConflict = false
     var numConflicts = 0
     while (it.hasNext()) {
         val chunk = it.next()
-        val seq = seqs[chunk.sequenceIndex]
+        val seq = res.sequences[chunk.sequenceIndex]
+
         if (chunk.conflictState == MergeChunk.ConflictState.FIRST_CONFLICTING_RANGE) {
             numConflicts++
             inConflict = true
@@ -71,11 +72,13 @@ fun lineBasedMerge(base: String, left: String, right: String): Pair<String, Int>
             inConflict = false
         }
     }
+
     if (inConflict) {
         lines.add(SporkPrettyPrinter.MID_CONFLICT)
         lines.add(SporkPrettyPrinter.END_CONFLICT)
     }
-    return Pair(java.lang.String.join("\n", lines), numConflicts)
+
+    return Pair(lines.joinToString("\n"), numConflicts)
 }
 
 /**
@@ -86,7 +89,7 @@ fun lineBasedMerge(base: String, left: String, right: String): Pair<String, Int>
  * @param right The right revision.
  * @return A pair containing the merge and the amount of conflicts.
  */
-fun lineBasedMerge(base: CtElement?, left: CtElement?, right: CtElement?): Pair<String, Int> {
+fun lineBasedMerge(base: CtElement, left: CtElement, right: CtElement): Pair<String, Int> {
     val baseSource = SourceExtractor.getOriginalSource(base)
     val leftSource = SourceExtractor.getOriginalSource(left)
     val rightSource = SourceExtractor.getOriginalSource(right)
