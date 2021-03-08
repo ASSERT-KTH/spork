@@ -5,7 +5,7 @@ import se.kth.spork.exception.ConflictException;
 import se.kth.spork.spoon.conflict.ContentConflict;
 import se.kth.spork.spoon.conflict.ModifierHandler;
 import se.kth.spork.spoon.wrappers.RoledValue;
-import se.kth.spork.util.LineBasedMerge;
+import se.kth.spork.util.LineBasedMergeKt;
 import se.kth.spork.util.Pair;
 import spoon.reflect.code.CtOperatorAssignment;
 import spoon.reflect.declaration.CtElement;
@@ -147,7 +147,7 @@ public class PrinterPreprocessor extends CtScanner {
                                 : "";
 
                 Pair<String, Integer> rawConflict =
-                        LineBasedMerge.merge(rawBase, rawLeft, rawRight);
+                        LineBasedMergeKt.lineBasedMerge(rawBase, rawLeft, rawRight);
                 assert rawConflict.second > 0
                         : "Comments without conflict should already have been merged";
 

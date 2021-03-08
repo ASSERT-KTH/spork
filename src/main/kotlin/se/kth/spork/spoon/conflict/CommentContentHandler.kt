@@ -1,7 +1,7 @@
 package se.kth.spork.spoon.conflict
 
-import se.kth.spork.util.LineBasedMerge
 import se.kth.spork.util.Pair
+import se.kth.spork.util.lineBasedMerge
 import spoon.reflect.declaration.CtElement
 import spoon.reflect.path.CtRole
 
@@ -26,7 +26,7 @@ class CommentContentHandler : ContentConflictHandler {
     }
 
     private fun mergeComments(base: Any, left: Any, right: Any): Any? {
-        val merge = LineBasedMerge.merge(base.toString(), left.toString(), right.toString())
+        val merge = lineBasedMerge(base.toString(), left.toString(), right.toString())
         return if (merge.second > 0) null
         else merge.first
     }

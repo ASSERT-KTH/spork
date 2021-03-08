@@ -2,7 +2,6 @@ package se.kth.spork.base3dm
 
 import se.kth.spork.exception.ConflictException
 import se.kth.spork.util.LazyLogger
-import se.kth.spork.util.LineBasedMerge
 
 /**
  * An implementation of the 3DM merge algorithm by Tancred Lindholm. For details on 3DM merge, see the paper
@@ -13,7 +12,7 @@ import se.kth.spork.util.LineBasedMerge
 
 const val REV: String = "rev"
 
-private val LOGGER: LazyLogger = LazyLogger(LineBasedMerge::class.java)
+private val LOGGER: LazyLogger = LazyLogger(Object::class.java)
 
 /**
  * Attempt to resolve a raw merge by incrementally removing inconsistencies. The input delta is the raw merge, which
