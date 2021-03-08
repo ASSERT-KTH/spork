@@ -1,8 +1,8 @@
 package se.kth.spork.spoon.conflict
 
-import spoon.reflect.path.CtRole
 import se.kth.spork.spoon.wrappers.SpoonNode
 import se.kth.spork.util.LazyLogger
+import spoon.reflect.path.CtRole
 
 /**
  * A conflict handler that can resolve method ordering conflicts.
@@ -11,15 +11,19 @@ import se.kth.spork.util.LazyLogger
  */
 class MethodOrderingConflictHandler : StructuralConflictHandler {
     override fun tryResolveConflict(
-        leftNodes: List<SpoonNode>, rightNodes: List<SpoonNode>, type: ConflictType
+        leftNodes: List<SpoonNode>,
+        rightNodes: List<SpoonNode>,
+        type: ConflictType
     ): List<SpoonNode>? {
         // we currently don't care about the type but it could be relevant in the future
         if (type != ConflictType.INSERT_INSERT) {
             LOGGER.warn {
-                (javaClass.simpleName
-                        + " not designed to handle ordering conflicts for conflict type "
-                        + ConflictType.INSERT_INSERT
-                        + ", but it may be possible")
+                (
+                    javaClass.simpleName +
+                        " not designed to handle ordering conflicts for conflict type " +
+                        ConflictType.INSERT_INSERT +
+                        ", but it may be possible"
+                    )
             }
             return null
         }

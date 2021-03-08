@@ -1,16 +1,16 @@
 package se.kth.spork.spoon.conflict
 
 import se.kth.spork.base3dm.Content
-import spoon.reflect.path.CtRole
-import se.kth.spork.spoon.wrappers.SpoonNode
-import se.kth.spork.spoon.wrappers.RoledValues
-import java.util.Deque
 import se.kth.spork.base3dm.Revision
-import java.util.HashMap
+import se.kth.spork.spoon.wrappers.RoledValues
+import se.kth.spork.spoon.wrappers.SpoonNode
 import se.kth.spork.util.Pair
 import se.kth.spork.util.Triple
+import spoon.reflect.path.CtRole
 import java.util.ArrayDeque
 import java.util.ArrayList
+import java.util.Deque
+import java.util.HashMap
 
 /**
  * A class for dealing with merging of content.

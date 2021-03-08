@@ -1,9 +1,9 @@
 package se.kth.spork.spoon.conflict
 
+import se.kth.spork.base3dm.Pcs
 import se.kth.spork.spoon.wrappers.SpoonNode
 import spoon.reflect.declaration.CtElement
 import java.util.HashSet
-import se.kth.spork.base3dm.Pcs
 
 /**
  * A simple class that provides some information on a structural conflict. Meant to be put as
@@ -30,7 +30,10 @@ class StructuralConflict {
 
     /** Create an approximated conflict.  */
     constructor(
-        base: CtElement?, left: CtElement, right: CtElement, lineBasedMerge: String
+        base: CtElement?,
+        left: CtElement,
+        right: CtElement,
+        lineBasedMerge: String
     ) {
         this.base = if (base != null) listOf(base) else null
         this.left = listOf(left)
@@ -41,21 +44,29 @@ class StructuralConflict {
     companion object {
         const val METADATA_KEY = "SPORK_STRUCTURAL_CONFLICT"
         fun isRootConflict(left: Pcs<*>, right: Pcs<*>): Boolean {
-            return (left.root != right.root
-                    && (left.predecessor == right.predecessor
-                    || left.successor == right.successor))
+            return (
+                left.root != right.root &&
+                    (
+                        left.predecessor == right.predecessor ||
+                            left.successor == right.successor
+                        )
+                )
         }
 
         fun isPredecessorConflict(left: Pcs<*>, right: Pcs<*>): Boolean {
-            return (left.predecessor != right.predecessor
-                    && left.successor == right.successor
-                    && left.root == right.root)
+            return (
+                left.predecessor != right.predecessor &&
+                    left.successor == right.successor &&
+                    left.root == right.root
+                )
         }
 
         fun isSuccessorConflict(left: Pcs<*>, right: Pcs<*>): Boolean {
-            return (left.successor != right.successor
-                    && left.predecessor == right.predecessor
-                    && left.root == right.root)
+            return (
+                left.successor != right.successor &&
+                    left.predecessor == right.predecessor &&
+                    left.root == right.root
+                )
         }
 
         fun extractRootConflictingNodes(

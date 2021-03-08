@@ -1,11 +1,11 @@
 package se.kth.spork.spoon.conflict
 
-import spoon.reflect.path.CtRole
-import spoon.reflect.declaration.CtElement
-import spoon.reflect.declaration.ModifierKind
-import java.util.HashSet
 import se.kth.spork.util.Pair
 import se.kth.spork.util.Triple
+import spoon.reflect.declaration.CtElement
+import spoon.reflect.declaration.ModifierKind
+import spoon.reflect.path.CtRole
+import java.util.HashSet
 import java.util.stream.Stream
 
 /**
@@ -80,7 +80,9 @@ class ModifierHandler : ContentConflictHandler {
          * in the visibility modifiers, and the merged value will always be the left one.
          */
         private fun mergeModifierKinds(
-            base: Set<ModifierKind>, left: Set<ModifierKind>, right: Set<ModifierKind>
+            base: Set<ModifierKind>,
+            left: Set<ModifierKind>,
+            right: Set<ModifierKind>
         ): Pair<Any?, Boolean> {
             val modifiers = base + left + right
             val baseVis = getVisibility(base)
@@ -97,10 +99,14 @@ class ModifierHandler : ContentConflictHandler {
 
             // visibility is the only place where we can have obvious addition conflicts
             // TODO further analyze conflicts among other modifiers (e.g. you can't combine static and volatile)
-            val conflict = (visibility.size != 1
-                    || (leftVis != rightVis
-                    && leftVis != baseVis
-                    && rightVis != baseVis))
+            val conflict = (
+                visibility.size != 1 ||
+                    (
+                        leftVis != rightVis &&
+                            leftVis != baseVis &&
+                            rightVis != baseVis
+                        )
+                )
             if (conflict) {
                 // use left version on conflict to follow the convention
                 visibility = leftVis
@@ -110,10 +116,11 @@ class ModifierHandler : ContentConflictHandler {
             val isInLeftAndRight = { m: ModifierKind -> m in left && m in right }
             // respect deletions, if an element is present in only one of left and right,
             // and is present in base, then it has been deleted
-            val isDeleted = {m: ModifierKind -> m in base && ((m in left) xor (m in right))}
+            val isDeleted = { m: ModifierKind -> m in base && ((m in left) xor (m in right)) }
 
             val mods = (visibility + keywords + other).filter {
-                mod -> isInLeftAndRight(mod) || !isDeleted(mod)
+                mod ->
+                isInLeftAndRight(mod) || !isDeleted(mod)
             }.toSet()
             return Pair.of(mods, conflict)
         }

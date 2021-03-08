@@ -1,9 +1,9 @@
 package se.kth.spork.spoon.conflict
 
-import spoon.reflect.path.CtRole
-import spoon.reflect.declaration.CtElement
-import spoon.reflect.reference.CtWildcardReference
 import se.kth.spork.util.Pair
+import spoon.reflect.declaration.CtElement
+import spoon.reflect.path.CtRole
+import spoon.reflect.reference.CtWildcardReference
 
 /**
  * A conflict handler for the IS_UPPER attribute. This appears on wildcards to specify if a type
@@ -29,7 +29,9 @@ class IsUpperHandler : ContentConflictHandler {
 
     companion object {
         private fun mergeIsUpper(
-            baseElem: CtElement?, leftElem: CtElement, rightElem: CtElement
+            baseElem: CtElement?,
+            leftElem: CtElement,
+            rightElem: CtElement
         ): Any? {
             val left = leftElem as CtWildcardReference
             val right = rightElem as CtWildcardReference

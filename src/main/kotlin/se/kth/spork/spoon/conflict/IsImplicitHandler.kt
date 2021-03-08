@@ -1,8 +1,8 @@
 package se.kth.spork.spoon.conflict
 
-import spoon.reflect.path.CtRole
-import spoon.reflect.declaration.CtElement
 import se.kth.spork.util.Pair
+import spoon.reflect.declaration.CtElement
+import spoon.reflect.path.CtRole
 
 /**
  * Conflict handler for the IS_IMPLICIT attribute.

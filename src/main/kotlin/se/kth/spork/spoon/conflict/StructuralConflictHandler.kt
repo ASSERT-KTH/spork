@@ -20,6 +20,8 @@ interface StructuralConflictHandler {
      * successfully resolved.
      */
     fun tryResolveConflict(
-        leftNodes: List<SpoonNode>, rightNodes: List<SpoonNode>, type: ConflictType
+        leftNodes: List<SpoonNode>,
+        rightNodes: List<SpoonNode>,
+        type: ConflictType
     ): List<SpoonNode>?
 }

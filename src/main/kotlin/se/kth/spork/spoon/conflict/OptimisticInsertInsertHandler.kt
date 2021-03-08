@@ -10,7 +10,9 @@ import se.kth.spork.spoon.wrappers.SpoonNode
  */
 class OptimisticInsertInsertHandler : StructuralConflictHandler {
     override fun tryResolveConflict(
-        leftNodes: List<SpoonNode>, rightNodes: List<SpoonNode>, type: ConflictType
+        leftNodes: List<SpoonNode>,
+        rightNodes: List<SpoonNode>,
+        type: ConflictType
     ): List<SpoonNode>? {
         return if (leftNodes.isNotEmpty() && rightNodes.isNotEmpty() || type != ConflictType.INSERT_INSERT) null
         else if (leftNodes.isNotEmpty()) leftNodes
