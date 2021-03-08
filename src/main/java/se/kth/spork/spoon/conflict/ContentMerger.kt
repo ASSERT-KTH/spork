@@ -81,7 +81,7 @@ class ContentMerger(conflictHandlers: List<ContentConflictHandler>) {
                 // non-trivial conflict, check if there is a conflict handler for this role
                 val handler = conflictHandlers[role]
                 if (handler != null) {
-                    val result = handler.handleConflict(
+                    val result: Pair<Any?, Boolean> = handler.handleConflict(
                         baseVal,
                         leftVal,
                         rightVal,
@@ -89,8 +89,8 @@ class ContentMerger(conflictHandlers: List<ContentConflictHandler>) {
                         leftRoledValues.element,
                         rightRoledValues.element
                     )
-                    merged = result!!.first!!
-                    conflictPresent = result.second!!
+                    merged = result.first
+                    conflictPresent = result.second
                 }
             }
             if (merged != null) {
