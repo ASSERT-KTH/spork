@@ -141,7 +141,7 @@ object NodeFactory {
         val cls: Class<out CtElement> = elem.javaClass
         for (explodedType in EXPLODED_TYPES) {
             if (explodedType.isAssignableFrom(cls)) {
-                return EXPLODED_TYPE_ROLES!![explodedType]
+                return EXPLODED_TYPE_ROLES[explodedType]
             }
         }
         return emptyList()
@@ -212,10 +212,10 @@ object NodeFactory {
             return longRep
         }
 
-        override fun equals(o: Any?): Boolean {
-            if (this === o) return true
-            if (o == null || javaClass != o.javaClass) return false
-            val wrapper = o as Node
+        override fun equals(other: Any?): Boolean {
+            if (this === other) return true
+            if (other == null || javaClass != other.javaClass) return false
+            val wrapper = other as Node
             return key == wrapper.key
         }
 
@@ -291,10 +291,10 @@ object NodeFactory {
 
         override val isStartOfList: Boolean = side == Side.START
 
-        override fun equals(o: Any?): Boolean {
-            if (this === o) return true
-            if (o == null || javaClass != o.javaClass) return false
-            val listEdge = o as ListEdge
+        override fun equals(other: Any?): Boolean {
+            if (this === other) return true
+            if (other == null || javaClass != other.javaClass) return false
+            val listEdge = other as ListEdge
             return parent == listEdge.parent &&
                 side == listEdge.side
         }
@@ -330,10 +330,10 @@ object NodeFactory {
 
         override val isVirtual: Boolean = true
 
-        override fun equals(o: Any?): Boolean {
-            if (this === o) return true
-            if (o == null || javaClass != o.javaClass) return false
-            val roleNode = o as RoleNode
+        override fun equals(other: Any?): Boolean {
+            if (this === other) return true
+            if (other == null || javaClass != other.javaClass) return false
+            val roleNode = other as RoleNode
             return parent == roleNode.parent &&
                 role == roleNode.role
         }

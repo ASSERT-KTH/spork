@@ -48,15 +48,15 @@ class SpoonMapping private constructor() {
      * @param matches Pairs of matched nodes, as computed by GumTree/gumtree-spoon-ast-diff.
      */
     private fun inferAdditionalMappings(matches: List<Pair<CtElement, CtElement>>) {
-        var matches = matches
-        while (!matches.isEmpty()) {
+        var mutableMatches = matches
+        while (mutableMatches.isNotEmpty()) {
             val newMatches: MutableList<Pair<CtElement, CtElement>> = ArrayList()
-            for (match in matches) {
+            for (match in mutableMatches) {
                 val src = match.first
                 val dst = match.second
                 newMatches.addAll(inferAdditionalMappings(src, dst))
             }
-            matches = newMatches
+            mutableMatches = newMatches
         }
     }
 

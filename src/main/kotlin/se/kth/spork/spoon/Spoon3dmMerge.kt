@@ -159,7 +159,7 @@ object Spoon3dmMerge {
         )
         // we can be certain that the merge tree has the same root type as the three constituents,
         // so this cast is safe
-        val mergeTree = merge.first as T
+        @Suppress("UNCHECKED_CAST") val mergeTree = merge.first as T
         val numConflicts = merge.second
         val metadataElementConflicts = mergeMetadataElements(mergeTree, base, left, right)
         LOGGER.info { "Checking for duplicated members" }
@@ -272,7 +272,7 @@ object Spoon3dmMerge {
             // badness in the Spoon API: addTypeMember returns a generic type that depends only on the
             // static type of the returned expression. So we must store the returned expression and declare
             // the type, or Kotlin gets grumpy.
-            val dontcare: CtType<*> = type.addTypeMember(mergedMember)
+            @Suppress("UNUSED_VARIABLE") val dontcare: CtType<*> = type.addTypeMember(mergedMember)
         }
 
         return numConflicts
@@ -309,6 +309,7 @@ object Spoon3dmMerge {
      * @param right The right revision.
      * @return A merged import list, sorted in lexicographical order.
      */
+    @Suppress("UNCHECKED_CAST")
     private fun mergeImportStatements(
         base: CtElement,
         left: CtElement,
