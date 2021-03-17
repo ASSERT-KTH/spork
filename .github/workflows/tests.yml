@@ -42,7 +42,7 @@ jobs:
           restore-keys: ${{ runner.os }}-maven-
 
       - name: Compile
-        run: mvn test-compile
+        run: mvn -B test-compile
       - name: Run tests
         run: mvn test
       - name: Upload coverage report to Codecov
