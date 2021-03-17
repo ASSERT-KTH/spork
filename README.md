@@ -1,5 +1,6 @@
 [![Build Status](https://travis-ci.com/KTH/spork.svg?branch=master)](https://travis-ci.com/KTH/spork)
 [![Code Coverage](https://codecov.io/gh/KTH/spork/branch/master/graph/badge.svg)](https://codecov.io/gh/KTH/spork)
+![Supported Platforms](https://img.shields.io/badge/platforms-Linux%2C%20macOS-blue.svg)
 
 # Spork - AST based merging for Java files
 Spork is an AST based structured merge tool for Java. This means that instead of
@@ -16,7 +17,7 @@ If you use Spork in for academic work, please reference the thesis.
 
 ```
 @mastersthesis{larsen2020spork,
-    title={Spork : Move-enabled structured merge for Java with GumTree and 3DM},
+    title={Spork: Move-enabled structured merge for Java with GumTree and 3DM},
     url={http://urn.kb.se/resolve?urn=urn:nbn:se:kth:diva-281960},
     author={Larsén, Simon},
     year={2020},
