@@ -158,7 +158,7 @@ class ChangeSet<T : ListNode, V>(private val classRepMap: Map<T, T>, getContent:
 
     companion object {
         private fun <K, V> addToLookupTable(key: K, `val`: V, lookup: MutableMap<K, MutableSet<V>>) {
-            val values = lookup.getOrDefault(key, HashSet())!!
+            val values = lookup.getOrDefault(key, HashSet())
             if (values.isEmpty()) lookup[key] = values
             values.add(`val`)
         }

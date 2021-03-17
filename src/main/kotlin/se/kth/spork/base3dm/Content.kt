@@ -9,10 +9,10 @@ import java.util.Objects
  * @param value The value of the this content.
  */
 data class Content<T : ListNode, V>(val context: Pcs<T>, val value: V, val revision: Revision) {
-    override fun equals(o: Any?): Boolean {
-        if (this === o) return true
-        if (o == null || javaClass != o.javaClass) return false
-        val content = o as Content<*, *>
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other == null || javaClass != other.javaClass) return false
+        val content = other as Content<*, *>
         return context == content.context &&
             value == content.value
     }

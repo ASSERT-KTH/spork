@@ -51,7 +51,7 @@ class MappingRemover(private val mapping: SpoonMapping) : CtScanner() {
             val baseRightMappingRemover = MappingRemover(baseRight)
             val leftRightMappingRemover = MappingRemover(leftRight)
             for (node in nodes) {
-                when (node.revision!!) {
+                when (node.revision) {
                     Revision.BASE -> {
                         leftRightMappingRemover.removeRelatedMappings(baseLeft.getDst(node)!!)
                         baseLeftMappingRemover.removeRelatedMappings(node)

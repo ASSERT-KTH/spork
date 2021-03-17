@@ -17,6 +17,7 @@ class ModifierHandler : ContentConflictHandler {
     override val role: CtRole
         get() = CtRole.MODIFIER
 
+    @Suppress("UNCHECKED_CAST")
     override fun handleConflict(
         baseVal: Any?,
         leftVal: Any,
