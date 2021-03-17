@@ -26,6 +26,18 @@ jobs:
           java-version: 8
           java-package: jdk
           architecture: x64
+
+      - name: Get date for cache # see https://github.com/actions/cache README
+        id: get-date
+        run: echo "::set-output name=date::$(/bin/date -u "+%Y%m%d")"
+        shell: bash
+      - name: Use Maven dependency cache
+        uses: actions/cache@26968a09c0ea4f3e233fdddbafd1166051a095f6 # v2.1.4
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-${{ steps.get-date.outputs.date }}-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-maven-
+
       - name: Compile
         run: mvn test-compile
       - name: Run tests
@@ -50,6 +62,18 @@ jobs:
       - uses: actions/setup-python@8c5ea631b2b2d5d8840cf4a2b183a8a0edc1e40d # v2.2.0
         with:
           python-version: 3.8
+
+      - name: Get date for cache # see https://github.com/actions/cache README
+        id: get-date
+        run: echo "::set-output name=date::$(/bin/date -u "+%Y%m%d")"
+        shell: bash
+      - name: Use Maven dependency cache
+        uses: actions/cache@26968a09c0ea4f3e233fdddbafd1166051a095f6 # v2.1.4
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-${{ steps.get-date.outputs.date }}-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-maven-
+
       - name: Install
         run: .github/install.sh
       - name: Add ~/.local/bin to PATH
@@ -69,5 +93,17 @@ jobs:
           java-version: 11
           java-package: jdk
           architecture: x64
+
+      - name: Get date for cache # see https://github.com/actions/cache README
+        id: get-date
+        run: echo "::set-output name=date::$(/bin/date -u "+%Y%m%d")"
+        shell: bash
+      - name: Use Maven dependency cache
+        uses: actions/cache@26968a09c0ea4f3e233fdddbafd1166051a095f6 # v2.1.4
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-${{ steps.get-date.outputs.date }}-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-maven-
+
       - name: Check formatting
         run: mvn spotless:check
