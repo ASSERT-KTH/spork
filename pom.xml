@@ -197,6 +197,9 @@
                 </executions>
                 <configuration>
                     <jvmTarget>1.8</jvmTarget>
+                    <args>
+                        <arg>-Werror</arg>
+                    </args>
                 </configuration>
             </plugin>
             <plugin>
