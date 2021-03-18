@@ -1,6 +1,7 @@
 package se.kth.spork.spoon.printer;
 
 import java.util.*;
+import kotlin.Pair;
 import se.kth.spork.spoon.conflict.StructuralConflict;
 import se.kth.spork.spoon.pcsinterpreter.SpoonTreeBuilder;
 import spoon.compiler.Environment;
@@ -14,8 +15,6 @@ import spoon.reflect.visitor.DefaultJavaPrettyPrinter;
 import spoon.reflect.visitor.DefaultTokenWriter;
 import spoon.reflect.visitor.PrinterHelper;
 import spoon.reflect.visitor.PrintingContext;
-
-import kotlin.Pair;
 
 public final class SporkPrettyPrinter extends DefaultJavaPrettyPrinter {
     public static final String START_CONFLICT = "<<<<<<< LEFT";

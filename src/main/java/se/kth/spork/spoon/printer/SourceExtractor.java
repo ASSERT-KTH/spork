@@ -4,14 +4,13 @@ import java.io.IOException;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
+import kotlin.Pair;
 import se.kth.spork.spoon.pcsinterpreter.SpoonTreeBuilder;
 import spoon.reflect.CtModel;
 import spoon.reflect.cu.CompilationUnit;
 import spoon.reflect.cu.SourcePosition;
 import spoon.reflect.declaration.CtElement;
 import spoon.reflect.declaration.CtTypeMember;
-
-import kotlin.Pair;
 
 /**
  * A class for extracting source code and related information from Spoon nodes.

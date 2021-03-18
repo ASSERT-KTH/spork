@@ -2,6 +2,7 @@ package se.kth.spork.spoon.pcsinterpreter;
 
 import java.util.*;
 import java.util.stream.Collectors;
+import kotlin.Pair;
 import se.kth.spork.base3dm.*;
 import se.kth.spork.exception.ConflictException;
 import se.kth.spork.spoon.conflict.ConflictType;
@@ -13,8 +14,6 @@ import se.kth.spork.spoon.wrappers.RoledValues;
 import se.kth.spork.spoon.wrappers.SpoonNode;
 import se.kth.spork.util.LazyLogger;
 import se.kth.spork.util.LineBasedMergeKt;
-
-import kotlin.Pair;
 
 /**
  * Class for building a {@link SporkTree} from a merged {@link ChangeSet}.

@@ -1,6 +1,7 @@
 package se.kth.spork.spoon.pcsinterpreter;
 
 import java.util.List;
+import kotlin.Pair;
 import se.kth.spork.base3dm.ChangeSet;
 import se.kth.spork.spoon.conflict.ContentConflictHandler;
 import se.kth.spork.spoon.conflict.StructuralConflictHandler;
@@ -9,8 +10,6 @@ import se.kth.spork.spoon.wrappers.RoledValues;
 import se.kth.spork.spoon.wrappers.SpoonNode;
 import spoon.compiler.Environment;
 import spoon.reflect.declaration.CtElement;
-
-import kotlin.Pair;
 
 /**
  * Class for interpreting a merged PCS structure into a Spoon tree.

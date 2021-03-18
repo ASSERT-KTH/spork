@@ -5,7 +5,6 @@ import spoon.reflect.declaration.ModifierKind
 import spoon.reflect.path.CtRole
 import java.util.HashSet
 import java.util.stream.Stream
-
 import kotlin.Pair
 import kotlin.Triple
 

@@ -1,6 +1,7 @@
 package se.kth.spork.spoon.printer;
 
 import java.util.*;
+import kotlin.Pair;
 import se.kth.spork.exception.ConflictException;
 import se.kth.spork.spoon.conflict.ContentConflict;
 import se.kth.spork.spoon.conflict.ModifierHandler;
@@ -13,7 +14,6 @@ import spoon.reflect.path.CtRole;
 import spoon.reflect.reference.CtPackageReference;
 import spoon.reflect.reference.CtTypeReference;
 import spoon.reflect.visitor.CtScanner;
-import kotlin.Pair;
 
 /**
  * A pre-processor that must run before pretty-printing a merged tree. It does things like embedding

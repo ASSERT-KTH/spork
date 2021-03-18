@@ -1,6 +1,7 @@
 package se.kth.spork.spoon.pcsinterpreter;
 
 import java.util.*;
+import kotlin.Pair;
 import se.kth.spork.base3dm.Revision;
 import se.kth.spork.base3dm.TdmMergeKt;
 import se.kth.spork.spoon.*;
@@ -25,7 +26,6 @@ import spoon.reflect.path.CtRole;
 import spoon.reflect.reference.CtParameterReference;
 import spoon.reflect.reference.CtTypeReference;
 import spoon.reflect.visitor.printer.CommentOffset;
-import kotlin.Pair;
 
 /**
  * Class for building a Spoon tree (i.e. a CtElement) from a {@link SporkTree}.
@@ -175,8 +175,9 @@ public class SpoonTreeBuilder {
                     contentMerger.mergedContent(sporkChild.getContent());
 
             mergeTree = shallowCopyTree(originalTree, factory);
-            mergedContent.getFirst().forEach(
-                    rv -> mergeTree.setValueByRole(rv.getRole(), rv.getValue()));
+            mergedContent
+                    .getFirst()
+                    .forEach(rv -> mergeTree.setValueByRole(rv.getRole(), rv.getValue()));
             if (!mergedContent.getSecond().isEmpty()) {
                 // at least one conflict was not resolved
                 mergeTree.putMetadata(ContentConflict.METADATA_KEY, mergedContent.getSecond());

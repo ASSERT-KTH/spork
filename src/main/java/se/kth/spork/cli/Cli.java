@@ -12,6 +12,7 @@ import java.nio.file.StandardOpenOption;
 import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.stream.Collectors;
+import kotlin.Pair;
 import org.slf4j.LoggerFactory;
 import picocli.CommandLine;
 import se.kth.spork.exception.MergeException;
@@ -21,7 +22,6 @@ import se.kth.spork.spoon.printer.PrinterPreprocessor;
 import se.kth.spork.util.LazyLogger;
 import se.kth.spork.util.LineBasedMergeKt;
 import spoon.reflect.declaration.*;
-import kotlin.Pair;
 
 /**
  * Command line interface for Spork.
