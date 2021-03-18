@@ -61,6 +61,7 @@ object Parser {
         env.useTabulations(useTabs)
         env.setPrettyPrinterCreator { SporkPrettyPrinter(env) }
         env.noClasspath = true
+        env.encoding = StandardCharsets.UTF_8 // TODO detect instead of setting unconditionally
     }
 
     private fun parse(configureLauncher: (Launcher) -> Unit): CtModule {
