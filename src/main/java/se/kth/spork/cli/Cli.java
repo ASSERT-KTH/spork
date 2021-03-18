@@ -20,8 +20,8 @@ import se.kth.spork.spoon.Spoon3dmMerge;
 import se.kth.spork.spoon.printer.PrinterPreprocessor;
 import se.kth.spork.util.LazyLogger;
 import se.kth.spork.util.LineBasedMergeKt;
-import se.kth.spork.util.Pair;
 import spoon.reflect.declaration.*;
+import kotlin.Pair;
 
 /**
  * Command line interface for Spork.
@@ -163,8 +163,8 @@ public class Cli {
             }
 
             Pair<String, Integer> merged = merge(basePath, leftPath, rightPath, exitOnError);
-            String pretty = merged.first;
-            int numConflicts = merged.second;
+            String pretty = merged.getFirst();
+            int numConflicts = merged.getSecond();
 
             if (out != null) {
                 LOGGER.info(() -> "Writing merge to " + out);
@@ -208,12 +208,12 @@ public class Cli {
             LOGGER.info(() -> "Initiating merge");
             Pair<CtElement, Integer> merge =
                     Spoon3dmMerge.INSTANCE.merge(baseModule, leftModule, rightModule);
-            CtModule mergeTree = (CtModule) merge.first;
-            int numConflicts = merge.second;
+            CtModule mergeTree = (CtModule) merge.getFirst();
+            int numConflicts = merge.getSecond();
 
             LOGGER.info(() -> "Pretty-printing");
             if (containsTypes(mergeTree)) {
-                return Pair.of(prettyPrint(mergeTree), numConflicts);
+                return new Pair(prettyPrint(mergeTree), numConflicts);
             } else if (exitOnError) {
                 throw new MergeException(
                         "Merge contained no types and global line-based fallback is disabled");

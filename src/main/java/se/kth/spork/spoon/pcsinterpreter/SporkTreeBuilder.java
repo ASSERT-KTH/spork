@@ -13,7 +13,8 @@ import se.kth.spork.spoon.wrappers.RoledValues;
 import se.kth.spork.spoon.wrappers.SpoonNode;
 import se.kth.spork.util.LazyLogger;
 import se.kth.spork.util.LineBasedMergeKt;
-import se.kth.spork.util.Pair;
+
+import kotlin.Pair;
 
 /**
  * Class for building a {@link SporkTree} from a merged {@link ChangeSet}.
@@ -231,9 +232,9 @@ class SporkTreeBuilder {
         Pair<String, Integer> rawMerge =
                 LineBasedMergeKt.lineBasedMerge(
                         base.getElement(), left.getElement(), right.getElement());
-        numStructuralConflicts += rawMerge.second;
+        numStructuralConflicts += rawMerge.getSecond();
         return new StructuralConflict(
-                base.getElement(), left.getElement(), right.getElement(), rawMerge.first);
+                base.getElement(), left.getElement(), right.getElement(), rawMerge.getFirst());
     }
 
     private SpoonNode traverseConflict(

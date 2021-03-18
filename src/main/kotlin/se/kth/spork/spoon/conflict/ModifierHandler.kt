@@ -1,12 +1,13 @@
 package se.kth.spork.spoon.conflict
 
-import se.kth.spork.util.Pair
-import se.kth.spork.util.Triple
 import spoon.reflect.declaration.CtElement
 import spoon.reflect.declaration.ModifierKind
 import spoon.reflect.path.CtRole
 import java.util.HashSet
 import java.util.stream.Stream
+
+import kotlin.Pair
+import kotlin.Triple
 
 /**
  * Conflict handler for modifiers. This handler can partially merge results.
@@ -52,7 +53,7 @@ class ModifierHandler : ContentConflictHandler {
                     else -> other.add(mod)
                 }
             }
-            return Triple.of(visibility, keywords, other)
+            return Triple(visibility, keywords, other)
         }
 
         /**
@@ -123,7 +124,7 @@ class ModifierHandler : ContentConflictHandler {
                 mod ->
                 isInLeftAndRight(mod) || !isDeleted(mod)
             }.toSet()
-            return Pair.of(mods, conflict)
+            return Pair(mods, conflict)
         }
     }
 }

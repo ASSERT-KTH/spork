@@ -1,6 +1,5 @@
 package se.kth.spork.spoon.conflict
 
-import se.kth.spork.util.Pair
 import se.kth.spork.util.lineBasedMerge
 import spoon.reflect.declaration.CtElement
 import spoon.reflect.path.CtRole
@@ -22,7 +21,7 @@ class CommentContentHandler : ContentConflictHandler {
         leftElem: CtElement,
         rightElem: CtElement
     ): Pair<Any?, Boolean> {
-        return Pair.of(mergeComments(baseVal ?: "", leftVal, rightVal), false)
+        return Pair(mergeComments(baseVal ?: "", leftVal, rightVal), false)
     }
 
     private fun mergeComments(base: Any, left: Any, right: Any): Any? {

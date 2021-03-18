@@ -6,7 +6,6 @@ import se.kth.spork.spoon.conflict.ContentConflict;
 import se.kth.spork.spoon.conflict.ModifierHandler;
 import se.kth.spork.spoon.wrappers.RoledValue;
 import se.kth.spork.util.LineBasedMergeKt;
-import se.kth.spork.util.Pair;
 import spoon.reflect.code.CtOperatorAssignment;
 import spoon.reflect.declaration.CtElement;
 import spoon.reflect.declaration.ModifierKind;
@@ -14,6 +13,7 @@ import spoon.reflect.path.CtRole;
 import spoon.reflect.reference.CtPackageReference;
 import spoon.reflect.reference.CtTypeReference;
 import spoon.reflect.visitor.CtScanner;
+import kotlin.Pair;
 
 /**
  * A pre-processor that must run before pretty-printing a merged tree. It does things like embedding
@@ -132,7 +132,7 @@ public class PrinterPreprocessor extends CtScanner {
                 // always scanned separately by the printer (often it just calls `getSimpleName`)
                 String conflictKey = CONTENT_CONFLICT_PREFIX + currentConflictId++;
                 globalContentConflicts.put(
-                        conflictKey, Pair.of(leftVal.toString(), rightVal.toString()));
+                        conflictKey, new Pair<>(leftVal.toString(), rightVal.toString()));
                 element.setValueByRole(conflict.getRole(), conflictKey);
                 break;
             case COMMENT_CONTENT:
@@ -148,25 +148,25 @@ public class PrinterPreprocessor extends CtScanner {
 
                 Pair<String, Integer> rawConflict =
                         LineBasedMergeKt.lineBasedMerge(rawBase, rawLeft, rawRight);
-                assert rawConflict.second > 0
+                assert rawConflict.getSecond() > 0
                         : "Comments without conflict should already have been merged";
 
-                element.putMetadata(RAW_COMMENT_CONFLICT_KEY, rawConflict.first);
+                element.putMetadata(RAW_COMMENT_CONFLICT_KEY, rawConflict.getFirst());
                 break;
             case IS_UPPER:
                 if (leftVal.equals(true)) {
-                    localPrinterMap.put("extends", Pair.of("extends", "super"));
+                    localPrinterMap.put("extends", new Pair<>("extends", "super"));
                 } else {
-                    localPrinterMap.put("super", Pair.of("super", "extends"));
+                    localPrinterMap.put("super", new Pair<>("super", "extends"));
                 }
                 break;
             case MODIFIER:
                 Collection<ModifierKind> leftMods = (Collection<ModifierKind>) leftVal;
                 Collection<ModifierKind> rightMods = (Collection<ModifierKind>) rightVal;
                 Set<ModifierKind> leftVisibilities =
-                        ModifierHandler.Companion.categorizeModifiers(leftMods).first;
+                        ModifierHandler.Companion.categorizeModifiers(leftMods).getFirst();
                 Set<ModifierKind> rightVisibilities =
-                        ModifierHandler.Companion.categorizeModifiers(rightMods).first;
+                        ModifierHandler.Companion.categorizeModifiers(rightMods).getFirst();
 
                 if (leftVisibilities.isEmpty()) {
                     // use the right-hand visibility in actual tree to force something to be printed
@@ -174,14 +174,14 @@ public class PrinterPreprocessor extends CtScanner {
                     ModifierKind rightVis = rightVisibilities.iterator().next();
                     mods.add(rightVis);
                     element.setValueByRole(CtRole.MODIFIER, mods);
-                    localPrinterMap.put(rightVis.toString(), Pair.of("", rightVis.toString()));
+                    localPrinterMap.put(rightVis.toString(), new Pair<>("", rightVis.toString()));
                 } else {
                     String leftVisStr = leftVisibilities.iterator().next().toString();
                     String rightVisStr =
                             rightVisibilities.isEmpty()
                                     ? ""
                                     : rightVisibilities.iterator().next().toString();
-                    localPrinterMap.put(leftVisStr, Pair.of(leftVisStr, rightVisStr));
+                    localPrinterMap.put(leftVisStr, new Pair<>(leftVisStr, rightVisStr));
                 }
                 break;
             case OPERATOR_KIND:
@@ -194,7 +194,7 @@ public class PrinterPreprocessor extends CtScanner {
                     leftStr += "=";
                     rightStr += "=";
                 }
-                localPrinterMap.put(leftStr, Pair.of(leftStr, rightStr));
+                localPrinterMap.put(leftStr, new Pair<>(leftStr, rightStr));
                 break;
             default:
                 throw new ConflictException("Unhandled conflict: " + leftVal + ", " + rightVal);

@@ -7,9 +7,10 @@ import se.kth.spork.spoon.conflict.StructuralConflictHandler;
 import se.kth.spork.spoon.matching.SpoonMapping;
 import se.kth.spork.spoon.wrappers.RoledValues;
 import se.kth.spork.spoon.wrappers.SpoonNode;
-import se.kth.spork.util.Pair;
 import spoon.compiler.Environment;
 import spoon.reflect.declaration.CtElement;
+
+import kotlin.Pair;
 
 /**
  * Class for interpreting a merged PCS structure into a Spoon tree.
@@ -52,7 +53,7 @@ public class PcsInterpreter {
                 new SpoonTreeBuilder(baseLeft, baseRight, oldEnv, contentConflictHandlers);
         CtElement spoonTreeRoot = spoonTreeBuilder.build(sporkTreeRoot);
 
-        return Pair.of(
+        return new Pair(
                 spoonTreeRoot,
                 sporkTreeBuilder.numStructuralConflicts() + spoonTreeBuilder.numContentConflicts());
     }

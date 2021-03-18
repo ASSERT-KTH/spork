@@ -1,8 +1,9 @@
 package se.kth.spork.spoon.conflict
 
-import se.kth.spork.util.Pair
 import spoon.reflect.declaration.CtElement
 import spoon.reflect.path.CtRole
+
+import kotlin.Pair;
 
 /**
  * Conflict handler for the IS_IMPLICIT attribute.
@@ -31,6 +32,6 @@ class IsImplicitHandler : ContentConflictHandler {
             false
         }
 
-        return Pair.of(mergedValue, false)
+        return Pair(mergedValue, false);
     }
 }

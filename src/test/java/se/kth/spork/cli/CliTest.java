@@ -16,8 +16,8 @@ import se.kth.spork.Util;
 import se.kth.spork.exception.MergeException;
 import se.kth.spork.spoon.Parser;
 import se.kth.spork.spoon.Spoon3dmMerge;
-import se.kth.spork.util.Pair;
 import spoon.reflect.declaration.CtModule;
+import kotlin.Pair;
 
 class CliTest {
 
@@ -66,8 +66,8 @@ class CliTest {
         Pair<String, Integer> merge =
                 Cli.merge(sources.base, sources.left, sources.right, /*exitOnError=*/ false);
 
-        assertEquals(0, merge.second);
-        assertEquals(expected, merge.first);
+        assertEquals(0, merge.getSecond());
+        assertEquals(expected, merge.getFirst());
     }
 
     @ParameterizedTest
@@ -98,8 +98,8 @@ class CliTest {
 
         Pair<CtModule, Integer> merged =
                 Spoon3dmMerge.INSTANCE.merge(sources.base, sources.left, sources.right);
-        CtModule mergeTree = merged.first;
-        Integer numConflicts = merged.second;
+        CtModule mergeTree = merged.getFirst();
+        Integer numConflicts = merged.getSecond();
 
         String prettyPrint = Cli.prettyPrint(mergeTree);
 
@@ -119,7 +119,7 @@ class CliTest {
 
         Pair<CtModule, Integer> merged =
                 Spoon3dmMerge.INSTANCE.merge(sources.base, sources.left, sources.right);
-        CtModule mergeTree = merged.first;
+        CtModule mergeTree = merged.getFirst();
 
         String prettyPrint = Cli.prettyPrint(mergeTree);
         CtModule actual = Parser.INSTANCE.parse(Util.keepLeftConflict(prettyPrint));
@@ -137,7 +137,7 @@ class CliTest {
     private static void runTestMerge(Util.TestSources sources, Path tempDir) throws IOException {
         Pair<CtModule, Integer> merged =
                 Spoon3dmMerge.INSTANCE.merge(sources.base, sources.left, sources.right);
-        CtModule mergeTree = merged.first;
+        CtModule mergeTree = merged.getFirst();
 
         Object expectedImports = mergeTree.getMetadata(Parser.IMPORT_STATEMENTS);
         assert expectedImports != null;
