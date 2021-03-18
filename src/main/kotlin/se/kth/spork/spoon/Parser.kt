@@ -13,6 +13,7 @@ import spoon.reflect.declaration.CtType
 import spoon.support.compiler.FileSystemFile
 import spoon.support.compiler.VirtualFile
 import java.io.IOException
+import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Path
 
@@ -115,7 +116,7 @@ object Parser {
      */
     fun read(path: Path): String {
         return try {
-            java.lang.String.join("\n", Files.readAllLines(path))
+            java.lang.String.join("\n", Files.readAllLines(path, StandardCharsets.UTF_8))
         } catch (e: IOException) {
             e.printStackTrace()
             throw RuntimeException("Error reading from $path")
