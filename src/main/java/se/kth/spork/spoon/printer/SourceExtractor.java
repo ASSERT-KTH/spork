@@ -4,8 +4,8 @@ import java.io.IOException;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
+import kotlin.Pair;
 import se.kth.spork.spoon.pcsinterpreter.SpoonTreeBuilder;
-import se.kth.spork.util.Pair;
 import spoon.reflect.CtModel;
 import spoon.reflect.cu.CompilationUnit;
 import spoon.reflect.cu.SourcePosition;
@@ -124,7 +124,7 @@ public class SourceExtractor {
         int indentationSize = getIndentation(pos, lineStartIdx);
         boolean isTabs =
                 pos.getCompilationUnit().getOriginalSourceCode().charAt(lineStartIdx) == '\t';
-        return Pair.of(indentationSize, isTabs);
+        return new Pair(indentationSize, isTabs);
     }
 
     /**
@@ -147,7 +147,7 @@ public class SourceExtractor {
                         .limit(20)
                         .collect(Collectors.toList());
         if (topLevelMembers.isEmpty()) {
-            return Pair.of(DEFAULT_INDENTATION_SIZE, DEFAULT_IS_TABS);
+            return new Pair(DEFAULT_INDENTATION_SIZE, DEFAULT_IS_TABS);
         }
 
         List<Pair<Integer, Boolean>> memberIndentations =
@@ -173,7 +173,7 @@ public class SourceExtractor {
             indentationSize = 1;
         }
 
-        return Pair.of(indentationSize, isTabs);
+        return new Pair(indentationSize, isTabs);
     }
 
     /**

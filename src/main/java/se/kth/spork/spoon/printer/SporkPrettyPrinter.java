@@ -1,9 +1,9 @@
 package se.kth.spork.spoon.printer;
 
 import java.util.*;
+import kotlin.Pair;
 import se.kth.spork.spoon.conflict.StructuralConflict;
 import se.kth.spork.spoon.pcsinterpreter.SpoonTreeBuilder;
-import se.kth.spork.util.Pair;
 import spoon.compiler.Environment;
 import spoon.reflect.code.CtCatchVariable;
 import spoon.reflect.code.CtComment;
@@ -200,10 +200,10 @@ public final class SporkPrettyPrinter extends DefaultJavaPrettyPrinter {
             String strippedQuotes = trimmed.replaceAll("\"", "");
             if (globalContentConflicts.containsKey(strippedQuotes)) {
                 Pair<String, String> conflict = globalContentConflicts.get(strippedQuotes);
-                writeConflict(conflict.first, conflict.second);
+                writeConflict(conflict.getFirst(), conflict.getSecond());
             } else if (localConflictMap.isPresent() && localConflictMap.get().containsKey(s)) {
                 Pair<String, String> conflict = localConflictMap.get().get(s);
-                writeConflict(conflict.first, conflict.second);
+                writeConflict(conflict.getFirst(), conflict.getSecond());
             } else {
                 super.write(s);
             }

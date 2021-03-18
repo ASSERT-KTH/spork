@@ -1,6 +1,7 @@
 package se.kth.spork.spoon.pcsinterpreter;
 
 import java.util.*;
+import kotlin.Pair;
 import se.kth.spork.base3dm.Revision;
 import se.kth.spork.base3dm.TdmMergeKt;
 import se.kth.spork.spoon.*;
@@ -12,7 +13,6 @@ import se.kth.spork.spoon.matching.SpoonMapping;
 import se.kth.spork.spoon.wrappers.NodeFactory;
 import se.kth.spork.spoon.wrappers.RoledValues;
 import se.kth.spork.spoon.wrappers.SpoonNode;
-import se.kth.spork.util.Pair;
 import spoon.Launcher;
 import spoon.compiler.Environment;
 import spoon.reflect.CtModelImpl;
@@ -175,12 +175,13 @@ public class SpoonTreeBuilder {
                     contentMerger.mergedContent(sporkChild.getContent());
 
             mergeTree = shallowCopyTree(originalTree, factory);
-            mergedContent.first.forEach(
-                    rv -> mergeTree.setValueByRole(rv.getRole(), rv.getValue()));
-            if (!mergedContent.second.isEmpty()) {
+            mergedContent
+                    .getFirst()
+                    .forEach(rv -> mergeTree.setValueByRole(rv.getRole(), rv.getValue()));
+            if (!mergedContent.getSecond().isEmpty()) {
                 // at least one conflict was not resolved
-                mergeTree.putMetadata(ContentConflict.METADATA_KEY, mergedContent.second);
-                numContentConflicts += mergedContent.second.size();
+                mergeTree.putMetadata(ContentConflict.METADATA_KEY, mergedContent.getSecond());
+                numContentConflicts += mergedContent.getSecond().size();
             }
         }
 

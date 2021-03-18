@@ -1,6 +1,5 @@
 package se.kth.spork.spoon.conflict
 
-import se.kth.spork.util.Pair
 import spoon.reflect.declaration.CtElement
 import spoon.reflect.path.CtRole
 import spoon.reflect.reference.CtWildcardReference
@@ -24,7 +23,7 @@ class IsUpperHandler : ContentConflictHandler {
         leftElem: CtElement,
         rightElem: CtElement
     ): Pair<Any?, Boolean> {
-        return Pair.of(mergeIsUpper(baseElem, leftElem, rightElem), false)
+        return Pair(mergeIsUpper(baseElem, leftElem, rightElem), false)
     }
 
     companion object {

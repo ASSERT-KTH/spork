@@ -23,7 +23,7 @@ fun lineBasedMerge(base: String, left: String, right: String): Pair<String, Int>
     if (base.isEmpty() && (left.isEmpty() || right.isEmpty())) {
         // For some reason, this merge implementation reports a conflict on pure additions.
         // This is an easy fix for that. See #144 for details.
-        return Pair.of(if (left.isEmpty()) right else left, 0)
+        return Pair(if (left.isEmpty()) right else left, 0)
     }
 
     val baseRaw = RawText(base.toByteArray())
