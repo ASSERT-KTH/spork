@@ -17,6 +17,7 @@ import kotlin.jvm.JvmOverloads
  *
  * @param node The Spoon node this SporkTree represents.
  * @param content The Spoon content of this node.
+ * @param structuralConflict A structural conflict, making this node a conflict node.
  */
 class SporkTree @JvmOverloads constructor(
     val node: SpoonNode,
