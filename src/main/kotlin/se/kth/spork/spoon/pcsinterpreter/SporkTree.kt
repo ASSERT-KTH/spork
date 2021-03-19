@@ -7,6 +7,7 @@ import se.kth.spork.spoon.wrappers.NodeFactory.virtualRoot
 import se.kth.spork.spoon.wrappers.RoledValues
 import se.kth.spork.spoon.wrappers.SpoonNode
 import spoon.reflect.CtModelImpl.CtRootPackage
+import spoon.reflect.factory.ModuleFactory
 import kotlin.jvm.JvmOverloads
 
 /**
@@ -58,7 +59,7 @@ class SporkTree @JvmOverloads constructor(
             val element = node.element
             return (
                 !(
-                    element is CtUnnamedModule ||
+                    element is ModuleFactory.CtUnnamedModule ||
                         element is CtRootPackage
                     ) &&
                     revisions.size == 1

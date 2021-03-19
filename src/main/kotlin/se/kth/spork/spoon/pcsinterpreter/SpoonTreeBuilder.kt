@@ -145,8 +145,7 @@ class SpoonTreeBuilder internal constructor(
                 mergeParent is CtParameterReference<*> &&
                 mergeTreeRole == CtRole.TYPE
             ) {
-                // we skip this case, because  for some reason, when it comes to parameter
-                // references, Spoon sets
+                // we skip this case, because  for some reason, when it comes to parameter references, Spoon sets
                 // the type to null if it's actually "var"
             } else {
                 mergeParent.setValueByRole<CtElement, Any>(mergeTreeRole, inserted)
