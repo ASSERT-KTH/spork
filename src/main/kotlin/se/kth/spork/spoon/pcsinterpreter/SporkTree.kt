@@ -1,15 +1,13 @@
 package se.kth.spork.spoon.pcsinterpreter
 
-import se.kth.spork.spoon.wrappers.NodeFactory.virtualRoot
 import se.kth.spork.base3dm.Content
-import kotlin.jvm.JvmOverloads
-import se.kth.spork.spoon.wrappers.SpoonNode
-import se.kth.spork.spoon.wrappers.RoledValues
-import se.kth.spork.spoon.conflict.StructuralConflict
 import se.kth.spork.base3dm.Revision
-import spoon.reflect.factory.ModuleFactory.CtUnnamedModule
+import se.kth.spork.spoon.conflict.StructuralConflict
+import se.kth.spork.spoon.wrappers.NodeFactory.virtualRoot
+import se.kth.spork.spoon.wrappers.RoledValues
+import se.kth.spork.spoon.wrappers.SpoonNode
 import spoon.reflect.CtModelImpl.CtRootPackage
-import java.util.*
+import kotlin.jvm.JvmOverloads
 
 /**
  * A Spork tree is an intermediate representation used to bridge conversion from PCS to Spoon. It is
@@ -23,13 +21,13 @@ class SporkTree @JvmOverloads constructor(
     val content: Set<Content<SpoonNode, RoledValues>>,
     structuralConflict: StructuralConflict? = null
 ) {
-    val structuralConflict: Optional<StructuralConflict> = Optional.ofNullable(structuralConflict)
+    val structuralConflict: StructuralConflict? = structuralConflict
 
     private val _children: MutableList<SporkTree> = mutableListOf()
     val children: List<SporkTree>
         get() = _children.toList()
 
-    private val _revisions: MutableSet<Revision> = TreeSet()
+    private val _revisions: MutableSet<Revision> = java.util.TreeSet()
     var revisions: Set<Revision>
         get() = _revisions
         set(value) {
@@ -38,7 +36,7 @@ class SporkTree @JvmOverloads constructor(
         }
 
     fun hasStructuralConflict(): Boolean {
-        return structuralConflict.isPresent
+        return structuralConflict != null
     }
 
     fun addChild(child: SporkTree) {
@@ -58,9 +56,13 @@ class SporkTree @JvmOverloads constructor(
     val isSingleRevisionSubtree: Boolean
         get() {
             val element = node.element
-            return (!(element is CtUnnamedModule
-                    || element is CtRootPackage)
-                    && revisions.size == 1)
+            return (
+                !(
+                    element is CtUnnamedModule ||
+                        element is CtRootPackage
+                    ) &&
+                    revisions.size == 1
+                )
         }
     val singleRevision: Revision
         get() {

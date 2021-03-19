@@ -1,20 +1,24 @@
 package se.kth.spork.spoon.pcsinterpreter
 
-import se.kth.spork.base3dm.*
-import se.kth.spork.spoon.wrappers.NodeFactory.virtualRoot
-import se.kth.spork.spoon.conflict.StructuralConflict.Companion.isSuccessorConflict
-import se.kth.spork.util.lineBasedMerge
-import se.kth.spork.spoon.conflict.StructuralConflict.Companion.isPredecessorConflict
-import se.kth.spork.spoon.wrappers.SpoonNode
-import se.kth.spork.spoon.wrappers.RoledValues
-import se.kth.spork.spoon.conflict.StructuralConflict
-import se.kth.spork.spoon.matching.SpoonMapping
-import se.kth.spork.spoon.conflict.StructuralConflictHandler
-import se.kth.spork.spoon.conflict.ConflictType
+import se.kth.spork.base3dm.ChangeSet
+import se.kth.spork.base3dm.Content
+import se.kth.spork.base3dm.ListNode
+import se.kth.spork.base3dm.Pcs
+import se.kth.spork.base3dm.Revision
 import se.kth.spork.exception.ConflictException
+import se.kth.spork.spoon.conflict.ConflictType
+import se.kth.spork.spoon.conflict.StructuralConflict
+import se.kth.spork.spoon.conflict.StructuralConflict.Companion.isPredecessorConflict
+import se.kth.spork.spoon.conflict.StructuralConflict.Companion.isSuccessorConflict
+import se.kth.spork.spoon.conflict.StructuralConflictHandler
+import se.kth.spork.spoon.matching.SpoonMapping
+import se.kth.spork.spoon.wrappers.NodeFactory.virtualRoot
+import se.kth.spork.spoon.wrappers.RoledValues
+import se.kth.spork.spoon.wrappers.SpoonNode
+import se.kth.spork.util.LazyLogger
+import se.kth.spork.util.lineBasedMerge
 import java.lang.NullPointerException
 import java.util.stream.Collectors
-import se.kth.spork.util.LazyLogger
 
 /**
  * Class for building a [SporkTree] from a merged [ChangeSet].
@@ -45,7 +49,8 @@ internal class SporkTreeBuilder(
 
     /** Try to resolve a structural conflict automatically.  */
     private fun tryResolveConflict(
-        leftNodes: List<SpoonNode>, rightNodes: List<SpoonNode>
+        leftNodes: List<SpoonNode>,
+        rightNodes: List<SpoonNode>
     ): List<SpoonNode>? {
         // we can currently only resolve conflict lists for insert/insert conflicts
         // TODO Expand conflict handling to deal with more than just insert/insert
@@ -92,18 +97,22 @@ internal class SporkTreeBuilder(
             // could not resolve the child list
             // TODO improve design, should not have to catch exceptions like this
             LOGGER.warn {
-                ("Failed to resolve child list of "
-                        + currentRoot.element.shortRepresentation
-                        + ". Falling back to line-based merge of this element.")
+                (
+                    "Failed to resolve child list of " +
+                        currentRoot.element.shortRepresentation +
+                        ". Falling back to line-based merge of this element."
+                    )
             }
             val conflict = approximateConflict(currentRoot)
             tree = SporkTree(currentRoot, currentContent, conflict)
             tree.revisions = setOf(Revision.BASE, Revision.LEFT, Revision.RIGHT)
         } catch (e: ConflictException) {
             LOGGER.warn {
-                ("Failed to resolve child list of "
-                        + currentRoot.element.shortRepresentation
-                        + ". Falling back to line-based merge of this element.")
+                (
+                    "Failed to resolve child list of " +
+                        currentRoot.element.shortRepresentation +
+                        ". Falling back to line-based merge of this element."
+                    )
             }
             val conflict = approximateConflict(currentRoot)
             tree = SporkTree(currentRoot, currentContent, conflict)
@@ -241,7 +250,8 @@ internal class SporkTreeBuilder(
      * with a predecessor conflict, or an exception is thrown.
      */
     private fun extractConflictList(
-        pcs: Pcs<SpoonNode>, siblings: Map<SpoonNode, Pcs<SpoonNode>>
+        pcs: Pcs<SpoonNode>,
+        siblings: Map<SpoonNode, Pcs<SpoonNode>>
     ): List<SpoonNode> {
         var currentPcs = pcs
         val nodes: MutableList<SpoonNode> = mutableListOf()
@@ -295,6 +305,6 @@ internal class SporkTreeBuilder(
         numStructuralConflicts = 0
         usedNodes = HashSet()
         remainingInconsistencies = HashSet()
-        remainingInconsistencies.addAll(structuralConflicts.values.flatten());
+        remainingInconsistencies.addAll(structuralConflicts.values.flatten())
     }
 }

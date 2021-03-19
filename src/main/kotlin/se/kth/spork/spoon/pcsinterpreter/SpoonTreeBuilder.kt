@@ -1,32 +1,34 @@
 package se.kth.spork.spoon.pcsinterpreter
 
 import se.kth.spork.base3dm.REV
-import se.kth.spork.spoon.wrappers.NodeFactory.virtualRoot
-import se.kth.spork.spoon.Parser.setSporkEnvironment
-import se.kth.spork.spoon.wrappers.NodeFactory.wrap
-import se.kth.spork.spoon.wrappers.NodeFactory.forceWrap
-import se.kth.spork.spoon.wrappers.SpoonNode
-import se.kth.spork.spoon.conflict.StructuralConflict
 import se.kth.spork.base3dm.Revision
-import spoon.reflect.declaration.CtElement
-import spoon.reflect.factory.ModuleFactory.CtUnnamedModule
-import spoon.reflect.CtModelImpl.CtRootPackage
-import java.lang.IllegalStateException
-import se.kth.spork.spoon.wrappers.NodeFactory
-import se.kth.spork.spoon.matching.SpoonMapping
+import se.kth.spork.spoon.Parser.setSporkEnvironment
+import se.kth.spork.spoon.conflict.ContentConflict
 import se.kth.spork.spoon.conflict.ContentConflictHandler
 import se.kth.spork.spoon.conflict.ContentMerger
-import se.kth.spork.spoon.conflict.ContentConflict
+import se.kth.spork.spoon.conflict.StructuralConflict
+import se.kth.spork.spoon.matching.SpoonMapping
+import se.kth.spork.spoon.wrappers.NodeFactory
+import se.kth.spork.spoon.wrappers.NodeFactory.forceWrap
+import se.kth.spork.spoon.wrappers.NodeFactory.virtualRoot
+import se.kth.spork.spoon.wrappers.NodeFactory.wrap
+import se.kth.spork.spoon.wrappers.SpoonNode
+import spoon.Launcher
+import spoon.compiler.Environment
+import spoon.reflect.CtModelImpl.CtRootPackage
+import spoon.reflect.code.CtExpression
+import spoon.reflect.cu.SourcePosition
+import spoon.reflect.declaration.CtAnnotation
+import spoon.reflect.declaration.CtElement
+import spoon.reflect.factory.Factory
+import spoon.reflect.factory.ModuleFactory.CtUnnamedModule
 import spoon.reflect.path.CtRole
 import spoon.reflect.reference.CtParameterReference
 import spoon.reflect.reference.CtTypeReference
-import spoon.reflect.declaration.CtAnnotation
-import spoon.reflect.code.CtExpression
-import spoon.Launcher
-import spoon.compiler.Environment
-import spoon.reflect.cu.SourcePosition
-import spoon.reflect.factory.Factory
-import java.util.*
+import java.lang.IllegalStateException
+import java.util.TreeMap
+import kotlin.collections.ArrayList
+import kotlin.collections.HashMap
 
 /**
  * Class for building a Spoon tree (i.e. a CtElement) from a [SporkTree].
@@ -80,15 +82,12 @@ class SpoonTreeBuilder internal constructor(
         var lastChild: CtElement? = null
         for (child in root.children) {
             val conflict = child.structuralConflict
-            lastChild = conflict.map { structuralConflict: StructuralConflict ->
-                visitConflicting(
-                    root.node,
-                    structuralConflict
-                )
-            }
-                .orElseGet { visit(root, child) }
-            if (root.node === virtualRoot
-                || !child.isSingleRevisionSubtree
+            lastChild = conflict?.let {
+                visitConflicting(root.node, it)
+            } ?: visit(root, child)
+
+            if (root.node === virtualRoot ||
+                !child.isSingleRevisionSubtree
             ) build(child)
         }
         return lastChild
@@ -121,8 +120,8 @@ class SpoonTreeBuilder internal constructor(
             mergeTree = shallowCopyTree(originalTree, factory)
             mergedContent
                 .first?.forEach { roledValue ->
-                    mergeTree.setValueByRole<CtElement, Any?>(roledValue.role, roledValue.value)
-                }
+                mergeTree.setValueByRole<CtElement, Any?>(roledValue.role, roledValue.value)
+            }
             if (mergedContent.second.isNotEmpty()) {
                 // at least one conflict was not resolved
                 mergeTree.putMetadata<CtElement>(ContentConflict.METADATA_KEY, mergedContent.second)
@@ -142,9 +141,9 @@ class SpoonTreeBuilder internal constructor(
             if (mergeTreeRole == CtRole.TYPE_MEMBER || mergeTreeRole == CtRole.COMMENT) {
                 unsetSourcePosition(mergeTree)
             }
-            if (isVarKeyword(mergeTree)
-                && mergeParent is CtParameterReference<*>
-                && mergeTreeRole == CtRole.TYPE
+            if (isVarKeyword(mergeTree) &&
+                mergeParent is CtParameterReference<*> &&
+                mergeTreeRole == CtRole.TYPE
             ) {
                 // we skip this case, because  for some reason, when it comes to parameter
                 // references, Spoon sets
@@ -187,8 +186,10 @@ class SpoonTreeBuilder internal constructor(
     }
 
     private fun isVarKeyword(mergeTree: CtElement): Boolean {
-        return (mergeTree is CtTypeReference<*>
-                && mergeTree.simpleName == "var")
+        return (
+            mergeTree is CtTypeReference<*> &&
+                mergeTree.simpleName == "var"
+            )
     }
 
     @Suppress("UNCHECKED_CAST")
@@ -254,10 +255,10 @@ class SpoonTreeBuilder internal constructor(
         val matches: MutableList<CtRole> = ArrayList()
         val tree = wrapper!!.element
         matches.add(wrapper.element.roleInParent)
-        var base: Optional<SpoonNode> = Optional.empty()
+        var base: SpoonNode? = null
         when (tree.getMetadata(REV) as Revision) {
             Revision.BASE -> {
-                base = Optional.of(wrapper)
+                base = wrapper
                 val left = baseLeft.getDst(wrapper)
                 val right = baseRight.getDst(wrapper)
                 if (left != null) matches.add(left.element.roleInParent)
@@ -267,19 +268,19 @@ class SpoonTreeBuilder internal constructor(
                 val match = baseRight.getSrc(wrapper)
                 if (match != null) {
                     matches.add(match.element.roleInParent)
-                    base = Optional.of(match)
+                    base = match
                 }
             }
             Revision.LEFT -> {
                 val match = baseLeft.getSrc(wrapper)
                 if (match != null) {
                     matches.add(match.element.roleInParent)
-                    base = Optional.of(match)
+                    base = match
                 }
             }
         }
-        if (base.isPresent) {
-            val baseRole = base.get().element.roleInParent
+        if (base != null) {
+            val baseRole = base.element.roleInParent
             matches.removeIf { w: CtRole -> w == baseRole }
             if (matches.isEmpty()) {
                 return baseRole
@@ -310,7 +311,9 @@ class SpoonTreeBuilder internal constructor(
      * among its siblings.
      */
     private fun resolveAnnotationMap(
-        mergeTree: CtElement, siblings: Map<*, *>, originalTree: CtElement
+        mergeTree: CtElement,
+        siblings: Map<*, *>,
+        originalTree: CtElement
     ): Map<*, *> {
         val mutableCurrent: MutableMap<Any, Any> = TreeMap(siblings)
         val annotation = originalTree.parent as CtAnnotation<*>

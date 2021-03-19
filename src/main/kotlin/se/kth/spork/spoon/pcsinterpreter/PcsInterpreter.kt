@@ -1,12 +1,12 @@
 package se.kth.spork.spoon.pcsinterpreter
 
 import se.kth.spork.base3dm.ChangeSet
-import se.kth.spork.spoon.wrappers.SpoonNode
-import se.kth.spork.spoon.wrappers.RoledValues
-import spoon.reflect.declaration.CtElement
-import se.kth.spork.spoon.matching.SpoonMapping
-import se.kth.spork.spoon.conflict.StructuralConflictHandler
 import se.kth.spork.spoon.conflict.ContentConflictHandler
+import se.kth.spork.spoon.conflict.StructuralConflictHandler
+import se.kth.spork.spoon.matching.SpoonMapping
+import se.kth.spork.spoon.wrappers.RoledValues
+import se.kth.spork.spoon.wrappers.SpoonNode
+import spoon.reflect.declaration.CtElement
 
 /**
  * Convert a merged PCS structure into a Spoon tree.
