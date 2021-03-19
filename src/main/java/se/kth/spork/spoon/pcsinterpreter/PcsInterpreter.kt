@@ -33,9 +33,7 @@ object PcsInterpreter {
         val sporkTreeBuilder = SporkTreeBuilder(delta, baseLeft, baseRight, structuralConflictHandlers)
         val sporkTreeRoot = sporkTreeBuilder.buildTree()
 
-        // this is a bit of a hack, get any used environment such that the SpoonTreeBuilder can copy
-        // environment
-        // details
+        // this is a bit of a hack, get any used environment such that the SpoonTreeBuilder can copy environment details
         val oldEnv = sporkTreeRoot
             .children[0]
             .node
