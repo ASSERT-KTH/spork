@@ -33,8 +33,11 @@ import kotlin.collections.HashMap
 /**
  * Class for building a Spoon tree (i.e. a CtElement) from a [SporkTree].
  *
- * @author Simon Larsén
- */
+ * @param baseLeft The base-to-left tree matching.
+ * @param baseRight The base-to-right tree matching.
+ * @param oldEnv Any environment used in the merge. It's needed to copy some values.
+ * @param contentConflictHandlers A list of conflict handlers.
+*/
 class SpoonTreeBuilder internal constructor(
     baseLeft: SpoonMapping,
     baseRight: SpoonMapping,
@@ -295,9 +298,8 @@ class SpoonTreeBuilder internal constructor(
      *
      *
      * This is a bit fiddly, as there are many ways in which the key/value map can be expressed
-     * in source code. See [the Oracle
- * docs](https://docs.oracle.com/javase/tutorial/java/annotations/basics.html) for more info on annotations.
-     *
+     * in source code. See [the Oracle docs](https://docs.oracle.com/javase/tutorial/java/annotations/basics.html)
+     * for more info on annotations.
      *
      * Note: This method mutates none of the input.
      *
@@ -357,12 +359,6 @@ class SpoonTreeBuilder internal constructor(
         }
     }
 
-    /**
-     * @param baseLeft The base-to-left tree matching.
-     * @param baseRight The base-to-right tree matching.
-     * @param oldEnv Any environment used in the merge. It's needed to copy some values.
-     * @param contentConflictHandlers A list of conflict handlers.
-     */
     init {
         nodes = HashMap()
         this.baseLeft = baseLeft

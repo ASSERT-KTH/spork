@@ -15,7 +15,8 @@ import kotlin.jvm.JvmOverloads
  * essentially a greatly simplified AST that also offers some support for representing structural
  * conflicts as well as keeping track of which revisions it consists of.
  *
- * @author Simon Larsén
+ * @param node The Spoon node this SporkTree represents.
+ * @param content The Spoon content of this node.
  */
 class SporkTree @JvmOverloads constructor(
     val node: SpoonNode,

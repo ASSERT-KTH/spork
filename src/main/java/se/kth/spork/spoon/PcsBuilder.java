@@ -10,8 +10,6 @@ import spoon.reflect.visitor.CtScanner;
 
 /**
  * A scanner that builds a PCS structure from a Spoon tree.
- *
- * @author Simon Larsén
  */
 class PcsBuilder extends CtScanner {
     private Map<SpoonNode, SpoonNode> parentToLastSibling = new HashMap<>();

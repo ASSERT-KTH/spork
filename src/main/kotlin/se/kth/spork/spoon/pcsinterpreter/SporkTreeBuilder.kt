@@ -23,29 +23,28 @@ import java.util.stream.Collectors
 /**
  * Class for building a [SporkTree] from a merged [ChangeSet].
  *
- * @author Simon Larsén
+ * @param delta A merged change set.
+ * @param baseLeft The base-to-left tree matching.
+ * @param baseRight The base-to-right tree matching.
+ * @param conflictHandlers All conflict handlers.
  */
 internal class SporkTreeBuilder(
-    delta: ChangeSet<SpoonNode, RoledValues>,
-    baseLeft: SpoonMapping,
-    baseRight: SpoonMapping,
-    conflictHandlers: List<StructuralConflictHandler>?
+    private val delta: ChangeSet<SpoonNode, RoledValues>,
+    private val baseLeft: SpoonMapping,
+    private val baseRight: SpoonMapping,
+    private val conflictHandlers: List<StructuralConflictHandler>
 ) {
-    private val rootToChildren: Map<SpoonNode, Map<SpoonNode, Pcs<SpoonNode>>>
-    private val structuralConflicts: Map<Pcs<SpoonNode>, Set<Pcs<SpoonNode>>>
-    private val contents: Map<SpoonNode, Set<Content<SpoonNode, RoledValues>>>
-    private var numStructuralConflicts: Int
+    private val rootToChildren: Map<SpoonNode, Map<SpoonNode, Pcs<SpoonNode>>> = buildRootToChildren(delta.pcsSet)
+    private val contents: Map<SpoonNode, Set<Content<SpoonNode, RoledValues>>> = delta.contents
+    private var numStructuralConflicts: Int = 0
 
     // keeps track of which nodes have been added to the tree all ready
     // if any node is added twice, there's an unresolved move conflict
-    private val usedNodes: MutableSet<SpoonNode?>
+    private val usedNodes: MutableSet<SpoonNode> = mutableSetOf()
 
     // keeps track of all structural inconsistencies that are used
     // if any have not been used when the tree has been built, there's something wrong
-    private val remainingInconsistencies: MutableSet<Pcs<SpoonNode>>
-    private val baseLeft: SpoonMapping
-    private val baseRight: SpoonMapping
-    private val conflictHandlers: List<StructuralConflictHandler>
+    private val remainingInconsistencies: MutableSet<Pcs<SpoonNode>> = delta.structuralConflicts.values.flatten().toMutableSet()
 
     /** Try to resolve a structural conflict automatically.  */
     private fun tryResolveConflict(
@@ -154,7 +153,7 @@ internal class SporkTreeBuilder(
     }
 
     private fun getSuccessorConflict(pcs: Pcs<SpoonNode>): Pcs<SpoonNode>? =
-        structuralConflicts[pcs]?.firstOrNull {
+        delta.structuralConflicts[pcs]?.firstOrNull {
             isSuccessorConflict(
                 pcs, it
             )
@@ -169,11 +168,11 @@ internal class SporkTreeBuilder(
      * @param node A node for which the child list could not be constructed.
      * @return An approximated conflict between the left and right matches of the node.
      */
-    private fun approximateConflict(node: SpoonNode?): StructuralConflict {
+    private fun approximateConflict(node: SpoonNode): StructuralConflict {
         val base: SpoonNode?
         val left: SpoonNode?
         val right: SpoonNode?
-        when (node!!.revision) {
+        when (node.revision) {
             Revision.LEFT -> {
                 left = node
                 base = baseLeft.getSrc(left)
@@ -256,7 +255,7 @@ internal class SporkTreeBuilder(
         var currentPcs = pcs
         val nodes: MutableList<SpoonNode> = mutableListOf()
         while (true) {
-            val conflicts = structuralConflicts[currentPcs]
+            val conflicts = delta.structuralConflicts[currentPcs]
             if (conflicts != null && !conflicts.isEmpty()) {
                 val finalPcs = currentPcs
                 val predConflict = conflicts.stream()
@@ -293,18 +292,5 @@ internal class SporkTreeBuilder(
             }
             return rootToChildren
         }
-    }
-
-    init {
-        rootToChildren = buildRootToChildren(delta.pcsSet)
-        this.baseLeft = baseLeft
-        this.baseRight = baseRight
-        this.conflictHandlers = ArrayList(conflictHandlers)
-        structuralConflicts = delta.structuralConflicts
-        contents = delta.contents
-        numStructuralConflicts = 0
-        usedNodes = HashSet()
-        remainingInconsistencies = HashSet()
-        remainingInconsistencies.addAll(structuralConflicts.values.flatten())
     }
 }
