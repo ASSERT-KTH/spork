@@ -39,19 +39,17 @@ import kotlin.collections.HashMap
  * @param contentConflictHandlers A list of conflict handlers.
 */
 class SpoonTreeBuilder internal constructor(
-    baseLeft: SpoonMapping,
-    baseRight: SpoonMapping,
+    private val baseLeft: SpoonMapping,
+    private val baseRight: SpoonMapping,
     oldEnv: Environment,
     contentConflictHandlers: List<ContentConflictHandler>
 ) {
-    private val baseLeft: SpoonMapping
-    private val baseRight: SpoonMapping
     private var numContentConflicts = 0
-    private val factory: Factory
+    private val factory: Factory = Launcher().factory
 
     // A mapping from the original node to its copy in the merged tree
-    private val nodes: MutableMap<SpoonNode, SpoonNode>
-    private val contentMerger: ContentMerger
+    private val nodes: MutableMap<SpoonNode, SpoonNode> = mutableMapOf()
+    private val contentMerger: ContentMerger = ContentMerger(contentConflictHandlers)
 
     /**
      * Create a shallow copy of a tree.
@@ -360,14 +358,6 @@ class SpoonTreeBuilder internal constructor(
     }
 
     init {
-        nodes = HashMap()
-        this.baseLeft = baseLeft
-        this.baseRight = baseRight
-        contentMerger = ContentMerger(contentConflictHandlers)
-
-        // create a new factory
-        val launcher = Launcher()
-        factory = launcher.createFactory()
         setSporkEnvironment(
             factory.environment, oldEnv.tabulationSize, oldEnv.isUsingTabulations
         )

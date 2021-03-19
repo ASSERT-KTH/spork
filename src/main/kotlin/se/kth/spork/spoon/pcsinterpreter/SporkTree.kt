@@ -21,10 +21,8 @@ import kotlin.jvm.JvmOverloads
 class SporkTree @JvmOverloads constructor(
     val node: SpoonNode,
     val content: Set<Content<SpoonNode, RoledValues>>,
-    structuralConflict: StructuralConflict? = null
+    val structuralConflict: StructuralConflict? = null
 ) {
-    val structuralConflict: StructuralConflict? = structuralConflict
-
     private val _children: MutableList<SporkTree> = mutableListOf()
     val children: List<SporkTree>
         get() = _children.toList()

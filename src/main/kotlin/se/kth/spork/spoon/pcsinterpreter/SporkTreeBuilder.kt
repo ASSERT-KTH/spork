@@ -256,7 +256,7 @@ internal class SporkTreeBuilder(
         val nodes: MutableList<SpoonNode> = mutableListOf()
         while (true) {
             val conflicts = delta.structuralConflicts[currentPcs]
-            if (conflicts != null && !conflicts.isEmpty()) {
+            if (conflicts != null && conflicts.isNotEmpty()) {
                 val finalPcs = currentPcs
                 val predConflict = conflicts.stream()
                     .filter {
