@@ -38,6 +38,6 @@ fun fromMergedPcs(
     val spoonTreeRoot = spoonTreeBuilder.build(sporkTreeRoot)
     return Pair(
         spoonTreeRoot,
-        sporkTreeBuilder.numStructuralConflicts() + spoonTreeBuilder.numContentConflicts()
+        sporkTreeBuilder.numStructuralConflicts() + spoonTreeBuilder.numContentConflicts
     )
 }

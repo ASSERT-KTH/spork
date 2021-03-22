@@ -44,7 +44,10 @@ class SpoonTreeBuilder internal constructor(
     oldEnv: Environment,
     contentConflictHandlers: List<ContentConflictHandler>
 ) {
-    private var numContentConflicts = 0
+    var numContentConflicts: Int = 0
+        private set
+
+
     private val factory: Factory = Launcher().factory
 
     // A mapping from the original node to its copy in the merged tree
@@ -92,12 +95,6 @@ class SpoonTreeBuilder internal constructor(
             ) build(child)
         }
         return lastChild
-    }
-
-    /** @return The amount of conflicts.
-     */
-    fun numContentConflicts(): Int {
-        return numContentConflicts
     }
 
     /**
