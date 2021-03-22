@@ -18,7 +18,7 @@ import se.kth.spork.spoon.conflict.StructuralConflict
 import se.kth.spork.spoon.matching.MappingRemover.Companion.removeFromMappings
 import se.kth.spork.spoon.matching.SpoonMapping.Companion.fromGumTreeMapping
 import se.kth.spork.spoon.matching.createClassRepresentativesMapping
-import se.kth.spork.spoon.pcsinterpreter.PcsInterpreter
+import se.kth.spork.spoon.pcsinterpreter.fromMergedPcs
 import se.kth.spork.spoon.wrappers.NodeFactory
 import se.kth.spork.spoon.wrappers.NodeFactory.clearNonRevisionMetadata
 import se.kth.spork.spoon.wrappers.NodeFactory.forceWrap
@@ -149,7 +149,7 @@ object Spoon3dmMerge {
             IsUpperHandler(),
             CommentContentHandler()
         )
-        val merge = PcsInterpreter.fromMergedPcs(
+        val merge = fromMergedPcs(
             delta,
             baseLeft,
             baseRight,
