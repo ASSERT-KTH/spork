@@ -47,7 +47,6 @@ class SpoonTreeBuilder internal constructor(
     var numContentConflicts: Int = 0
         private set
 
-
     private val factory: Factory = Launcher().factory
 
     // A mapping from the original node to its copy in the merged tree
