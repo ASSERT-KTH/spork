@@ -8,11 +8,7 @@ import se.kth.spork.spoon.wrappers.SpoonNode;
 import spoon.reflect.declaration.CtElement;
 import spoon.reflect.visitor.CtScanner;
 
-/**
- * A scanner that builds a PCS structure from a Spoon tree.
- *
- * @author Simon Larsén
- */
+/** A scanner that builds a PCS structure from a Spoon tree. */
 class PcsBuilder extends CtScanner {
     private Map<SpoonNode, SpoonNode> parentToLastSibling = new HashMap<>();
     private Set<Pcs<SpoonNode>> pcses = new HashSet<>();

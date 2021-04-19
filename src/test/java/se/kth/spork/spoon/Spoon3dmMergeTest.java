@@ -3,13 +3,13 @@ package se.kth.spork.spoon;
 import static org.junit.jupiter.api.Assertions.*;
 
 import java.io.IOException;
+import kotlin.Pair;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ArgumentsSource;
 import se.kth.spork.Util;
 import se.kth.spork.cli.Cli;
 import se.kth.spork.exception.ConflictException;
-import se.kth.spork.util.Pair;
 import spoon.reflect.declaration.*;
 
 class Spoon3dmMergeTest {
@@ -38,7 +38,10 @@ class Spoon3dmMergeTest {
     void merge_shouldBeClean_withGranularLineBasedFallback(Util.TestSources sources)
             throws IOException {
         assertEquals(
-                0, Spoon3dmMerge.INSTANCE.merge(sources.base, sources.left, sources.right).second);
+                0,
+                Spoon3dmMerge.INSTANCE
+                        .merge(sources.base, sources.left, sources.right)
+                        .getSecond());
     }
 
     @Disabled
@@ -59,7 +62,7 @@ class Spoon3dmMergeTest {
 
         Pair<CtModule, Integer> merged =
                 Spoon3dmMerge.INSTANCE.merge(sources.base, sources.left, sources.right);
-        CtModule mergeTree = merged.first;
+        CtModule mergeTree = merged.getFirst();
         Object mergedImports = mergeTree.getMetadata(Parser.IMPORT_STATEMENTS);
         Object mergedCuComment = mergeTree.getMetadata(Parser.COMPILATION_UNIT_COMMENT);
 

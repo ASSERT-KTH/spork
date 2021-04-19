@@ -4,8 +4,6 @@ import se.kth.spork.base3dm.Content
 import se.kth.spork.base3dm.Revision
 import se.kth.spork.spoon.wrappers.RoledValues
 import se.kth.spork.spoon.wrappers.SpoonNode
-import se.kth.spork.util.Pair
-import se.kth.spork.util.Triple
 import spoon.reflect.path.CtRole
 import java.util.ArrayDeque
 import java.util.ArrayList
@@ -28,7 +26,7 @@ class ContentMerger(conflictHandlers: List<ContentConflictHandler>) {
         nodeContents: Set<Content<SpoonNode, RoledValues>>
     ): Pair<RoledValues?, List<ContentConflict>> {
         if (nodeContents.size == 1) {
-            return Pair.of(nodeContents.iterator().next().value, emptyList())
+            return Pair(nodeContents.iterator().next().value, emptyList())
         }
         val revisions = getContentRevisions(nodeContents)
         val baseRoledValues = revisions.first?.value
@@ -97,24 +95,13 @@ class ContentMerger(conflictHandlers: List<ContentConflictHandler>) {
                 if (!conflictPresent) unresolvedConflicts.pop()
             }
         }
-        return Pair.of(mergedRoledValues, ArrayList(unresolvedConflicts))
+        return Pair(mergedRoledValues, ArrayList(unresolvedConflicts))
     }
-
-    // this is just a type alias to declutter the getContentRevisions method header
-    private class _ContentTriple(
-        first: Content<SpoonNode, RoledValues>?,
-        second: Content<SpoonNode, RoledValues>,
-        third: Content<SpoonNode, RoledValues>
-    ) : Triple<Content<SpoonNode, RoledValues>?, Content<SpoonNode, RoledValues>, Content<SpoonNode, RoledValues>>(
-        first,
-        second,
-        third
-    )
 
     companion object {
         private fun getContentRevisions(
             contents: Set<Content<SpoonNode, RoledValues>>
-        ): _ContentTriple {
+        ): Triple<Content<SpoonNode, RoledValues>?, Content<SpoonNode, RoledValues>, Content<SpoonNode, RoledValues>> {
             var base: Content<SpoonNode, RoledValues>? = null
             var left: Content<SpoonNode, RoledValues>? = null
             var right: Content<SpoonNode, RoledValues>? = null
@@ -125,8 +112,8 @@ class ContentMerger(conflictHandlers: List<ContentConflictHandler>) {
                     Revision.RIGHT -> right = cnt
                 }
             }
-            require(!(left == null || right == null)) { "Expected at least left and right revisions, got: $contents" }
-            return _ContentTriple(base, left, right)
+            require(left != null && right != null) { "Expected at least left and right revisions, got: $contents" }
+            return Triple(base, left, right)
         }
     }
 

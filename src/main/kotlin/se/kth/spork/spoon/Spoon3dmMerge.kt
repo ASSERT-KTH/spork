@@ -18,13 +18,12 @@ import se.kth.spork.spoon.conflict.StructuralConflict
 import se.kth.spork.spoon.matching.MappingRemover.Companion.removeFromMappings
 import se.kth.spork.spoon.matching.SpoonMapping.Companion.fromGumTreeMapping
 import se.kth.spork.spoon.matching.createClassRepresentativesMapping
-import se.kth.spork.spoon.pcsinterpreter.PcsInterpreter
+import se.kth.spork.spoon.pcsinterpreter.fromMergedPcs
 import se.kth.spork.spoon.wrappers.NodeFactory
 import se.kth.spork.spoon.wrappers.NodeFactory.clearNonRevisionMetadata
 import se.kth.spork.spoon.wrappers.NodeFactory.forceWrap
 import se.kth.spork.spoon.wrappers.NodeFactory.virtualRoot
 import se.kth.spork.util.LazyLogger
-import se.kth.spork.util.Pair
 import se.kth.spork.util.lineBasedMerge
 import spoon.reflect.declaration.CtElement
 import spoon.reflect.declaration.CtExecutable
@@ -150,7 +149,7 @@ object Spoon3dmMerge {
             IsUpperHandler(),
             CommentContentHandler()
         )
-        val merge = PcsInterpreter.fromMergedPcs(
+        val merge = fromMergedPcs(
             delta,
             baseLeft,
             baseRight,
@@ -165,7 +164,7 @@ object Spoon3dmMerge {
         LOGGER.info { "Checking for duplicated members" }
         val duplicateMemberConflicts = eliminateDuplicateMembers(mergeTree)
         LOGGER.info { "Merged in " + (System.nanoTime() - start).toDouble() / 1e9 + " seconds" }
-        return Pair.of(
+        return Pair(
             mergeTree, numConflicts + metadataElementConflicts + duplicateMemberConflicts
         )
     }
