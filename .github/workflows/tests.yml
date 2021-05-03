@@ -51,7 +51,7 @@ jobs:
       - name: Run tests
         run: mvn test
       - name: Upload coverage report to Codecov
-        uses: codecov/codecov-action@239febf655bba88b16ff5dea1d3135ea8663a1f9 # v1.0.15
+        uses: codecov/codecov-action@967e2b38a85a62bd61be5529ada27ebc109948c2 # v1.4.1
         with:
           fail_ci_if_error: true
 
