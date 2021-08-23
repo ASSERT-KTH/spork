@@ -152,7 +152,7 @@ class SpoonTreeBuilder internal constructor(
             // NOTE: Super important that the parent of the merge tree is set no matter what, as
             // wrapping a spoon CtElement
             // in a SpoonNode requires access to its parent.
-            mergeTree.setParent(mergeParent)
+            mergeTree.setParent<CtElement>(mergeParent)
             wrap(mergeTree)
         } else {
             // if the merge tree has no parent, then its parent is the virtual root
