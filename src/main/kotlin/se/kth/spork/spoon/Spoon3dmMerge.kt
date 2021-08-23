@@ -243,7 +243,7 @@ object Spoon3dmMerge {
                 .descendantIterator()
                 .forEachRemaining(NodeFactory::clearNonRevisionMetadata)
             val dummyBase = left.clone() as CtTypeMember
-            dummyBase.setParent(type)
+            dummyBase.setParent<CtElement>(type)
             dummyBase.directChildren.forEach(CtElement::delete)
 
             // we forcibly set the virtual root as parent, as the real parent of these members
