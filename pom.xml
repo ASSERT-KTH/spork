@@ -196,7 +196,7 @@
                     </execution>
                 </executions>
                 <configuration>
-                    <jvmTarget>1.8</jvmTarget>
+                    <jvmTarget>11</jvmTarget>
                     <args>
                         <arg>-Werror</arg>
                     </args>
@@ -223,10 +223,10 @@
                     </execution>
                 </executions>
                 <configuration>
-                    <source>8</source>
-                    <target>8</target>
-                    <testSource>8</testSource>
-                    <testTarget>8</testTarget>
+                    <source>11</source>
+                    <target>11</target>
+                    <testSource>11</testSource>
+                    <testTarget>11</testTarget>
 
                     <!-- picocli annotation processing -->
                     <annotationProcessorPaths>
