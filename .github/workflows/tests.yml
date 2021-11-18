@@ -69,7 +69,7 @@ jobs:
           java-package: jdk
           architecture: x64
           distribution: ${{ env.JAVA_DISTRIBUTION }}
-      - uses: actions/setup-python@dc73133d4da04e56a135ae2246682783cc7c7cb6
+      - uses: actions/setup-python@0066b88440aa9562be742e2c60ee750fc57d8849
         with:
           python-version: 3.8
 
