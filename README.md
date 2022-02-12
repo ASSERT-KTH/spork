@@ -9,14 +9,17 @@ merges based on them instead.
 
 ## Academic use
 
-If you use Spork in an academic context, please cite the related research paper:
+If you use Spork in an academic context, please cite the
+[related research paper](https://doi.org/10.1109/TSE.2022.3143766):
 
 > S. Larsen, J. -R. Falleri, B. Baudry and M. Monperrus, "Spork: Structured
 > Merge for Java with Formatting Preservation," in IEEE Transactions on
 > Software Engineering, doi: 10.1109/TSE.2022.3143766.
 
 You may export a citation in various formats using the `Cite this repository`
-button to the right. See [the GitHub docs] for more info.
+button to the right. See
+[the GitHub docs](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-citation-files)
+for more info.
 
 ## Master's thesis
 Spork was created as part of a master's thesis project. If you want to learn
