@@ -1,0 +1,40 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
+cff-version: 1.2.0
+title: >-
+    Spork - AST-based merge for Java
+message: >-
+  If you use this software in an academic context,
+  please cite using this metadata.
+type: software
+url: https://github.com/kth/spork
+authors:
+  - given-names: Simon
+    family-names: Larsén
+    email: slarse@slar.se
+preferred-citation:
+  type: article
+  authors:
+  - given-names: Simon
+    family-names: Larsén
+    email: slarse@kth.se
+    affiliation: KTH
+  - given-names: Jean-Rémy
+    family-names: Falleri
+    email: jean-remy.falleri@u-bordeaux.fr
+    affiliation: 'Univ. Bordeaux, Bordeaux INP, CNRS, LaBRI, IUF'
+  - given-names: Benoit
+    family-names: Baudry
+    email: baudry@kth.se
+    affiliation: KTH
+  - given-names: Martin
+    family-names: Monperrus
+    email: monperrus@kth.se
+    affiliation: KTH
+  doi: "10.1109/TSE.2022.3143766"
+  journal: "IEEE Transactions on Software Engineering"
+  start: 1 # First page number
+  end: 1 # Last page number
+  title: "Spork: Structured Merge for Java with Formatting Preservation"
+  year: 2022
