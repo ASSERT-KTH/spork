@@ -27,7 +27,7 @@ jobs:
       - uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
         with:
           fetch-depth: 2
-      - uses: actions/setup-java@f69f00b5e5324696b07f6b1c92f0470a6df00780
+      - uses: actions/setup-java@9519cf1382ac8dc61ad461f7f7cb45f033220189
         with:
           java-version: 11
           java-package: jdk
@@ -63,7 +63,7 @@ jobs:
       - uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
         with:
           fetch-depth: 0 # fetch everything
-      - uses: actions/setup-java@f69f00b5e5324696b07f6b1c92f0470a6df00780
+      - uses: actions/setup-java@9519cf1382ac8dc61ad461f7f7cb45f033220189
         with:
           java-version: 11
           java-package: jdk
@@ -98,7 +98,7 @@ jobs:
       - uses: actions/checkout@ec3a7ce113134d7a93b817d10a8272cb61118579
         with:
           fetch-depth: 0 # fetch everything
-      - uses: actions/setup-java@f69f00b5e5324696b07f6b1c92f0470a6df00780
+      - uses: actions/setup-java@9519cf1382ac8dc61ad461f7f7cb45f033220189
         with:
           java-version: 11
           java-package: jdk
