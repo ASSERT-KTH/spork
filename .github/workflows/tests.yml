@@ -24,7 +24,7 @@ jobs:
         os: [ ubuntu-latest, macos-latest ]
 
     steps:
-      - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
+      - uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744
         with:
           fetch-depth: 2
       - uses: actions/setup-java@2c7a4878f5d120bd643426d54ae1209b29cc01a3
@@ -60,7 +60,7 @@ jobs:
     if: ${{ github.ref == 'refs/heads/master' }}
 
     steps:
-      - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
+      - uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744
         with:
           fetch-depth: 0 # fetch everything
       - uses: actions/setup-java@2c7a4878f5d120bd643426d54ae1209b29cc01a3
@@ -95,7 +95,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b
+      - uses: actions/checkout@f43a0e5ff2bd294095638e18286ca9a3d1956744
         with:
           fetch-depth: 0 # fetch everything
       - uses: actions/setup-java@2c7a4878f5d120bd643426d54ae1209b29cc01a3
