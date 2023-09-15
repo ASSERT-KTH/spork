@@ -8,7 +8,7 @@ class RoledValue(val role: CtRole, val value: Any?) {
     private val metadata: MutableMap<Key, Any> = EnumMap(se.kth.spork.spoon.wrappers.RoledValue.Key::class.java)
 
     enum class Key {
-        RAW_CONTENT
+        RAW_CONTENT,
     }
 
     fun putMetadata(key: Key, value: Any) {

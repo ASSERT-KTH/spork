@@ -19,14 +19,17 @@ class CommentContentHandler : ContentConflictHandler {
         rightVal: Any,
         baseElem: CtElement?,
         leftElem: CtElement,
-        rightElem: CtElement
+        rightElem: CtElement,
     ): Pair<Any?, Boolean> {
         return Pair(mergeComments(baseVal ?: "", leftVal, rightVal), false)
     }
 
     private fun mergeComments(base: Any, left: Any, right: Any): Any? {
         val merge = lineBasedMerge(base.toString(), left.toString(), right.toString())
-        return if (merge.second > 0) null
-        else merge.first
+        return if (merge.second > 0) {
+            null
+        } else {
+            merge.first
+        }
     }
 }

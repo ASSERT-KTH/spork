@@ -23,7 +23,7 @@ class ContentMerger(conflictHandlers: List<ContentConflictHandler>) {
      * @return A pair of merged contents and a potentially empty collection of unresolved conflicts.
      */
     fun mergedContent(
-        nodeContents: Set<Content<SpoonNode, RoledValues>>
+        nodeContents: Set<Content<SpoonNode, RoledValues>>,
     ): Pair<RoledValues?, List<ContentConflict>> {
         if (nodeContents.size == 1) {
             return Pair(nodeContents.iterator().next().value, emptyList())
@@ -60,8 +60,8 @@ class ContentMerger(conflictHandlers: List<ContentConflictHandler>) {
                     role,
                     baseRoledValues?.get(i),
                     leftRv,
-                    rightRv
-                )
+                    rightRv,
+                ),
             )
             var merged: Any? = null
 
@@ -84,7 +84,7 @@ class ContentMerger(conflictHandlers: List<ContentConflictHandler>) {
                         rightVal,
                         baseRoledValues?.element,
                         leftRoledValues.element,
-                        rightRoledValues.element
+                        rightRoledValues.element,
                     )
                     merged = result.first
                     conflictPresent = result.second
@@ -100,7 +100,7 @@ class ContentMerger(conflictHandlers: List<ContentConflictHandler>) {
 
     companion object {
         private fun getContentRevisions(
-            contents: Set<Content<SpoonNode, RoledValues>>
+            contents: Set<Content<SpoonNode, RoledValues>>,
         ): Triple<Content<SpoonNode, RoledValues>?, Content<SpoonNode, RoledValues>, Content<SpoonNode, RoledValues>> {
             var base: Content<SpoonNode, RoledValues>? = null
             var left: Content<SpoonNode, RoledValues>? = null

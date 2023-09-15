@@ -24,12 +24,12 @@ class ModifierHandler : ContentConflictHandler {
         rightVal: Any,
         baseElem: CtElement?,
         leftElem: CtElement,
-        rightElem: CtElement
+        rightElem: CtElement,
     ): Pair<Any?, Boolean> {
         return mergeModifierKinds(
             (baseVal ?: setOf<ModifierKind>()) as Set<ModifierKind>,
             leftVal as Set<ModifierKind>,
-            rightVal as Set<ModifierKind>
+            rightVal as Set<ModifierKind>,
         )
     }
 
@@ -83,7 +83,7 @@ class ModifierHandler : ContentConflictHandler {
         private fun mergeModifierKinds(
             base: Set<ModifierKind>,
             left: Set<ModifierKind>,
-            right: Set<ModifierKind>
+            right: Set<ModifierKind>,
         ): Pair<Any?, Boolean> {
             val modifiers = base + left + right
             val baseVis = getVisibility(base)
@@ -120,7 +120,7 @@ class ModifierHandler : ContentConflictHandler {
             val isDeleted = { m: ModifierKind -> m in base && ((m in left) xor (m in right)) }
 
             val mods = (visibility + keywords + other).filter {
-                mod ->
+                    mod ->
                 isInLeftAndRight(mod) || !isDeleted(mod)
             }.toSet()
             return Pair(mods, conflict)

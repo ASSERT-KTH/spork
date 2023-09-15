@@ -19,7 +19,7 @@ class IsImplicitHandler : ContentConflictHandler {
         rightVal: Any,
         baseElem: CtElement?,
         leftElem: CtElement,
-        rightElem: CtElement
+        rightElem: CtElement,
     ): Pair<Any?, Boolean> {
         val mergedValue = if (baseVal != null) {
             // as there are only two possible values for a boolean, left and right disagreeing must

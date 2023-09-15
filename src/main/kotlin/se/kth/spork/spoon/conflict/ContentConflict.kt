@@ -7,7 +7,7 @@ class ContentConflict(
     val role: CtRole,
     val base: RoledValue?,
     val left: RoledValue,
-    val right: RoledValue
+    val right: RoledValue,
 ) {
 
     companion object {

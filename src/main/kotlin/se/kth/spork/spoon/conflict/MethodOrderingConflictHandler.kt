@@ -13,7 +13,7 @@ class MethodOrderingConflictHandler : StructuralConflictHandler {
     override fun tryResolveConflict(
         leftNodes: List<SpoonNode>,
         rightNodes: List<SpoonNode>,
-        type: ConflictType
+        type: ConflictType,
     ): List<SpoonNode>? {
         // we currently don't care about the type but it could be relevant in the future
         if (type != ConflictType.INSERT_INSERT) {

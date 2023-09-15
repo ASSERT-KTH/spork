@@ -36,7 +36,7 @@ fun createClassRepresentativesMapping(
     right: CtElement,
     baseLeft: SpoonMapping,
     baseRight: SpoonMapping,
-    leftRight: SpoonMapping
+    leftRight: SpoonMapping,
 ): Map<SpoonNode, SpoonNode> {
     val classRepMap = initializeClassRepresentatives(base)
     mapToClassRepresentatives(left, baseLeft, classRepMap, Revision.LEFT)

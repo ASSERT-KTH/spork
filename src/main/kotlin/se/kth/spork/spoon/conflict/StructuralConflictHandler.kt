@@ -22,6 +22,6 @@ interface StructuralConflictHandler {
     fun tryResolveConflict(
         leftNodes: List<SpoonNode>,
         rightNodes: List<SpoonNode>,
-        type: ConflictType
+        type: ConflictType,
     ): List<SpoonNode>?
 }

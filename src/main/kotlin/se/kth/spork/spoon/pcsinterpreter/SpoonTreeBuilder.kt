@@ -42,7 +42,7 @@ class SpoonTreeBuilder internal constructor(
     private val baseLeft: SpoonMapping,
     private val baseRight: SpoonMapping,
     oldEnv: Environment,
-    contentConflictHandlers: List<ContentConflictHandler>
+    contentConflictHandlers: List<ContentConflictHandler>,
 ) {
     var numContentConflicts: Int = 0
         private set
@@ -91,7 +91,9 @@ class SpoonTreeBuilder internal constructor(
 
             if (root.node === virtualRoot ||
                 !child.isSingleRevisionSubtree
-            ) build(child)
+            ) {
+                build(child)
+            }
         }
         return lastChild
     }
@@ -193,7 +195,7 @@ class SpoonTreeBuilder internal constructor(
         originalTree: CtElement,
         mergeParent: CtElement,
         mergeTree: CtElement,
-        mergeTreeRole: CtRole
+        mergeTreeRole: CtRole,
     ): Any {
         val siblings = mergeParent.getValueByRole<Any>(mergeTreeRole)
         val inserted: Any = when (siblings) {
@@ -308,7 +310,7 @@ class SpoonTreeBuilder internal constructor(
     private fun resolveAnnotationMap(
         mergeTree: CtElement,
         siblings: Map<*, *>,
-        originalTree: CtElement
+        originalTree: CtElement,
     ): Map<*, *> {
         val mutableCurrent: MutableMap<Any, Any> = TreeMap(siblings)
         val annotation = originalTree.parent as CtAnnotation<*>
@@ -355,7 +357,9 @@ class SpoonTreeBuilder internal constructor(
 
     init {
         setSporkEnvironment(
-            factory.environment, oldEnv.tabulationSize, oldEnv.isUsingTabulations
+            factory.environment,
+            oldEnv.tabulationSize,
+            oldEnv.isUsingTabulations,
         )
     }
 }

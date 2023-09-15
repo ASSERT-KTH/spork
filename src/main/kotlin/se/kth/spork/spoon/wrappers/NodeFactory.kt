@@ -43,11 +43,13 @@ object NodeFactory {
         CtRole.BODY, // always present as a single node
         CtRole.NESTED_TYPE, // falls under type member
         CtRole.FIELD, // falls under type member
-        CtRole.METHOD // falls under type member
+        CtRole.METHOD, // falls under type member
     )
 
     private val EXPLODED_TYPES = Arrays.asList(
-        CtExecutableReference::class.java, CtExecutable::class.java, CtType::class.java
+        CtExecutableReference::class.java,
+        CtExecutable::class.java,
+        CtType::class.java,
     )
     private var EXPLODED_TYPE_ROLES: Map<Class<out CtElement>, List<CtRole>> = EXPLODED_TYPES.map {
         it to getRoles(it).filter { it !in IGNORED_ROLES }
@@ -112,8 +114,9 @@ object NodeFactory {
     }
 
     private fun initializeWrapper(elem: CtElement): Node {
-        if (elem is CtUnnamedModule)
+        if (elem is CtUnnamedModule) {
             return initializeWrapper(elem, virtualRoot)
+        }
         val spoonParent = elem.parent
         val roleInParent = elem.roleInParent
         val actualParent = wrapInternal(spoonParent)
@@ -272,7 +275,7 @@ object NodeFactory {
      */
     private class ListEdge internal constructor( // the parent of the child list
         override val parent: SpoonNode,
-        private val side: Side
+        private val side: Side,
     ) : SpoonNode {
         enum class Side {
             START, END

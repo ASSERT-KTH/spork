@@ -5,8 +5,6 @@ import static org.junit.jupiter.api.Assertions.*;
 import java.io.IOException;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Set;
-
 import kotlin.Pair;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -73,7 +71,7 @@ class Spoon3dmMergeTest {
         // this assert is just to give a better overview of obvious errors, but it relies on the
         // pretty printer's
         // correctness
-        //assertEquals(Cli.prettyPrint(expected), Cli.prettyPrint(mergeTree));
+        // assertEquals(Cli.prettyPrint(expected), Cli.prettyPrint(mergeTree));
         System.out.println(Cli.prettyPrint(mergeTree));
 
         // we cannot assert CtModules so stricly
@@ -82,12 +80,13 @@ class Spoon3dmMergeTest {
 
         // so we force the order of types and assert one by one
         assertTrue(expected instanceof CtModule);
-        final Comparator<CtType> nameComparator = new Comparator<>() {
-            @Override
-            public int compare(CtType o, CtType t1) {
-                return o.getQualifiedName().compareTo(t1.getQualifiedName());
-            }
-        };
+        final Comparator<CtType> nameComparator =
+                new Comparator<>() {
+                    @Override
+                    public int compare(CtType o, CtType t1) {
+                        return o.getQualifiedName().compareTo(t1.getQualifiedName());
+                    }
+                };
         final List<CtType> list1 = expected.filterChildren(c -> (c instanceof CtType)).list();
         final List<CtType> list2 = mergeTree.filterChildren(c -> (c instanceof CtType)).list();
         list1.sort(nameComparator);

@@ -21,7 +21,7 @@ class IsUpperHandler : ContentConflictHandler {
         rightVal: Any,
         baseElem: CtElement?,
         leftElem: CtElement,
-        rightElem: CtElement
+        rightElem: CtElement,
     ): Pair<Any?, Boolean> {
         return Pair(mergeIsUpper(baseElem, leftElem, rightElem), false)
     }
@@ -30,7 +30,7 @@ class IsUpperHandler : ContentConflictHandler {
         private fun mergeIsUpper(
             baseElem: CtElement?,
             leftElem: CtElement,
-            rightElem: CtElement
+            rightElem: CtElement,
         ): Any? {
             val left = leftElem as CtWildcardReference
             val right = rightElem as CtWildcardReference
