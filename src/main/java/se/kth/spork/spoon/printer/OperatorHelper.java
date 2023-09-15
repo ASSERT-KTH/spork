@@ -48,7 +48,9 @@ class OperatorHelper {
         }
     }
 
-    /** @return java source code representation of a pre or post unary operator. */
+    /**
+     * @return java source code representation of a pre or post unary operator.
+     */
     public static String getOperatorText(UnaryOperatorKind o) {
         switch (o) {
             case POS:
@@ -72,7 +74,9 @@ class OperatorHelper {
         }
     }
 
-    /** @return java source code representation of a binary operator. */
+    /**
+     * @return java source code representation of a binary operator.
+     */
     public static String getOperatorText(BinaryOperatorKind o) {
         switch (o) {
             case OR:

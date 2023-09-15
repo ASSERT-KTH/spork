@@ -26,8 +26,10 @@ private val LOGGER: LazyLogger = LazyLogger(Object::class.java)
  */
 fun <T : ListNode, V> resolveRawMerge(base: ChangeSet<T, V>, delta: ChangeSet<T, V>) {
     for (pcs in delta.pcsSet) {
-        if (!delta.contains(pcs)) // was removed as otherPcs
+        if (!delta.contains(pcs)) {
+            // was removed as otherPcs
             continue
+        }
 
         // We need to merge the content of the predecessor and successor, but we can skip the parent.
         // The reason is that a parent node that never appears as a predecessor or successor will never be

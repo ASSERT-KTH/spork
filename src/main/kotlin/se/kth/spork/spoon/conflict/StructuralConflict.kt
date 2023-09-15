@@ -33,7 +33,7 @@ class StructuralConflict {
         base: CtElement?,
         left: CtElement,
         right: CtElement,
-        lineBasedMerge: String
+        lineBasedMerge: String,
     ) {
         this.base = if (base != null) listOf(base) else null
         this.left = listOf(left)
@@ -70,7 +70,7 @@ class StructuralConflict {
         }
 
         fun extractRootConflictingNodes(
-            structuralConflicts: Map<Pcs<SpoonNode>, Set<Pcs<SpoonNode>>>
+            structuralConflicts: Map<Pcs<SpoonNode>, Set<Pcs<SpoonNode>>>,
         ): Set<SpoonNode> {
             val toIgnore: MutableSet<SpoonNode> = HashSet()
             for ((pcs, value) in structuralConflicts) {

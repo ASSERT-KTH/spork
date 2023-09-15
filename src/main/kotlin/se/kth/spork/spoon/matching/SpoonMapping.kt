@@ -204,7 +204,9 @@ class SpoonMapping private constructor() {
         private fun isPrimitiveType(elem: CtElement): Boolean {
             return if (elem is CtTypeInformation) {
                 (elem as CtTypeInformation).isPrimitive
-            } else false
+            } else {
+                false
+            }
         }
 
         private fun isAnnotationValue(elem: CtElement): Boolean {

@@ -74,7 +74,8 @@ private fun getContent(elem: CtElement): RoledValues {
     if (elem is CtComment) {
         val rawContent = elem.rawContent
         val content = RoledValue(
-            CtRole.COMMENT_CONTENT, elem.getValueByRole<Any>(CtRole.COMMENT_CONTENT)
+            CtRole.COMMENT_CONTENT,
+            elem.getValueByRole<Any>(CtRole.COMMENT_CONTENT),
         )
         content.putMetadata(RoledValue.Key.RAW_CONTENT, rawContent)
         rvs.add(content)

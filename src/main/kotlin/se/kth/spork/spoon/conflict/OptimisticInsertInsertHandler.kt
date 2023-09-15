@@ -12,10 +12,14 @@ class OptimisticInsertInsertHandler : StructuralConflictHandler {
     override fun tryResolveConflict(
         leftNodes: List<SpoonNode>,
         rightNodes: List<SpoonNode>,
-        type: ConflictType
+        type: ConflictType,
     ): List<SpoonNode>? {
-        return if (leftNodes.isNotEmpty() && rightNodes.isNotEmpty() || type != ConflictType.INSERT_INSERT) null
-        else if (leftNodes.isNotEmpty()) leftNodes
-        else rightNodes
+        return if (leftNodes.isNotEmpty() && rightNodes.isNotEmpty() || type != ConflictType.INSERT_INSERT) {
+            null
+        } else if (leftNodes.isNotEmpty()) {
+            leftNodes
+        } else {
+            rightNodes
+        }
     }
 }

@@ -53,7 +53,7 @@ class CliTest {
 
         assertThrows(
                 MergeException.class,
-                () -> Cli.merge(sources.base, sources.left, sources.right, /*exitOnError=*/ true),
+                () -> Cli.merge(sources.base, sources.left, sources.right, /* exitOnError= */ true),
                 "Merge contained no types and global line-based fallback is disabled");
     }
 
@@ -64,7 +64,7 @@ class CliTest {
         String expected = Parser.INSTANCE.read(sources.expected);
 
         Pair<String, Integer> merge =
-                Cli.merge(sources.base, sources.left, sources.right, /*exitOnError=*/ false);
+                Cli.merge(sources.base, sources.left, sources.right, /* exitOnError= */ false);
 
         assertEquals(0, merge.getSecond());
         assertEquals(expected, merge.getFirst());

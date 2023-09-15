@@ -32,7 +32,7 @@ internal class SporkTreeBuilder(
     private val delta: ChangeSet<SpoonNode, RoledValues>,
     private val baseLeft: SpoonMapping,
     private val baseRight: SpoonMapping,
-    private val conflictHandlers: List<StructuralConflictHandler>
+    private val conflictHandlers: List<StructuralConflictHandler>,
 ) {
     private val rootToChildren: Map<SpoonNode, Map<SpoonNode, Pcs<SpoonNode>>> = buildRootToChildren(delta.pcsSet)
     private val contents: Map<SpoonNode, Set<Content<SpoonNode, RoledValues>>> = delta.contents
@@ -49,14 +49,16 @@ internal class SporkTreeBuilder(
     /** Try to resolve a structural conflict automatically.  */
     private fun tryResolveConflict(
         leftNodes: List<SpoonNode>,
-        rightNodes: List<SpoonNode>
+        rightNodes: List<SpoonNode>,
     ): List<SpoonNode>? {
         // we can currently only resolve conflict lists for insert/insert conflicts
         // TODO Expand conflict handling to deal with more than just insert/insert
         val conflictType = ConflictType.INSERT_INSERT
         return conflictHandlers.mapNotNull { handler: StructuralConflictHandler ->
             handler.tryResolveConflict(
-                leftNodes, rightNodes, conflictType
+                leftNodes,
+                rightNodes,
+                conflictType,
             )
         }.firstOrNull()
     }
@@ -83,8 +85,10 @@ internal class SporkTreeBuilder(
         val children: Map<SpoonNode, Pcs<SpoonNode>>? = rootToChildren[currentRoot]
         val currentContent = contents[currentRoot] ?: emptySet()
         var tree = SporkTree(currentRoot, currentContent)
-        if (children == null) // leaf node
+        if (children == null) {
+            // leaf node
             return tree
+        }
         try {
             build(currentRoot.startOfChildList, tree, children)
             for (inconsistent in remainingInconsistencies) {
@@ -121,8 +125,10 @@ internal class SporkTreeBuilder(
     }
 
     private fun build(start: SpoonNode, tree: SporkTree, children: Map<SpoonNode, Pcs<SpoonNode>>?) {
-        if (children == null) // leaf node
+        if (children == null) {
+            // leaf node
             return
+        }
         var next: SpoonNode? = start
         while (true) {
             val nextPcs = children[next]!!
@@ -155,7 +161,8 @@ internal class SporkTreeBuilder(
     private fun getSuccessorConflict(pcs: Pcs<SpoonNode>): Pcs<SpoonNode>? =
         delta.structuralConflicts[pcs]?.firstOrNull {
             isSuccessorConflict(
-                pcs, it
+                pcs,
+                it,
             )
         }
 
@@ -190,11 +197,16 @@ internal class SporkTreeBuilder(
             }
         }
         val (first, second) = lineBasedMerge(
-            base.element, left!!.element, right!!.element
+            base.element,
+            left!!.element,
+            right!!.element,
         )
         numStructuralConflicts += second
         return StructuralConflict(
-            base.element, left.element, right.element, first
+            base.element,
+            left.element,
+            right.element,
+            first,
         )
     }
 
@@ -202,7 +214,7 @@ internal class SporkTreeBuilder(
         nextPcs: Pcs<SpoonNode>,
         conflicting: Pcs<SpoonNode>,
         children: Map<SpoonNode, Pcs<SpoonNode>>,
-        tree: SporkTree
+        tree: SporkTree,
     ): SpoonNode {
         remainingInconsistencies.remove(nextPcs)
         remainingInconsistencies.remove(conflicting)
@@ -225,7 +237,7 @@ internal class SporkTreeBuilder(
                     .collect(Collectors.toList()),
                 rightNodes.stream()
                     .map(SpoonNode::element)
-                    .collect(Collectors.toList())
+                    .collect(Collectors.toList()),
             )
             // next is used as a dummy node here, so it should not be added to usedNodes
             tree.addChild(SporkTree(next, contents[next]!!, conflict))
@@ -250,7 +262,7 @@ internal class SporkTreeBuilder(
      */
     private fun extractConflictList(
         pcs: Pcs<SpoonNode>,
-        siblings: Map<SpoonNode, Pcs<SpoonNode>>
+        siblings: Map<SpoonNode, Pcs<SpoonNode>>,
     ): List<SpoonNode> {
         var currentPcs = pcs
         val nodes: MutableList<SpoonNode> = mutableListOf()
@@ -261,7 +273,8 @@ internal class SporkTreeBuilder(
                 val predConflict = conflicts.stream()
                     .filter {
                         isPredecessorConflict(
-                            finalPcs, it
+                            finalPcs,
+                            it,
                         )
                     }
                     .findFirst()
@@ -271,9 +284,11 @@ internal class SporkTreeBuilder(
                 }
             }
             val nextNode = currentPcs.successor
-            if (nextNode.isEndOfList) throw ConflictException(
-                "Reached the end of the child list without finding a predecessor conflict"
-            )
+            if (nextNode.isEndOfList) {
+                throw ConflictException(
+                    "Reached the end of the child list without finding a predecessor conflict",
+                )
+            }
             nodes.add(nextNode)
             currentPcs = siblings[nextNode]!!
         }
@@ -282,7 +297,7 @@ internal class SporkTreeBuilder(
     companion object {
         private val LOGGER = LazyLogger(SporkTreeBuilder::class.java)
         private fun <T : ListNode> buildRootToChildren(
-            pcses: Set<Pcs<T>>
+            pcses: Set<Pcs<T>>,
         ): Map<T, MutableMap<T, Pcs<T>>> {
             val rootToChildren: MutableMap<T, MutableMap<T, Pcs<T>>> = HashMap()
             for (pcs in pcses) {

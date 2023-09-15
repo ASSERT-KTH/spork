@@ -40,7 +40,7 @@ fun lineBasedMerge(base: String, left: String, right: String): Pair<String, Int>
         },
         baseRaw,
         leftRaw,
-        rightRaw
+        rightRaw,
     )
 
     val it: Iterator<MergeChunk> = res.iterator()

@@ -85,7 +85,7 @@ object Spoon3dmMerge {
         left: T,
         right: T,
         baseMatcher: (ITree, ITree) -> Matcher,
-        leftRightMatcher: (ITree, ITree) -> Matcher
+        leftRightMatcher: (ITree, ITree) -> Matcher,
     ): Pair<T, Int> {
         val start = System.nanoTime()
 
@@ -106,7 +106,12 @@ object Spoon3dmMerge {
         // 3DM PHASE
         LOGGER.info { "Mapping nodes to class representatives" }
         var classRepMap = createClassRepresentativesMapping(
-            base, left, right, baseLeft, baseRight, leftRight
+            base,
+            left,
+            right,
+            baseLeft,
+            baseRight,
+            leftRight,
         )
         LOGGER.info { "Converting Spoon trees to PCS triples" }
         val t0 = PcsBuilder.fromSpoon(base, Revision.BASE)
@@ -114,10 +119,16 @@ object Spoon3dmMerge {
         val t2 = PcsBuilder.fromSpoon(right, Revision.RIGHT)
         LOGGER.info { "Computing raw PCS merge" }
         var delta = ChangeSet(
-            classRepMap, ::getContent, t0, t1, t2
+            classRepMap,
+            ::getContent,
+            t0,
+            t1,
+            t2,
         )
         val t0Star = ChangeSet(
-            classRepMap, ::getContent, t0
+            classRepMap,
+            ::getContent,
+            t0,
         )
         LOGGER.info { "Resolving final PCS merge" }
         resolveRawMerge(t0Star, delta)
@@ -126,11 +137,19 @@ object Spoon3dmMerge {
             LOGGER.info { "Root conflicts detected, restarting merge" }
             LOGGER.info { "Removing root conflicting nodes from tree matchings" }
             removeFromMappings(
-                rootConflictingNodes, baseLeft, baseRight, leftRight
+                rootConflictingNodes,
+                baseLeft,
+                baseRight,
+                leftRight,
             )
             LOGGER.info { "Mapping nodes to class representatives" }
             classRepMap = createClassRepresentativesMapping(
-                base, left, right, baseLeft, baseRight, leftRight
+                base,
+                left,
+                right,
+                baseLeft,
+                baseRight,
+                leftRight,
             )
             LOGGER.info { "Computing raw PCS merge" }
             delta = ChangeSet(classRepMap, ::getContent, t0, t1, t2)
@@ -141,31 +160,35 @@ object Spoon3dmMerge {
         // INTERPRETER PHASE
         LOGGER.info { "Interpreting resolved PCS merge" }
         val structuralConflictHandlers = Arrays.asList(
-            MethodOrderingConflictHandler(), OptimisticInsertInsertHandler()
+            MethodOrderingConflictHandler(),
+            OptimisticInsertInsertHandler(),
         )
         val contentConflictHandlers = Arrays.asList(
             IsImplicitHandler(),
             ModifierHandler(),
             IsUpperHandler(),
-            CommentContentHandler()
+            CommentContentHandler(),
         )
         val merge = fromMergedPcs(
             delta,
             baseLeft,
             baseRight,
             structuralConflictHandlers,
-            contentConflictHandlers
+            contentConflictHandlers,
         )
+
         // we can be certain that the merge tree has the same root type as the three constituents,
         // so this cast is safe
-        @Suppress("UNCHECKED_CAST") val mergeTree = merge.first as T
+        @Suppress("UNCHECKED_CAST")
+        val mergeTree = merge.first as T
         val numConflicts = merge.second
         val metadataElementConflicts = mergeMetadataElements(mergeTree, base, left, right)
         LOGGER.info { "Checking for duplicated members" }
         val duplicateMemberConflicts = eliminateDuplicateMembers(mergeTree)
         LOGGER.info { "Merged in " + (System.nanoTime() - start).toDouble() / 1e9 + " seconds" }
         return Pair(
-            mergeTree, numConflicts + metadataElementConflicts + duplicateMemberConflicts
+            mergeTree,
+            numConflicts + metadataElementConflicts + duplicateMemberConflicts,
         )
     }
 
@@ -190,7 +213,7 @@ object Spoon3dmMerge {
         mergeTree: CtElement,
         base: CtElement,
         left: CtElement,
-        right: CtElement
+        right: CtElement,
     ): Int {
         var numConflicts = 0
         if (base.getMetadata(Parser.IMPORT_STATEMENTS) != null) {
@@ -261,7 +284,7 @@ object Spoon3dmMerge {
                 left,
                 right,
                 ::matchTrees,
-                ::matchTrees
+                ::matchTrees,
             )
             numConflicts += mergePair.second
             val mergedMember = mergePair.first
@@ -271,7 +294,8 @@ object Spoon3dmMerge {
             // badness in the Spoon API: addTypeMember returns a generic type that depends only on the
             // static type of the returned expression. So we must store the returned expression and declare
             // the type, or Kotlin gets grumpy.
-            @Suppress("UNUSED_VARIABLE") val dontcare: CtType<*> = type.addTypeMember(mergedMember)
+            @Suppress("UNUSED_VARIABLE")
+            val dontcare: CtType<*> = type.addTypeMember(mergedMember)
         }
 
         return numConflicts
@@ -285,7 +309,7 @@ object Spoon3dmMerge {
     private fun mergeCuComments(
         base: CtElement,
         left: CtElement,
-        right: CtElement
+        right: CtElement,
     ): Pair<String, Int> {
         val baseComment = getCuComment(base)
         val leftComment = getCuComment(left)
@@ -312,7 +336,7 @@ object Spoon3dmMerge {
     private fun mergeImportStatements(
         base: CtElement,
         left: CtElement,
-        right: CtElement
+        right: CtElement,
     ): List<CtImport> {
         val baseImports = HashSet(base.getMetadata(Parser.IMPORT_STATEMENTS) as Collection<CtImport>)
         val leftImports = HashSet(left.getMetadata(Parser.IMPORT_STATEMENTS) as Collection<CtImport>)
