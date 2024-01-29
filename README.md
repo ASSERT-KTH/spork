@@ -155,3 +155,12 @@ Unless otherwise stated, files in Spork are under the [MIT license](LICENSE).
   file is composed of code from
   [gumtree-spoon-ast-diff](https://github.com/spoon/gumtree-spoon-ast-diff) and
   is therefore individually licensed under Apache License 2.0.
+
+## Experimental: compile as a native image
+
+Spork can be compiled to a native executable file using [GraalVM](https://www.graalvm.org/).
+To do so, you need to first install GraalVM's JDK for Java 17 (Spork does not support Java 21 yet, see [#479](https://github.com/ASSERT-KTH/spork/issues/479)).
+Running `mvn package -P native` will then generate a native image in `target/spork`.
+
+**Note:** the native image is known to behave differently to the `.jar` file, producing different conflict resolution results. Help to debug this would be welcome.
+
