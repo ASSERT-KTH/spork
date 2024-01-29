@@ -5,8 +5,17 @@ updates:
     directory: "/"
     schedule:
       interval: "daily"
+    groups:
+      actions-deps:
+        patterns:
+          - "*"
 
   - package-ecosystem: "maven"
     directory: "/"
     schedule:
       interval: "daily"
+    groups:
+      dev-deps:
+        dependency-type: "development"
+      prod-deps:
+        dependency-type: "production"
