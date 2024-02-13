@@ -30,7 +30,7 @@ more about Spork in terms of theory and design, the thesis is freely available.
 ## Attribution
 Spork is built on top of a few pieces of fantastic software, most notably:
 
-* [Spoon](https;//github.com/inria/spoon) provides the AST representation used
+* [Spoon](https://github.com/inria/spoon) provides the AST representation used
   in Spork.
 * [GumTree](https://github.com/gumtreediff/gumtree) provides the tree matching.
 * [gumtree-spoon-ast-diff](https://github.com/spoonlabs/gumtree-spoon-ast-diff)
