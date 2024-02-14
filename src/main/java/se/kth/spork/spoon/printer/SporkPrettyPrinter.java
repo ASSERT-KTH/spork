@@ -2,6 +2,7 @@ package se.kth.spork.spoon.printer;
 
 import java.util.*;
 import kotlin.Pair;
+import kotlin.Triple;
 import se.kth.spork.spoon.conflict.StructuralConflict;
 import se.kth.spork.spoon.pcsinterpreter.SpoonTreeBuilder;
 import spoon.compiler.Environment;
@@ -18,20 +19,22 @@ import spoon.reflect.visitor.PrintingContext;
 
 public final class SporkPrettyPrinter extends DefaultJavaPrettyPrinter {
     public static final String START_CONFLICT = "<<<<<<< LEFT";
+    public static final String BASE_CONFLICT = "||||||| BASE";
     public static final String MID_CONFLICT = "=======";
     public static final String END_CONFLICT = ">>>>>>> RIGHT";
 
-    private static final Map<String, Pair<String, String>> DEFAULT_CONFLICT_MAP =
+    private static final Map<String, Triple<String, String, String>> DEFAULT_CONFLICT_MAP =
             Collections.emptyMap();
 
     private final SporkPrinterHelper printerHelper;
     private final String lineSeparator = getLineSeparator();
+    private final boolean diff3;
 
-    private Map<String, Pair<String, String>> globalContentConflicts;
+    private Map<String, Triple<String, String, String>> globalContentConflicts;
 
-    private Deque<Optional<Map<String, Pair<String, String>>>> localContentConflictMaps;
+    private Deque<Optional<Map<String, Triple<String, String, String>>>> localContentConflictMaps;
 
-    public SporkPrettyPrinter(Environment env) {
+    public SporkPrettyPrinter(Environment env, boolean diff3) {
         super(env);
         printerHelper = new SporkPrinterHelper(env);
         localContentConflictMaps = new ArrayDeque<>();
@@ -48,6 +51,7 @@ public final class SporkPrettyPrinter extends DefaultJavaPrettyPrinter {
         setIgnoreImplicit(false);
 
         globalContentConflicts = DEFAULT_CONFLICT_MAP;
+        this.diff3 = diff3;
     }
 
     /** Check if the element is a multi declaration (i.e. something like `int a, b, c;`. */
@@ -72,12 +76,12 @@ public final class SporkPrettyPrinter extends DefaultJavaPrettyPrinter {
     protected void enter(CtElement e) {
         localContentConflictMaps.push(
                 Optional.ofNullable(
-                        (Map<String, Pair<String, String>>)
+                        (Map<String, Triple<String, String, String>>)
                                 e.getMetadata(PrinterPreprocessor.LOCAL_CONFLICT_MAP_KEY)));
 
         if (globalContentConflicts == DEFAULT_CONFLICT_MAP) {
-            Map<String, Pair<String, String>> globals =
-                    (Map<String, Pair<String, String>>)
+            Map<String, Triple<String, String, String>> globals =
+                    (Map<String, Triple<String, String, String>>)
                             e.getMetadata(PrinterPreprocessor.GLOBAL_CONFLICT_MAP_KEY);
             if (globals != null) {
                 globalContentConflicts = globals;
@@ -176,7 +180,8 @@ public final class SporkPrettyPrinter extends DefaultJavaPrettyPrinter {
     private void writeStructuralConflict(StructuralConflict structuralConflict) {
         String leftSource = SourceExtractor.getOriginalSource(structuralConflict.getLeft());
         String rightSource = SourceExtractor.getOriginalSource(structuralConflict.getRight());
-        printerHelper.writeConflict(leftSource, rightSource);
+        String baseSource = structuralConflict.getBase() == null ? "" : SourceExtractor.getOriginalSource(structuralConflict.getBase());
+        printerHelper.writeConflict(leftSource, rightSource, baseSource);
     }
 
     private class SporkPrinterHelper extends PrinterHelper {
@@ -186,10 +191,11 @@ public final class SporkPrettyPrinter extends DefaultJavaPrettyPrinter {
 
         @Override
         public SporkPrinterHelper write(String s) {
-            Optional<Map<String, Pair<String, String>>> localConflictMap =
+            Optional<Map<String, Triple<String, String, String>>> localConflictMap =
                     localContentConflictMaps.peek();
             String trimmed = s.trim();
             if (trimmed.startsWith(START_CONFLICT)
+                    || trimmed.startsWith(BASE_CONFLICT)
                     || trimmed.startsWith(MID_CONFLICT)
                     || trimmed.startsWith(END_CONFLICT)) {
                 // All we need to do here is the decrease tabs and enter some appropriate whitespace
@@ -199,11 +205,11 @@ public final class SporkPrettyPrinter extends DefaultJavaPrettyPrinter {
 
             String strippedQuotes = trimmed.replaceAll("\"", "");
             if (globalContentConflicts.containsKey(strippedQuotes)) {
-                Pair<String, String> conflict = globalContentConflicts.get(strippedQuotes);
-                writeConflict(conflict.getFirst(), conflict.getSecond());
+                Triple<String, String, String> conflict = globalContentConflicts.get(strippedQuotes);
+                writeConflict(conflict.getFirst(), conflict.getSecond(), conflict.getThird());
             } else if (localConflictMap.isPresent() && localConflictMap.get().containsKey(s)) {
-                Pair<String, String> conflict = localConflictMap.get().get(s);
-                writeConflict(conflict.getFirst(), conflict.getSecond());
+                Triple<String, String, String> conflict = localConflictMap.get().get(s);
+                writeConflict(conflict.getFirst(), conflict.getSecond(), conflict.getThird());
             } else {
                 super.write(s);
             }
@@ -211,12 +217,18 @@ public final class SporkPrettyPrinter extends DefaultJavaPrettyPrinter {
             return this;
         }
 
-        public SporkPrinterHelper writeConflict(String left, String right) {
+        public SporkPrinterHelper writeConflict(String left, String right, String base) {
             writelnIfNotPresent()
                     .writeAtLeftMargin(START_CONFLICT)
                     .writeln()
-                    .writeAtLeftMargin(left)
-                    .writelnIfNotPresent()
+                    .writeAtLeftMargin(left);
+            if (diff3) {
+                writelnIfNotPresent()
+                        .writeAtLeftMargin(BASE_CONFLICT)
+                        .writeln()
+                        .writeAtLeftMargin(base);
+            }
+            writelnIfNotPresent()
                     .writeAtLeftMargin(MID_CONFLICT)
                     .writeln()
                     .writeAtLeftMargin(right)

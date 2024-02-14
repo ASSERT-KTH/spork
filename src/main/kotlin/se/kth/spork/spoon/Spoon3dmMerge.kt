@@ -46,6 +46,8 @@ import java.util.HashSet
 object Spoon3dmMerge {
     private val LOGGER = LazyLogger(Spoon3dmMerge::class.java)
 
+    var diff3 = false;
+
     /**
      * Merge the left and right revisions with an AST-based merge.
      *
@@ -175,6 +177,7 @@ object Spoon3dmMerge {
             baseRight,
             structuralConflictHandlers,
             contentConflictHandlers,
+            diff3
         )
 
         // we can be certain that the merge tree has the same root type as the three constituents,

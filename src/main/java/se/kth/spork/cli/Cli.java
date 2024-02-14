@@ -19,8 +19,10 @@ import se.kth.spork.exception.MergeException;
 import se.kth.spork.spoon.Parser;
 import se.kth.spork.spoon.Spoon3dmMerge;
 import se.kth.spork.spoon.printer.PrinterPreprocessor;
+import se.kth.spork.spoon.printer.SporkPrettyPrinter;
 import se.kth.spork.util.LazyLogger;
 import se.kth.spork.util.LineBasedMergeKt;
+import spoon.Launcher;
 import spoon.reflect.declaration.*;
 
 /**
@@ -134,6 +136,12 @@ public class Cli {
                 description =
                         "Enable Git compatibility mode. Required to use Spork as a Git merge driver.")
         boolean gitMode;
+        
+        @CommandLine.Option(
+                names = {"--diff3"},
+                description =
+                        "In conflicts, show the version at the base revision in addition to the left and right versions.")
+        boolean diff3;
 
         @CommandLine.Option(
                 names = {"-l", "--logging"},
@@ -145,6 +153,8 @@ public class Cli {
             if (logging) {
                 setLogLevel("DEBUG");
             }
+            Parser.INSTANCE.setDiff3(diff3);
+            Spoon3dmMerge.INSTANCE.setDiff3(diff3);
 
             long start = System.nanoTime();
 
