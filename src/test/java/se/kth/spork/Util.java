@@ -65,20 +65,18 @@ public class Util {
 
     public static List<Conflict> parseConflicts(String string) {
         Pattern conflictPattern =
-                Pattern.compile("(<<<<<<< LEFT.*?=======.*?>>>>>>> RIGHT)", Pattern.DOTALL);
+                Pattern.compile("<<<<<<< LEFT(.*?)(\\|\\|\\|\\|\\|\\|\\| BASE(.*?))?=======(.*?)>>>>>>> RIGHT", Pattern.DOTALL);
         Matcher matcher = conflictPattern.matcher(string);
 
         List<Conflict> matches = new ArrayList<>();
         while (matcher.find()) {
-            String match = matcher.group().trim();
-            String[] parts = match.split("=======");
-            assert parts.length == 2;
-
-            String left = parts[0].replace(SporkPrettyPrinter.START_CONFLICT, "");
-            String right = parts[1].replace(SporkPrettyPrinter.END_CONFLICT, "");
+            String left = matcher.group(1);
+            String right = matcher.group(4);
+            String base = matcher.group(3);
             Conflict conf = new Conflict();
             conf.left = left.trim();
             conf.right = right.trim();
+            conf.base = base == null ? null : base.trim();
 
             matches.add(conf);
         }
@@ -94,7 +92,7 @@ public class Util {
      * left revision.
      */
     public static String keepLeftConflict(String string) {
-        Pattern rightConflictPattern = Pattern.compile("=======.*?>>>>>>> RIGHT", Pattern.DOTALL);
+        Pattern rightConflictPattern = Pattern.compile("(\\|\\|\\|\\|\\|\\|\\| BASE.*)?=======.*?>>>>>>> RIGHT", Pattern.DOTALL);
         Matcher rightConflictMatcher = rightConflictPattern.matcher(string);
         String rightRevStrippend = rightConflictMatcher.replaceAll("");
 
@@ -166,10 +164,11 @@ public class Util {
     public static class Conflict {
         String left;
         String right;
+        String base; // null if not rendered, "" if empty
 
         @Override
         public String toString() {
-            return "Conflict{" + "left='" + left + '\'' + ", right='" + right + '\'' + '}';
+            return "Conflict{" + "left='" + left + '\'' + ", right='" + right + "\', base='" + base +'\'' + '}';
         }
 
         @Override
@@ -177,12 +176,12 @@ public class Util {
             if (this == o) return true;
             if (o == null || getClass() != o.getClass()) return false;
             Conflict conflict = (Conflict) o;
-            return Objects.equals(left, conflict.left) && Objects.equals(right, conflict.right);
+            return Objects.equals(left, conflict.left) && Objects.equals(right, conflict.right) && Objects.equals(base, conflict.base);
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(left, right);
+            return Objects.hash(left, right, base);
         }
     }
 
@@ -191,12 +190,14 @@ public class Util {
         public Path left;
         public Path right;
         public Path expected;
+        public Path expectedDiff3;
 
-        TestSources(Path base, Path left, Path right, Path expected) {
+        TestSources(Path base, Path left, Path right, Path expected, Path expectedDiff3) {
             this.base = base;
             this.left = left;
             this.right = right;
             this.expected = expected;
+            this.expectedDiff3 = expectedDiff3;
         }
 
         public static TestSources fromTestDirectory(File testDir) {
@@ -205,7 +206,8 @@ public class Util {
                     path.resolve("Base.java"),
                     path.resolve("Left.java"),
                     path.resolve("Right.java"),
-                    path.resolve("Expected.java"));
+                    path.resolve("Expected.java"),
+                    path.resolve("ExpectedDiff3.java"));
         }
 
         public static TestSources fromTestDirectoryWithoutExpected(File testDir) {
@@ -214,7 +216,7 @@ public class Util {
                     path.resolve("Base.java"),
                     path.resolve("Left.java"),
                     path.resolve("Right.java"),
-                    null);
+                    null, null);
         }
 
         @Override
