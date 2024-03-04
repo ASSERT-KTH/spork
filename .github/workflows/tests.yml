@@ -27,7 +27,7 @@ jobs:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:
           fetch-depth: 2
-      - uses: actions/setup-java@387ac29b308b003ca37ba93a6cab5eb57c8f5f93
+      - uses: actions/setup-java@9704b39bf258b59bc04b50fa2dd55e9ed76b47a8
         with:
           java-version: 11
           java-package: jdk
@@ -40,7 +40,7 @@ jobs:
         run: echo "::set-output name=date::$(/bin/date -u "+%Y%m%d")"
         shell: bash
       - name: Use Maven dependency cache
-        uses: actions/cache@13aacd865c20de90d75de3b17ebe84f7a17d57d2
+        uses: actions/cache@ab5e6d0c87105b4c9c2047343972218f562e4319
         with:
           path: ~/.m2/repository
           key: ${{ runner.os }}-${{ steps.get-date.outputs.date }}-${{ hashFiles('**/pom.xml') }}
@@ -51,7 +51,7 @@ jobs:
       - name: Run tests
         run: mvn test
       - name: Upload coverage report to Codecov
-        uses: codecov/codecov-action@0cfda1dd0a4ad9efc75517f399d859cd1ea4ced1
+        uses: codecov/codecov-action@54bcd8715eee62d40e33596ef5e8f0f48dbbccab
         with:
           fail_ci_if_error: false
 
@@ -63,7 +63,7 @@ jobs:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:
           fetch-depth: 0 # fetch everything
-      - uses: actions/setup-java@387ac29b308b003ca37ba93a6cab5eb57c8f5f93
+      - uses: actions/setup-java@9704b39bf258b59bc04b50fa2dd55e9ed76b47a8
         with:
           java-version: 11
           java-package: jdk
@@ -78,7 +78,7 @@ jobs:
         run: echo "::set-output name=date::$(/bin/date -u "+%Y%m%d")"
         shell: bash
       - name: Use Maven dependency cache
-        uses: actions/cache@13aacd865c20de90d75de3b17ebe84f7a17d57d2
+        uses: actions/cache@ab5e6d0c87105b4c9c2047343972218f562e4319
         with:
           path: ~/.m2/repository
           key: ${{ runner.os }}-${{ steps.get-date.outputs.date }}-${{ hashFiles('**/pom.xml') }}
@@ -98,7 +98,7 @@ jobs:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11
         with:
           fetch-depth: 0 # fetch everything
-      - uses: actions/setup-java@387ac29b308b003ca37ba93a6cab5eb57c8f5f93
+      - uses: actions/setup-java@9704b39bf258b59bc04b50fa2dd55e9ed76b47a8
         with:
           java-version: 11
           java-package: jdk
@@ -110,7 +110,7 @@ jobs:
         run: echo "::set-output name=date::$(/bin/date -u "+%Y%m%d")"
         shell: bash
       - name: Use Maven dependency cache
-        uses: actions/cache@13aacd865c20de90d75de3b17ebe84f7a17d57d2
+        uses: actions/cache@ab5e6d0c87105b4c9c2047343972218f562e4319
         with:
           path: ~/.m2/repository
           key: ${{ runner.os }}-${{ steps.get-date.outputs.date }}-${{ hashFiles('**/pom.xml') }}
