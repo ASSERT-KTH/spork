@@ -33,6 +33,7 @@ public class PrinterPreprocessor extends CtScanner {
     private final String activePackage;
 
     private final Map<String, Set<CtPackageReference>> refToPack;
+    private final boolean diff3;
 
     private int currentConflictId;
 
@@ -41,12 +42,13 @@ public class PrinterPreprocessor extends CtScanner {
     // TODO improve the pretty-printer such that this hack is redundant
     private final Map<String, Triple<String, String, String>> globalContentConflicts;
 
-    public PrinterPreprocessor(List<String> importStatements, String activePackage) {
+    public PrinterPreprocessor(List<String> importStatements, String activePackage, boolean diff3) {
         this.importStatements = importStatements;
         this.activePackage = activePackage;
         refToPack = new HashMap<>();
         currentConflictId = 0;
         globalContentConflicts = new HashMap<>();
+        this.diff3 = diff3;
     }
 
     @Override
@@ -134,7 +136,8 @@ public class PrinterPreprocessor extends CtScanner {
                 // always scanned separately by the printer (often it just calls `getSimpleName`)
                 String conflictKey = CONTENT_CONFLICT_PREFIX + currentConflictId++;
                 globalContentConflicts.put(
-                        conflictKey, new Triple<>(leftVal.toString(), rightVal.toString(), baseVal.toString()));
+                        conflictKey,
+                        new Triple<>(leftVal.toString(), rightVal.toString(), baseVal.toString()));
                 element.setValueByRole(conflict.getRole(), conflictKey);
                 break;
             case COMMENT_CONTENT:
@@ -143,13 +146,13 @@ public class PrinterPreprocessor extends CtScanner {
                 String rawRight =
                         (String) conflict.getRight().getMetadata(RoledValue.Key.RAW_CONTENT);
                 String rawBase =
-                        conflict.getBase() == null
+                        conflict.getBase() != null
                                 ? (String)
                                         conflict.getBase().getMetadata(RoledValue.Key.RAW_CONTENT)
                                 : "";
 
                 Pair<String, Integer> rawConflict =
-                        LineBasedMergeKt.lineBasedMerge(rawBase, rawLeft, rawRight);
+                        LineBasedMergeKt.lineBasedMerge(rawBase, rawLeft, rawRight, diff3);
                 assert rawConflict.getSecond() > 0
                         : "Comments without conflict should already have been merged";
 
@@ -170,8 +173,11 @@ public class PrinterPreprocessor extends CtScanner {
                         ModifierHandler.Companion.categorizeModifiers(leftMods).getFirst();
                 Set<ModifierKind> rightVisibilities =
                         ModifierHandler.Companion.categorizeModifiers(rightMods).getFirst();
-                Set<ModifierKind> baseVisibilities = baseVal == null ? Collections.emptySet() :
-                        ModifierHandler.Companion.categorizeModifiers(baseMods).getFirst();
+                Set<ModifierKind> baseVisibilities =
+                        baseVal == null
+                                ? Collections.emptySet()
+                                : ModifierHandler.Companion.categorizeModifiers(baseMods)
+                                        .getFirst();
 
                 String baseVisStr =
                         baseVisibilities.isEmpty()
@@ -183,14 +189,16 @@ public class PrinterPreprocessor extends CtScanner {
                     ModifierKind rightVis = rightVisibilities.iterator().next();
                     mods.add(rightVis);
                     element.setValueByRole(CtRole.MODIFIER, mods);
-                    localPrinterMap.put(rightVis.toString(), new Triple<>("", rightVis.toString(), baseVisStr));
+                    localPrinterMap.put(
+                            rightVis.toString(), new Triple<>("", rightVis.toString(), baseVisStr));
                 } else {
                     String leftVisStr = leftVisibilities.iterator().next().toString();
                     String rightVisStr =
                             rightVisibilities.isEmpty()
                                     ? ""
                                     : rightVisibilities.iterator().next().toString();
-                    localPrinterMap.put(leftVisStr, new Triple<>(leftVisStr, rightVisStr, baseVisStr));
+                    localPrinterMap.put(
+                            leftVisStr, new Triple<>(leftVisStr, rightVisStr, baseVisStr));
                 }
                 break;
             case OPERATOR_KIND:

@@ -46,7 +46,7 @@ import java.util.HashSet
 object Spoon3dmMerge {
     private val LOGGER = LazyLogger(Spoon3dmMerge::class.java)
 
-    var diff3 = false;
+    var diff3 = false
 
     /**
      * Merge the left and right revisions with an AST-based merge.
@@ -172,12 +172,13 @@ object Spoon3dmMerge {
             CommentContentHandler(),
         )
         val merge = fromMergedPcs(
+            t0Star,
             delta,
             baseLeft,
             baseRight,
             structuralConflictHandlers,
             contentConflictHandlers,
-            diff3
+            diff3,
         )
 
         // we can be certain that the merge tree has the same root type as the three constituents,
@@ -317,7 +318,7 @@ object Spoon3dmMerge {
         val baseComment = getCuComment(base)
         val leftComment = getCuComment(left)
         val rightComment = getCuComment(right)
-        return lineBasedMerge(baseComment, leftComment, rightComment)
+        return lineBasedMerge(baseComment, leftComment, rightComment, diff3)
     }
 
     private fun getCuComment(mod: CtElement): String = mod.getMetadata(Parser.COMPILATION_UNIT_COMMENT) as String

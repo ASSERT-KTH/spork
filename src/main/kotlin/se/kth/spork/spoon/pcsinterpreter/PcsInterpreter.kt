@@ -18,14 +18,15 @@ import spoon.reflect.declaration.CtElement
  * @return A pair on the form (tree, numConflicts).
  */
 fun fromMergedPcs(
+    base: ChangeSet<SpoonNode, RoledValues>,
     delta: ChangeSet<SpoonNode, RoledValues>,
     baseLeft: SpoonMapping,
     baseRight: SpoonMapping,
     structuralConflictHandlers: List<StructuralConflictHandler>,
     contentConflictHandlers: List<ContentConflictHandler>,
-    diff3: Boolean
+    diff3: Boolean,
 ): Pair<CtElement?, Int> {
-    val sporkTreeBuilder = SporkTreeBuilder(delta, baseLeft, baseRight, structuralConflictHandlers)
+    val sporkTreeBuilder = SporkTreeBuilder(base, delta, baseLeft, baseRight, structuralConflictHandlers, diff3)
     val sporkTreeRoot = sporkTreeBuilder.buildTree()
 
     // this is a bit of a hack, get any used environment such that the SpoonTreeBuilder can copy environment details

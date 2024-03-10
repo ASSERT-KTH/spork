@@ -26,7 +26,7 @@ object Parser {
     const val COMPILATION_UNIT_COMMENT = "spork_cu_comment"
     private val LOGGER = LazyLogger(Parser::class.java)
 
-    var diff3 = false;
+    var diff3 = false
 
     /**
      * Parse a Java file to a Spoon tree. Any import statements in the file are attached to the returned module's

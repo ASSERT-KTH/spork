@@ -19,10 +19,8 @@ import se.kth.spork.exception.MergeException;
 import se.kth.spork.spoon.Parser;
 import se.kth.spork.spoon.Spoon3dmMerge;
 import se.kth.spork.spoon.printer.PrinterPreprocessor;
-import se.kth.spork.spoon.printer.SporkPrettyPrinter;
 import se.kth.spork.util.LazyLogger;
 import se.kth.spork.util.LineBasedMergeKt;
-import spoon.Launcher;
 import spoon.reflect.declaration.*;
 
 /**
@@ -57,7 +55,11 @@ public class Cli {
                         .map(Object::toString)
                         .map(impStmt -> impStmt.substring("import ".length(), impStmt.length() - 1))
                         .collect(Collectors.toList());
-        new PrinterPreprocessor(importNames, activePackage.getQualifiedName()).scan(spoonRoot);
+        new PrinterPreprocessor(
+                        importNames,
+                        activePackage.getQualifiedName(),
+                        Spoon3dmMerge.INSTANCE.getDiff3())
+                .scan(spoonRoot);
 
         StringBuilder sb = new StringBuilder();
 
@@ -136,7 +138,7 @@ public class Cli {
                 description =
                         "Enable Git compatibility mode. Required to use Spork as a Git merge driver.")
         boolean gitMode;
-        
+
         @CommandLine.Option(
                 names = {"--diff3"},
                 description =
@@ -172,7 +174,7 @@ public class Cli {
                 rightPath.toFile().deleteOnExit();
             }
 
-            Pair<String, Integer> merged = merge(basePath, leftPath, rightPath, exitOnError);
+            Pair<String, Integer> merged = merge(basePath, leftPath, rightPath, exitOnError, diff3);
             String pretty = merged.getFirst();
             int numConflicts = merged.getSecond();
 
@@ -205,10 +207,11 @@ public class Cli {
      * @param right Path to right revision.
      * @param exitOnError Disallow the use of line-based fallback if the structured merge encounters
      *     an error.
+     * @param diff3 whether to use the diff3 style one or the default one
      * @return A pair on the form (prettyPrint, numConflicts)
      */
     public static Pair<String, Integer> merge(
-            Path base, Path left, Path right, boolean exitOnError) {
+            Path base, Path left, Path right, boolean exitOnError, boolean diff3) {
         try {
             LOGGER.info(() -> "Parsing input files");
             CtModule baseModule = Parser.INSTANCE.parse(base);
@@ -231,7 +234,7 @@ public class Cli {
                 LOGGER.warn(
                         () ->
                                 "Merge contains no types (i.e. classes, interfaces, etc), reverting to line-based merge");
-                return lineBasedMerge(base, left, right);
+                return lineBasedMerge(base, left, right, diff3);
             }
         } catch (Exception e) {
             if (exitOnError) {
@@ -244,16 +247,17 @@ public class Cli {
                 LOGGER.info(
                         () ->
                                 "Spork encountered an error in structured merge. Falling back to line-based merge");
-                return lineBasedMerge(base, left, right);
+                return lineBasedMerge(base, left, right, diff3);
             }
         }
     }
 
-    private static Pair<String, Integer> lineBasedMerge(Path base, Path left, Path right) {
+    private static Pair<String, Integer> lineBasedMerge(
+            Path base, Path left, Path right, boolean diff3) {
         String baseStr = Parser.INSTANCE.read(base);
         String leftStr = Parser.INSTANCE.read(left);
         String rightStr = Parser.INSTANCE.read(right);
-        return LineBasedMergeKt.lineBasedMerge(baseStr, leftStr, rightStr);
+        return LineBasedMergeKt.lineBasedMerge(baseStr, leftStr, rightStr, diff3);
     }
 
     /**

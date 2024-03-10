@@ -1,7 +1,6 @@
 package se.kth.spork.spoon.printer;
 
 import java.util.*;
-import kotlin.Pair;
 import kotlin.Triple;
 import se.kth.spork.spoon.conflict.StructuralConflict;
 import se.kth.spork.spoon.pcsinterpreter.SpoonTreeBuilder;
@@ -180,7 +179,10 @@ public final class SporkPrettyPrinter extends DefaultJavaPrettyPrinter {
     private void writeStructuralConflict(StructuralConflict structuralConflict) {
         String leftSource = SourceExtractor.getOriginalSource(structuralConflict.getLeft());
         String rightSource = SourceExtractor.getOriginalSource(structuralConflict.getRight());
-        String baseSource = structuralConflict.getBase() == null ? "" : SourceExtractor.getOriginalSource(structuralConflict.getBase());
+        String baseSource =
+                structuralConflict.getBase() == null
+                        ? ""
+                        : SourceExtractor.getOriginalSource(structuralConflict.getBase());
         printerHelper.writeConflict(leftSource, rightSource, baseSource);
     }
 
@@ -205,7 +207,8 @@ public final class SporkPrettyPrinter extends DefaultJavaPrettyPrinter {
 
             String strippedQuotes = trimmed.replaceAll("\"", "");
             if (globalContentConflicts.containsKey(strippedQuotes)) {
-                Triple<String, String, String> conflict = globalContentConflicts.get(strippedQuotes);
+                Triple<String, String, String> conflict =
+                        globalContentConflicts.get(strippedQuotes);
                 writeConflict(conflict.getFirst(), conflict.getSecond(), conflict.getThird());
             } else if (localConflictMap.isPresent() && localConflictMap.get().containsKey(s)) {
                 Triple<String, String, String> conflict = localConflictMap.get().get(s);

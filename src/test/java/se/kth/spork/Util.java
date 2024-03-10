@@ -65,7 +65,9 @@ public class Util {
 
     public static List<Conflict> parseConflicts(String string) {
         Pattern conflictPattern =
-                Pattern.compile("<<<<<<< LEFT(.*?)(\\|\\|\\|\\|\\|\\|\\| BASE(.*?))?=======(.*?)>>>>>>> RIGHT", Pattern.DOTALL);
+                Pattern.compile(
+                        "<<<<<<< LEFT(.*?)(\\|\\|\\|\\|\\|\\|\\| BASE(.*?))?=======(.*?)>>>>>>> RIGHT",
+                        Pattern.DOTALL);
         Matcher matcher = conflictPattern.matcher(string);
 
         List<Conflict> matches = new ArrayList<>();
@@ -92,7 +94,9 @@ public class Util {
      * left revision.
      */
     public static String keepLeftConflict(String string) {
-        Pattern rightConflictPattern = Pattern.compile("(\\|\\|\\|\\|\\|\\|\\| BASE.*)?=======.*?>>>>>>> RIGHT", Pattern.DOTALL);
+        Pattern rightConflictPattern =
+                Pattern.compile(
+                        "(\\|\\|\\|\\|\\|\\|\\| BASE.*)?=======.*?>>>>>>> RIGHT", Pattern.DOTALL);
         Matcher rightConflictMatcher = rightConflictPattern.matcher(string);
         String rightRevStrippend = rightConflictMatcher.replaceAll("");
 
@@ -168,7 +172,16 @@ public class Util {
 
         @Override
         public String toString() {
-            return "Conflict{" + "left='" + left + '\'' + ", right='" + right + "\', base='" + base +'\'' + '}';
+            return "Conflict{"
+                    + "left='"
+                    + left
+                    + '\''
+                    + ", right='"
+                    + right
+                    + "\', base='"
+                    + base
+                    + '\''
+                    + '}';
         }
 
         @Override
@@ -176,7 +189,9 @@ public class Util {
             if (this == o) return true;
             if (o == null || getClass() != o.getClass()) return false;
             Conflict conflict = (Conflict) o;
-            return Objects.equals(left, conflict.left) && Objects.equals(right, conflict.right) && Objects.equals(base, conflict.base);
+            return Objects.equals(left, conflict.left)
+                    && Objects.equals(right, conflict.right)
+                    && Objects.equals(base, conflict.base);
         }
 
         @Override
@@ -216,7 +231,8 @@ public class Util {
                     path.resolve("Base.java"),
                     path.resolve("Left.java"),
                     path.resolve("Right.java"),
-                    null, null);
+                    null,
+                    null);
         }
 
         @Override
