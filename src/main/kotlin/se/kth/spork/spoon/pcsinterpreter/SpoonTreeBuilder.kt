@@ -43,6 +43,7 @@ class SpoonTreeBuilder internal constructor(
     private val baseRight: SpoonMapping,
     oldEnv: Environment,
     contentConflictHandlers: List<ContentConflictHandler>,
+    private val diff3: Boolean,
 ) {
     var numContentConflicts: Int = 0
         private set
@@ -360,6 +361,7 @@ class SpoonTreeBuilder internal constructor(
             factory.environment,
             oldEnv.tabulationSize,
             oldEnv.isUsingTabulations,
+            diff3
         )
     }
 }

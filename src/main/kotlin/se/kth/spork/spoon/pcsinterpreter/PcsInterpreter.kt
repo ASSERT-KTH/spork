@@ -23,6 +23,7 @@ fun fromMergedPcs(
     baseRight: SpoonMapping,
     structuralConflictHandlers: List<StructuralConflictHandler>,
     contentConflictHandlers: List<ContentConflictHandler>,
+    diff3: Boolean
 ): Pair<CtElement?, Int> {
     val sporkTreeBuilder = SporkTreeBuilder(delta, baseLeft, baseRight, structuralConflictHandlers)
     val sporkTreeRoot = sporkTreeBuilder.buildTree()
@@ -34,7 +35,7 @@ fun fromMergedPcs(
         .element
         .factory
         .environment
-    val spoonTreeBuilder = SpoonTreeBuilder(baseLeft, baseRight, oldEnv, contentConflictHandlers)
+    val spoonTreeBuilder = SpoonTreeBuilder(baseLeft, baseRight, oldEnv, contentConflictHandlers, diff3)
     val spoonTreeRoot = spoonTreeBuilder.build(sporkTreeRoot)
     return Pair(
         spoonTreeRoot,
