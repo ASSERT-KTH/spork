@@ -7,6 +7,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.List;
+import java.util.Objects;
 import kotlin.Pair;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -23,26 +24,42 @@ class CliTest {
 
     @ParameterizedTest
     @ArgumentsSource(Util.ConflictSourceProvider.class)
-    void merge_shouldExitNonZero_onConflict(Util.TestSources sources) {
+    void merge_shouldExitNonZero_onConflict(Util.TestSources sources) throws IOException {
+        Path outputFile = Files.createTempFile("merged_", ".java");
         String[] args = {
-            sources.left.toString(), sources.base.toString(), sources.right.toString()
+            sources.left.toString(),
+            sources.base.toString(),
+            sources.right.toString(),
+            "-o",
+            outputFile.toString()
         };
 
         int exitCode = new CommandLine(new Cli.Merge()).execute(args);
 
-        assertTrue(exitCode > 0);
+        assertTrue(
+                exitCode > 0,
+                String.format(
+                        "expected a positive exit code, got %d. See merged result in %s",
+                        exitCode, outputFile));
+        outputFile.toFile().deleteOnExit();
     }
 
     @ParameterizedTest
     @ArgumentsSource(Util.BothModifiedSourceProvider.class)
-    void merge_shouldExitZero_onCleanMerge(Util.TestSources sources) {
+    void merge_shouldExitZero_onCleanMerge(Util.TestSources sources) throws IOException {
+        Path outputFile = Files.createTempFile("merged_", ".java");
         String[] args = {
-            sources.left.toString(), sources.base.toString(), sources.right.toString()
+            sources.left.toString(),
+            sources.base.toString(),
+            sources.right.toString(),
+            "-o",
+            outputFile.toString()
         };
 
         int exitCode = new CommandLine(new Cli.Merge()).execute(args);
 
         assertEquals(0, exitCode);
+        outputFile.toFile().deleteOnExit();
     }
 
     @Test
@@ -105,7 +122,13 @@ class CliTest {
 
         List<Util.Conflict> actualConflicts = Util.parseConflicts(prettyPrint);
 
-        System.out.println(prettyPrint);
+        // Only print the output to stdout if the test fails
+        if (numConflicts <= 0 || !Objects.equals(expectedConflicts, actualConflicts)) {
+            System.out.println("~~~~ Expected ~~~~");
+            System.out.println(Files.readString(sources.expected));
+            System.out.println("~~~~ Actual ~~~~");
+            System.out.println(prettyPrint);
+        }
 
         assertEquals(expectedConflicts, actualConflicts);
         assertTrue(numConflicts > 0);
@@ -153,12 +176,23 @@ class CliTest {
         Object reParsedImports = reParsedMerge.getMetadata(Parser.IMPORT_STATEMENTS);
         Object reparsedCuComment = reParsedMerge.getMetadata(Parser.COMPILATION_UNIT_COMMENT);
 
-        System.out.println(Cli.prettyPrint(mergeTree));
-        assertEquals(Cli.prettyPrint(mergeTree), expectedPrettyPrint);
+        // Only print the output to stdout if the test fails
+        if (!Objects.equals(mergeTree, reParsedMerge)
+                || !Objects.equals(reParsedImports, expectedImports)
+                || !Objects.equals(reparsedCuComment, expectedCuComment)) {
+            System.out.println("~~~~ Expected ~~~~");
+            System.out.println(expectedPrettyPrint);
+            System.out.println("~~~~ Actual ~~~~");
+            System.out.println(Cli.prettyPrint(reParsedMerge));
+        }
 
-        assertEquals(mergeTree, reParsedMerge);
+        assertEquals(mergeTree, reParsedMerge, "check console output to see the differences");
 
-        assertEquals(reParsedImports, expectedImports);
-        assertEquals(reparsedCuComment, expectedCuComment);
+        assertEquals(
+                reParsedImports, expectedImports, "check console output to see the differences");
+        assertEquals(
+                reparsedCuComment,
+                expectedCuComment,
+                "check console output to see the differences");
     }
 }

@@ -3,8 +3,10 @@ package se.kth.spork.spoon;
 import static org.junit.jupiter.api.Assertions.*;
 
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 import kotlin.Pair;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -18,13 +20,15 @@ class Spoon3dmMergeTest {
 
     @ParameterizedTest
     @ArgumentsSource(Util.LeftModifiedSourceProvider.class)
-    void mergeToTree_shouldReturnExpectedTree_whenLeftVersionIsModified(Util.TestSources sources) {
+    void mergeToTree_shouldReturnExpectedTree_whenLeftVersionIsModified(Util.TestSources sources)
+            throws IOException {
         runTestMerge(sources);
     }
 
     @ParameterizedTest
     @ArgumentsSource(Util.RightModifiedSourceProvider.class)
-    void mergeToTree_shouldReturnExpectedTree_whenRightVersionIsModified(Util.TestSources sources) {
+    void mergeToTree_shouldReturnExpectedTree_whenRightVersionIsModified(Util.TestSources sources)
+            throws IOException {
         runTestMerge(sources);
     }
 
@@ -55,7 +59,7 @@ class Spoon3dmMergeTest {
                 () -> Spoon3dmMerge.INSTANCE.merge(sources.base, sources.left, sources.right));
     }
 
-    private static void runTestMerge(Util.TestSources sources) {
+    private static void runTestMerge(Util.TestSources sources) throws IOException {
         CtModule expected = Parser.INSTANCE.parse(sources.expected);
         Object expectedImports = expected.getMetadata(Parser.IMPORT_STATEMENTS);
         Object expectedCuComment = expected.getMetadata(Parser.COMPILATION_UNIT_COMMENT);
@@ -67,12 +71,6 @@ class Spoon3dmMergeTest {
         CtModule mergeTree = merged.getFirst();
         Object mergedImports = mergeTree.getMetadata(Parser.IMPORT_STATEMENTS);
         Object mergedCuComment = mergeTree.getMetadata(Parser.COMPILATION_UNIT_COMMENT);
-
-        // this assert is just to give a better overview of obvious errors, but it relies on the
-        // pretty printer's
-        // correctness
-        // assertEquals(Cli.prettyPrint(expected), Cli.prettyPrint(mergeTree));
-        System.out.println(Cli.prettyPrint(mergeTree));
 
         // we cannot assert CtModules so stricly
         // because the order of types is taken into account in the EqualityVisitor of Spoon
@@ -91,6 +89,17 @@ class Spoon3dmMergeTest {
         final List<CtType> list2 = mergeTree.filterChildren(c -> (c instanceof CtType)).list();
         list1.sort(nameComparator);
         list2.sort(nameComparator);
+
+        // Only print differences to stdout if the test fails
+        if (!Objects.equals(list1, list2)
+                || !Objects.equals(expectedImports, mergedImports)
+                || !Objects.equals(expectedCuComment, mergedCuComment)) {
+            System.out.println("~~~~ Expected ~~~~");
+            System.out.println(Files.readString(sources.expected));
+            System.out.println("~~~~ Actual ~~~~");
+            System.out.println(Cli.prettyPrint(mergeTree));
+        }
+
         assertEquals(list1, list2);
         assertEquals(expectedImports, mergedImports);
         assertEquals(expectedCuComment, mergedCuComment);
