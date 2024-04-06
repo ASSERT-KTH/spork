@@ -46,7 +46,7 @@
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>
-            <version>5.9.0</version>
+            <version>5.10.2</version>
             <scope>test</scope>
         </dependency>
 
@@ -296,6 +296,13 @@
                                 </goals>
                                 <phase>package</phase>
                             </execution>
+                            <execution>
+                                <id>test-native</id>
+                                <goals>
+                                    <goal>test</goal>
+                                </goals>
+                                <phase>test</phase>
+                            </execution>
                         </executions>
                         <configuration>
                             <fallback>false</fallback>
@@ -304,9 +311,6 @@
                             </buildArgs>
                             <agent>
                                 <enabled>true</enabled>
-                                <options>
-                                    <option>experimental-class-loader-support</option>
-                                </options>
                             </agent>
                         </configuration>
                     </plugin>
