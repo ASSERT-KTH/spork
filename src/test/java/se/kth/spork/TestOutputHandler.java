@@ -20,11 +20,14 @@ public class TestOutputHandler implements TestExecutionListener {
     }
 
     @Override
-    public void executionFinished(TestIdentifier testIdentifier, TestExecutionResult testExecutionResult) {
+    public void executionFinished(
+            TestIdentifier testIdentifier, TestExecutionResult testExecutionResult) {
         System.setOut(stdout);
         System.setErr(stderr);
         if (testExecutionResult.getStatus().equals(TestExecutionResult.Status.FAILED)) {
-            System.out.printf("### OUTPUT FROM %s (%s) ###", testIdentifier.getLegacyReportingName(), testIdentifier.getDisplayName());
+            System.out.printf(
+                    "### OUTPUT FROM %s (%s) ###",
+                    testIdentifier.getLegacyReportingName(), testIdentifier.getDisplayName());
             System.out.println(capturedStdout.toString());
             System.out.println(capturedStderr.toString());
         }
