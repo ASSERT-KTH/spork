@@ -63,6 +63,10 @@ fun lineBasedMerge(base: String, left: String, right: String): Pair<String, Int>
                 inConflict = true
             }
             lines.add(SporkPrettyPrinter.MID_CONFLICT)
+        } else if (chunk.conflictState
+            == MergeChunk.ConflictState.BASE_CONFLICTING_RANGE
+        ) {
+            continue
         }
         for (i in chunk.begin until chunk.end) {
             lines.add(seq.getString(i))
