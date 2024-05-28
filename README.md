@@ -129,7 +129,7 @@ files, all you need is to add a couple of lines to a couple of configuration fil
 ```
 
 `spork` doesn't mean anything to Git yet, we need to actually define the merge driver called `spork`. We do that in the
-`.gitattributes` file, typically located in your home directory. You should put the following content into it:
+`.gitconfig` file, typically located in your home directory. You should put the following content into it:
 
 ```
 [core]
