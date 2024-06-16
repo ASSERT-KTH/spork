@@ -26,6 +26,8 @@ object Parser {
     const val COMPILATION_UNIT_COMMENT = "spork_cu_comment"
     private val LOGGER = LazyLogger(Parser::class.java)
 
+    var diff3 = false
+
     /**
      * Parse a Java file to a Spoon tree. Any import statements in the file are attached to the returned module's
      * metadata with the [Parser.IMPORT_STATEMENTS] key. The imports are sorted in ascending lexicographical
@@ -55,10 +57,10 @@ object Parser {
         }
     }
 
-    fun setSporkEnvironment(env: Environment, tabulationSize: Int, useTabs: Boolean) {
+    fun setSporkEnvironment(env: Environment, tabulationSize: Int, useTabs: Boolean, diff3: Boolean) {
         env.tabulationSize = tabulationSize
         env.useTabulations(useTabs)
-        env.setPrettyPrinterCreator { SporkPrettyPrinter(env) }
+        env.setPrettyPrinterCreator { SporkPrettyPrinter(env, diff3) }
         env.noClasspath = true
     }
 
@@ -69,7 +71,7 @@ object Parser {
         val indentationGuess = SourceExtractor.guessIndentation(model)
         val indentationType = if (indentationGuess.second) "tabs" else "spaces"
         LOGGER.info { "Using indentation: " + indentationGuess.first + " " + indentationType }
-        setSporkEnvironment(launcher.environment, indentationGuess.first, indentationGuess.second)
+        setSporkEnvironment(launcher.environment, indentationGuess.first, indentationGuess.second, diff3)
         val module = model.unnamedModule
         module.putMetadata<CtElement>(COMPILATION_UNIT_COMMENT, getCuComment(module))
 

@@ -19,7 +19,7 @@ import java.util.Objects
  * @param right The right revision.
  * @return A pair containing the merge and the amount of conflicts.
  */
-fun lineBasedMerge(base: String, left: String, right: String): Pair<String, Int> {
+fun lineBasedMerge(base: String, left: String, right: String, diff3: Boolean): Pair<String, Int> {
     if (base.isEmpty() && (left.isEmpty() || right.isEmpty())) {
         // For some reason, this merge implementation reports a conflict on pure additions.
         // This is an easy fix for that. See #144 for details.
@@ -31,6 +31,7 @@ fun lineBasedMerge(base: String, left: String, right: String): Pair<String, Int>
     val rightRaw = RawText(right.toByteArray())
 
     val merge = MergeAlgorithm()
+
     val res: MergeResult<RawText> = merge.merge(
         object : SequenceComparator<RawText>() {
             override fun equals(lhs: RawText, lhsIdx: Int, rhs: RawText, rhsIdx: Int) =
@@ -66,7 +67,14 @@ fun lineBasedMerge(base: String, left: String, right: String): Pair<String, Int>
         } else if (chunk.conflictState
             == MergeChunk.ConflictState.BASE_CONFLICTING_RANGE
         ) {
-            continue
+            if (!diff3) {
+                continue
+            }
+            if (!inConflict) {
+                lines.add(SporkPrettyPrinter.START_CONFLICT)
+                inConflict = true
+            }
+            lines.add(SporkPrettyPrinter.BASE_CONFLICT)
         }
         for (i in chunk.begin until chunk.end) {
             lines.add(seq.getString(i))
@@ -93,9 +101,9 @@ fun lineBasedMerge(base: String, left: String, right: String): Pair<String, Int>
  * @param right The right revision.
  * @return A pair containing the merge and the amount of conflicts.
  */
-fun lineBasedMerge(base: CtElement, left: CtElement, right: CtElement): Pair<String, Int> {
+fun lineBasedMerge(base: CtElement, left: CtElement, right: CtElement, diff3: Boolean): Pair<String, Int> {
     val baseSource = SourceExtractor.getOriginalSource(base)
     val leftSource = SourceExtractor.getOriginalSource(left)
     val rightSource = SourceExtractor.getOriginalSource(right)
-    return lineBasedMerge(baseSource, leftSource, rightSource)
+    return lineBasedMerge(baseSource, leftSource, rightSource, diff3)
 }

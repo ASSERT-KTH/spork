@@ -39,6 +39,7 @@ interface ContentConflictHandler {
         baseElem: CtElement?,
         leftElem: CtElement,
         rightElem: CtElement,
+        diff3: Boolean,
     ): Pair<Any?, Boolean>
 
     /** @return The role that this conflict handler deals with.

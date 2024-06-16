@@ -25,6 +25,7 @@ class ModifierHandler : ContentConflictHandler {
         baseElem: CtElement?,
         leftElem: CtElement,
         rightElem: CtElement,
+        diff3: Boolean,
     ): Pair<Any?, Boolean> {
         return mergeModifierKinds(
             (baseVal ?: setOf<ModifierKind>()) as Set<ModifierKind>,

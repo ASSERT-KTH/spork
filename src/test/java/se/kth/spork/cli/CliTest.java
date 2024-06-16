@@ -53,7 +53,13 @@ class CliTest {
 
         assertThrows(
                 MergeException.class,
-                () -> Cli.merge(sources.base, sources.left, sources.right, /* exitOnError= */ true),
+                () ->
+                        Cli.merge(
+                                sources.base,
+                                sources.left,
+                                sources.right,
+                                /* exitOnError= */ true,
+                                /* diff3= */ false),
                 "Merge contained no types and global line-based fallback is disabled");
     }
 
@@ -64,7 +70,12 @@ class CliTest {
         String expected = Parser.INSTANCE.read(sources.expected);
 
         Pair<String, Integer> merge =
-                Cli.merge(sources.base, sources.left, sources.right, /* exitOnError= */ false);
+                Cli.merge(
+                        sources.base,
+                        sources.left,
+                        sources.right,
+                        /* exitOnError= */ false,
+                        /* diff3= */ false);
 
         assertEquals(0, merge.getSecond());
         assertEquals(expected, merge.getFirst());
@@ -96,6 +107,31 @@ class CliTest {
     void prettyPrint_shouldContainConflict(Util.TestSources sources) throws IOException {
         List<Util.Conflict> expectedConflicts = Util.parseConflicts(sources.expected);
 
+        Spoon3dmMerge.INSTANCE.setDiff3(false);
+        Pair<CtModule, Integer> merged =
+                Spoon3dmMerge.INSTANCE.merge(sources.base, sources.left, sources.right);
+        CtModule mergeTree = merged.getFirst();
+        Integer numConflicts = merged.getSecond();
+
+        String prettyPrint = Cli.prettyPrint(mergeTree);
+
+        List<Util.Conflict> actualConflicts = Util.parseConflicts(prettyPrint);
+
+        System.out.println(prettyPrint);
+
+        assertEquals(expectedConflicts, actualConflicts);
+        assertTrue(numConflicts > 0);
+    }
+
+    @ParameterizedTest
+    @ArgumentsSource(Util.ConflictSourceProvider.class)
+    void prettyPrint_shouldContainConflictDiff3(Util.TestSources sources) throws IOException {
+        if (!sources.expectedDiff3.toFile().exists()) {
+            return;
+        }
+        List<Util.Conflict> expectedConflicts = Util.parseConflicts(sources.expectedDiff3);
+
+        Spoon3dmMerge.INSTANCE.setDiff3(true);
         Pair<CtModule, Integer> merged =
                 Spoon3dmMerge.INSTANCE.merge(sources.base, sources.left, sources.right);
         CtModule mergeTree = merged.getFirst();

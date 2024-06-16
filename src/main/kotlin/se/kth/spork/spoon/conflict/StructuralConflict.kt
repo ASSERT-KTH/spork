@@ -21,10 +21,10 @@ class StructuralConflict {
      * @param left The left part of the conflict.
      * @param right The right part of the conflict.
      */
-    constructor(left: List<CtElement>, right: List<CtElement>) {
+    constructor(base: List<CtElement>, left: List<CtElement>, right: List<CtElement>) {
         this.left = left
         this.right = right
-        base = null
+        this.base = base
         lineBasedMerge = null
     }
 
