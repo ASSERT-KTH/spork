@@ -1,7 +1,7 @@
 package se.kth.spork.spoon.matching
 
 import com.github.gumtreediff.matchers.MappingStore
-import com.github.gumtreediff.tree.ITree
+import com.github.gumtreediff.tree.Tree
 import com.github.gumtreediff.utils.Pair
 import gumtree.spoon.builder.CtWrapper
 import gumtree.spoon.builder.SpoonGumTreeBuilder
@@ -164,9 +164,9 @@ class SpoonMapping private constructor() {
                 if (spoonSrc == null || spoonDst == null) {
                     // at least one was non-null
                     check(!(spoonSrc !== spoonDst))
-                    check(m.first.type == -1) { // -1 is the type given to root node in SpoonGumTreeBuilder
+                    check(m.first.type.name == "ROOT") { // -1 is the type given to root node in SpoonGumTreeBuilder
                         (
-                            "non-root node " + m.first.toShortString() +
+                            "non-root node " + m.first.toString() +
                                 " had no mapped Spoon object"
                             )
                     }
@@ -213,7 +213,7 @@ class SpoonMapping private constructor() {
             return elem.parent is CtAnnotation<*> && elem.roleInParent == CtRole.VALUE
         }
 
-        private fun getSpoonNode(gumtreeNode: ITree): CtElement? {
+        private fun getSpoonNode(gumtreeNode: Tree): CtElement? {
             return gumtreeNode.getMetadata(SpoonGumTreeBuilder.SPOON_OBJECT) as CtElement?
         }
     }
