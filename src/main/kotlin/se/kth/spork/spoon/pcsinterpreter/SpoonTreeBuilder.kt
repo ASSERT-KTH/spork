@@ -43,6 +43,7 @@ class SpoonTreeBuilder internal constructor(
     private val baseRight: SpoonMapping,
     oldEnv: Environment,
     contentConflictHandlers: List<ContentConflictHandler>,
+    private val diff3: Boolean,
 ) {
     var numContentConflicts: Int = 0
         private set
@@ -115,7 +116,7 @@ class SpoonTreeBuilder internal constructor(
             mergeTree = originalTree.clone()
             mergeTree.putMetadata<CtElement>(SINGLE_REVISION_KEY, sporkChild.singleRevision)
         } else {
-            val mergedContent = contentMerger.mergedContent(sporkChild.content)
+            val mergedContent = contentMerger.mergedContent(sporkChild.content, diff3)
             mergeTree = shallowCopyTree(originalTree, factory)
             mergedContent
                 .first?.forEach { roledValue ->
@@ -360,6 +361,7 @@ class SpoonTreeBuilder internal constructor(
             factory.environment,
             oldEnv.tabulationSize,
             oldEnv.isUsingTabulations,
+            diff3,
         )
     }
 }

@@ -20,12 +20,13 @@ class CommentContentHandler : ContentConflictHandler {
         baseElem: CtElement?,
         leftElem: CtElement,
         rightElem: CtElement,
+        diff3: Boolean,
     ): Pair<Any?, Boolean> {
-        return Pair(mergeComments(baseVal ?: "", leftVal, rightVal), false)
+        return Pair(mergeComments(baseVal ?: "", leftVal, rightVal, diff3), false)
     }
 
-    private fun mergeComments(base: Any, left: Any, right: Any): Any? {
-        val merge = lineBasedMerge(base.toString(), left.toString(), right.toString())
+    private fun mergeComments(base: Any, left: Any, right: Any, diff3: Boolean): Any? {
+        val merge = lineBasedMerge(base.toString(), left.toString(), right.toString(), diff3)
         return if (merge.second > 0) {
             null
         } else {

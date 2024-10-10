@@ -24,6 +24,7 @@ class ContentMerger(conflictHandlers: List<ContentConflictHandler>) {
      */
     fun mergedContent(
         nodeContents: Set<Content<SpoonNode, RoledValues>>,
+        diff3: Boolean,
     ): Pair<RoledValues?, List<ContentConflict>> {
         if (nodeContents.size == 1) {
             return Pair(nodeContents.iterator().next().value, emptyList())
@@ -85,6 +86,7 @@ class ContentMerger(conflictHandlers: List<ContentConflictHandler>) {
                         baseRoledValues?.element,
                         leftRoledValues.element,
                         rightRoledValues.element,
+                        diff3,
                     )
                     merged = result.first
                     conflictPresent = result.second

@@ -22,6 +22,7 @@ class IsUpperHandler : ContentConflictHandler {
         baseElem: CtElement?,
         leftElem: CtElement,
         rightElem: CtElement,
+        diff3: Boolean,
     ): Pair<Any?, Boolean> {
         return Pair(mergeIsUpper(baseElem, leftElem, rightElem), false)
     }
