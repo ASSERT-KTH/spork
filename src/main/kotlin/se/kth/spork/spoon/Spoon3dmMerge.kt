@@ -40,7 +40,7 @@ import java.util.Arrays
 import java.util.HashSet
 
 /**
- * Spoon specialization of the 3DM merge algorithm.
+ * Spoon specialization of the 3DM merge algorithm for Spork.
  *
  * @author Simon Larsén
  */
