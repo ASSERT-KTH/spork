@@ -10,8 +10,6 @@ on:
   pull_request:
   push:
     branches: master 
-  schedule:
-  - cron: "0 0 * * *"
 
 env:
   JAVA_DISTRIBUTION: 'adopt'
