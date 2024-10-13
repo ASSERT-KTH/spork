@@ -164,7 +164,7 @@ class SpoonMapping private constructor() {
                 if (spoonSrc == null || spoonDst == null) {
                     // at least one was non-null
                     check(!(spoonSrc !== spoonDst))
-                    check(m.first.type.name == "ROOT") { // -1 is the type given to root node in SpoonGumTreeBuilder
+                    check(m.first.type.name.equals("root")) { // -1 is the type given to root node in SpoonGumTreeBuilder
                         (
                             "non-root node " + m.first.toString() +
                                 " had no mapped Spoon object"
