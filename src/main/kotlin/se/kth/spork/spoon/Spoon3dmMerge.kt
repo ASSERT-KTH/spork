@@ -2,8 +2,6 @@ package se.kth.spork.spoon
 
 import com.github.gumtreediff.matchers.CompositeMatchers
 import com.github.gumtreediff.matchers.MappingStore
-import com.github.gumtreediff.matchers.Matcher
-import com.github.gumtreediff.matchers.Matchers
 import com.github.gumtreediff.tree.Tree
 import gumtree.spoon.builder.SpoonGumTreeBuilder
 import se.kth.spork.base3dm.ChangeSet
@@ -359,12 +357,12 @@ object Spoon3dmMerge {
     }
 
     private fun matchTrees(src: Tree, dst: Tree): MappingStore {
-        val matcher = CompositeMatchers.SimpleIdGumtree();
+        val matcher = CompositeMatchers.SimpleIdGumtree()
         return matcher.match(src, dst)
     }
 
     private fun matchTreesLeftRight(src: Tree, dst: Tree): MappingStore {
-        val matcher = CompositeMatchers.SimpleIdGumtree();
+        val matcher = CompositeMatchers.SimpleIdGumtree()
         return matcher.match(src, dst)
     }
 
