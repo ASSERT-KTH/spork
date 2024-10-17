@@ -1,8 +1,8 @@
 package se.kth.spork.spoon
 
-import com.github.gumtreediff.matchers.Matcher
-import com.github.gumtreediff.matchers.Matchers
-import com.github.gumtreediff.tree.ITree
+import com.github.gumtreediff.matchers.CompositeMatchers
+import com.github.gumtreediff.matchers.MappingStore
+import com.github.gumtreediff.tree.Tree
 import gumtree.spoon.builder.SpoonGumTreeBuilder
 import se.kth.spork.base3dm.ChangeSet
 import se.kth.spork.base3dm.Revision
@@ -39,7 +39,7 @@ import java.util.Arrays
 import java.util.HashSet
 
 /**
- * Spoon specialization of the 3DM merge algorithm.
+ * Spoon specialization of the 3DM merge algorithm for Spork.
  *
  * @author Simon Larsén
  */
@@ -86,8 +86,8 @@ object Spoon3dmMerge {
         base: T,
         left: T,
         right: T,
-        baseMatcher: (ITree, ITree) -> Matcher,
-        leftRightMatcher: (ITree, ITree) -> Matcher,
+        baseMatcher: (Tree, Tree) -> MappingStore,
+        leftRightMatcher: (Tree, Tree) -> MappingStore,
     ): Pair<T, Int> {
         val start = System.nanoTime()
 
@@ -101,9 +101,9 @@ object Spoon3dmMerge {
         val baseRightGumtreeMatch = baseMatcher(baseGumtree, rightGumtree)
         val leftRightGumtreeMatch = leftRightMatcher(leftGumtree, rightGumtree)
         LOGGER.info { "Converting GumTree matches to Spoon matches" }
-        val baseLeft = fromGumTreeMapping(baseLeftGumtreeMatch.mappings)
-        val baseRight = fromGumTreeMapping(baseRightGumtreeMatch.mappings)
-        val leftRight = fromGumTreeMapping(leftRightGumtreeMatch.mappings)
+        val baseLeft = fromGumTreeMapping(baseLeftGumtreeMatch)
+        val baseRight = fromGumTreeMapping(baseRightGumtreeMatch)
+        val leftRight = fromGumTreeMapping(leftRightGumtreeMatch)
 
         // 3DM PHASE
         LOGGER.info { "Mapping nodes to class representatives" }
@@ -210,7 +210,7 @@ object Spoon3dmMerge {
      * @return A pair on the form (mergeTree, numConflicts).
      */
     fun <T : CtElement> merge(base: T, left: T, right: T): Pair<T, Int> {
-        return merge(base, left, right, ::matchTrees, ::matchTreesXY)
+        return merge(base, left, right, ::matchTrees, ::matchTreesLeftRight)
     }
 
     private fun mergeMetadataElements(
@@ -356,16 +356,14 @@ object Spoon3dmMerge {
         return merge.toList().sortedBy(CtImport::toString)
     }
 
-    private fun matchTrees(src: ITree, dst: ITree): Matcher {
-        val matcher = Matchers.getInstance().getMatcher(src, dst)
-        matcher.match()
-        return matcher
+    private fun matchTrees(src: Tree, dst: Tree): MappingStore {
+        val matcher = CompositeMatchers.SimpleIdGumtree()
+        return matcher.match(src, dst)
     }
 
-    private fun matchTreesXY(src: ITree, dst: ITree): Matcher {
-        val matcher = Matchers.getInstance().getMatcher("xy", src, dst)
-        matcher.match()
-        return matcher
+    private fun matchTreesLeftRight(src: Tree, dst: Tree): MappingStore {
+        val matcher = CompositeMatchers.SimpleIdGumtree()
+        return matcher.match(src, dst)
     }
 
     init {
