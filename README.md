@@ -3,11 +3,11 @@
 ![Supported Platforms](https://img.shields.io/badge/platforms-Linux%2C%20macOS-blue.svg)
 
 # Spork - AST based merging for Java files
-Spork is an AST based structured merge tool for Java. This means that instead of
-merging Java files by their raw text, it resolves the abstract syntax trees and
+Spork is an AST based structured merge research tool for Java. This means that instead of
+merging Java files by raw text, it resolves the abstract syntax trees and
 merges based on them instead.
 
-## Academic use
+If you're looking for a production ready tool for AST-based GIT merge, we recommend [mergiraf](https://mergiraf.org/).
 
 If you use Spork in an academic context, please cite the
 [related research paper](https://doi.org/10.1109/TSE.2022.3143766):
@@ -20,6 +20,7 @@ You may export a citation in various formats using the `Cite this repository`
 button to the right. See
 [the GitHub docs](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-citation-files)
 for more info.
+
 
 ## Master's thesis
 Spork was created as part of a master's thesis project. If you want to learn
