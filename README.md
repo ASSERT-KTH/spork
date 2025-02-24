@@ -70,7 +70,7 @@ using Spork, see [Usage](#usage).
 
 ## Usage
 You can find a pre-built jar-file under
-[relases](https://github.com/kth/spork/releases). The jar-file includes all
+[releases](https://github.com/kth/spork/releases). The jar-file includes all
 dependencies, so all you need is a Java runtime. Download the jar and run it
 like so:
 
