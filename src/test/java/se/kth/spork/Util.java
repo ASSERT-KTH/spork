@@ -1,6 +1,6 @@
 package se.kth.spork;
 
-import com.github.gumtreediff.tree.ITree;
+import com.github.gumtreediff.tree.Tree;
 import gumtree.spoon.builder.SpoonGumTreeBuilder;
 import java.io.File;
 import java.io.IOException;
@@ -53,7 +53,7 @@ public class Util {
         return String.join("\n", Files.readAllLines(path));
     }
 
-    public static ITree toGumTree(String clazz) {
+    public static Tree toGumTree(String clazz) {
         CtClass<?> spoonTree = Launcher.parseClass(clazz);
         SpoonGumTreeBuilder builder = new SpoonGumTreeBuilder();
         return builder.getTree(spoonTree);
